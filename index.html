@@ -22,6 +22,8 @@
 
             <h1 class="welcome-title">Welcome</h1>
 
+            <p class="welcome-tagline">TrackMate — building strength, week by week.</p>
+
             <div class="welcome-buttons">
                 <button id="btn-welcome-setup" class="btn btn-outline-teal">
                     Setup Profile
@@ -37,7 +39,7 @@
                 </button>
             </div>
 
-            <p class="welcome-version">Version 1.0</p>
+            <p class="welcome-version">Version 1.6</p>
         </main>
 
         <!-- PROFILE SCREEN - PAGE 2 -->
@@ -150,7 +152,31 @@
                 <button type="submit" class="btn btn-teal profile-submit">
                     Continue
                 </button>
+            
             </form>
+
+            <div class="tm-disclosure-group">
+                <button type="button" class="tm-disclosure-toggle" data-disclosure="profile-1rm" aria-expanded="false">
+                    What is a 1 Rep Max?
+                    <span class="tm-chev">▾</span>
+                </button>
+                <div class="tm-disclosure-content" data-disclosure-content="profile-1rm" hidden>
+                    A 1 Rep Max (1RM) is an estimate of the maximum weight you could lift for one repetition. TrackMate estimates this from a safe set of 3–6 controlled reps — do not attempt a true 1-rep max.
+                </div>
+
+                <button type="button" class="tm-disclosure-toggle" data-disclosure="profile-equip" aria-expanded="false">
+                    Equipment Key
+                    <span class="tm-chev">▾</span>
+                </button>
+                <div class="tm-disclosure-content" data-disclosure-content="profile-equip" hidden>
+                    DB = Dumbbells<br />
+                    BB = Barbell<br />
+                    KB = Kettlebell<br />
+                    BW = Bodyweight<br />
+                    MC = Machine/Cable
+                </div>
+            </div>
+
         </main>
 
         <!-- PROGRAM SELECTION SCREEN (NEW) - PAGE 3b -->
@@ -262,8 +288,23 @@
                 Do not attempt a true 1-rep max.
             </p>
 
+            <button type="button" class="tm-disclosure-toggle" data-disclosure="rm-equip" aria-expanded="false">
+                Equipment Key
+                <span class="tm-chev">▾</span>
+            </button>
+            <div class="tm-disclosure-content" data-disclosure-content="rm-equip" hidden>
+                DB = Dumbbells<br />
+                BB = Barbell<br />
+                KB = Kettlebell<br />
+                BW = Bodyweight<br />
+                MC = Machine/Cable
+            </div>
+
             <section class="one-rm-card" data-exercise="bench_press">
+            <div class="one-rm-header-row">
                 <h2 class="one-rm-title">Bench Press</h2>
+                <div class="equipment-pill-row one-rm-equip"><button type="button" class="equipment-pill" data-equip="DB">DB</button><button type="button" class="equipment-pill equipment-pill--active equipment-pill--active" data-equip="BB">BB</button><button type="button" class="equipment-pill" data-equip="KB">KB</button><button type="button" class="equipment-pill" data-equip="BW">BW</button><button type="button" class="equipment-pill" data-equip="MC">MC</button></div>
+            </div>
                 <div class="one-rm-fields">
                     <label class="field">
                         <span class="field-label">Weight (kg or lb)</span>
@@ -291,7 +332,10 @@
             </section>
 
             <section class="one-rm-card" data-exercise="squat">
+            <div class="one-rm-header-row">
                 <h2 class="one-rm-title">Back Squat</h2>
+                <div class="equipment-pill-row one-rm-equip"><button type="button" class="equipment-pill" data-equip="DB">DB</button><button type="button" class="equipment-pill equipment-pill--active equipment-pill--active" data-equip="BB">BB</button><button type="button" class="equipment-pill" data-equip="KB">KB</button><button type="button" class="equipment-pill" data-equip="BW">BW</button><button type="button" class="equipment-pill" data-equip="MC">MC</button></div>
+            </div>
                 <div class="one-rm-fields">
                     <label class="field">
                         <span class="field-label">Weight (kg or lb)</span>
@@ -319,7 +363,10 @@
             </section>
 
             <section class="one-rm-card" data-exercise="deadlift">
+            <div class="one-rm-header-row">
                 <h2 class="one-rm-title">Deadlift</h2>
+                <div class="equipment-pill-row one-rm-equip"><button type="button" class="equipment-pill" data-equip="DB">DB</button><button type="button" class="equipment-pill equipment-pill--active equipment-pill--active" data-equip="BB">BB</button><button type="button" class="equipment-pill" data-equip="KB">KB</button><button type="button" class="equipment-pill" data-equip="BW">BW</button><button type="button" class="equipment-pill" data-equip="MC">MC</button></div>
+            </div>
                 <div class="one-rm-fields">
                     <label class="field">
                         <span class="field-label">Weight (kg or lb)</span>
@@ -347,7 +394,10 @@
             </section>
 
             <section class="one-rm-card" data-exercise="ohp">
+            <div class="one-rm-header-row">
                 <h2 class="one-rm-title">Overhead Press</h2>
+                <div class="equipment-pill-row one-rm-equip"><button type="button" class="equipment-pill" data-equip="DB">DB</button><button type="button" class="equipment-pill equipment-pill--active equipment-pill--active" data-equip="BB">BB</button><button type="button" class="equipment-pill" data-equip="KB">KB</button><button type="button" class="equipment-pill" data-equip="BW">BW</button><button type="button" class="equipment-pill" data-equip="MC">MC</button></div>
+            </div>
                 <div class="one-rm-fields">
                     <label class="field">
                         <span class="field-label">Weight (kg or lb)</span>
@@ -375,7 +425,10 @@
             </section>
 
             <section class="one-rm-card" data-exercise="row">
+            <div class="one-rm-header-row">
                 <h2 class="one-rm-title">Barbell Row</h2>
+                <div class="equipment-pill-row one-rm-equip"><button type="button" class="equipment-pill" data-equip="DB">DB</button><button type="button" class="equipment-pill equipment-pill--active equipment-pill--active" data-equip="BB">BB</button><button type="button" class="equipment-pill" data-equip="KB">KB</button><button type="button" class="equipment-pill" data-equip="BW">BW</button><button type="button" class="equipment-pill" data-equip="MC">MC</button></div>
+            </div>
                 <div class="one-rm-fields">
                     <label class="field">
                         <span class="field-label">Weight (kg or lb)</span>
@@ -447,10 +500,26 @@
                     </select>
                     <span id="workout-theme-badge" class="day-pill-tag">PULL</span>
                 </div>
-                <button class="btn-text" type="button">Edit</button>
+                <!-- Shown only when the current day is completed -->
+                <span id="workout-completed-badge" class="completed-pill is-incomplete">Completed</span>
+
+                <!-- Reset current day (sets only). Styled to match Settings "Reset" affordance, but smaller. -->
+                <button class="workout-reset-day" type="button">Reset Day</button>
             </div>
 
             <p id="workout-goal" class="workout-goal"></p>
+
+            <button type="button" class="tm-disclosure-toggle" data-disclosure="workout-equip" aria-expanded="false">
+                Equipment Key
+                <span class="tm-chev">▾</span>
+            </button>
+            <div class="tm-disclosure-content" data-disclosure-content="workout-equip" hidden>
+                DB = Dumbbells<br />
+                BB = Barbell<br />
+                KB = Kettlebell<br />
+                BW = Bodyweight<br />
+                MC = Machine/Cable
+            </div>
 
             <!-- Exercise cards rendered by JS -->
             <div id="workout-exercise-list" class="exercise-list"></div>
@@ -480,6 +549,32 @@
         </main>
         
         <!-- SETTINGS SCREEN -->
+        
+        <main class="screen screen--with-header" id="screen-equipment-key">
+            <button type="button" class="link-back" data-target="screen-workout">‹ Back</button>
+
+            <header class="workout-header">
+                <div class="header-logo-center">
+                    <img src="assets/TrackMate_logo_icon.png" alt="TrackMate logo">
+                </div>
+                <button type="button" class="workout-menu-button" aria-label="Open menu">
+                    <span></span><span></span><span></span>
+                </button>
+            </header>
+
+            <h1 class="screen-title">Equipment Key</h1>
+            <p class="screen-subtitle">Quick reference for equipment tags used in workouts.</p>
+
+            <div class="form-card">
+                <p class="exercise-info-line"><strong>DB</strong> — Dumbbells</p>
+                <p class="exercise-info-line"><strong>BB</strong> — Barbell</p>
+                <p class="exercise-info-line"><strong>KB</strong> — Kettlebell</p>
+                <p class="exercise-info-line"><strong>BW</strong> — Bodyweight</p>
+                <p class="exercise-info-line"><strong>MC</strong> — Machine/Cable</p>
+            </div>
+        </main>
+
+
         <main class="screen screen--with-header" id="screen-settings">
             <button type="button" class="link-back" data-target="screen-workout">‹ Back</button>
 
@@ -497,6 +592,8 @@
             <div class="settings-list">
                 <button type="button" class="settings-item" data-settings-action="edit-profile">Edit Profile</button>
                 <button type="button" class="settings-item" data-settings-action="edit-program">Edit Program</button>
+                <button type="button" class="settings-item" data-settings-action="equipment-key">Equipment Key</button>
+                <button type="button" class="settings-item" data-settings-action="units">Units (kg / lb)</button>
                 <div class="settings-item settings-item--danger settings-row">
                     <label class="settings-row-label" for="settings-reset-week-select">Reset Week</label>
                     <select id="settings-reset-week-select" class="settings-row-select" aria-label="Select week to reset">
@@ -510,7 +607,6 @@
                     <button type="button" class="settings-row-button" data-settings-action="reset-week">Reset</button>
                 </div>
                 <button type="button" class="settings-item settings-item--danger" data-settings-action="reset-all">Reset All Data</button>
-                <button type="button" class="settings-item" data-settings-action="units">Units (kg / lb)</button>
             </div>
         </main>
 
@@ -531,6 +627,9 @@
                     </button>
                     <button type="button" class="workout-menu-link" data-menu-action="programs">
                         Select Program
+                    </button>
+                    <button type="button" class="workout-menu-link" data-menu-action="equipment-key">
+                        Equipment Key
                     </button>
 
                     <div class="workout-menu-divider"></div>
@@ -627,15 +726,5 @@
       </div>
     </div>
   </div>
-
-  <script>
-    // TrackMate PWA: offline support
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("service-worker.js").catch(() => {});
-      });
-    }
-  </script>
-
 </body>
 </html>
