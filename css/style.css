@@ -15,6 +15,8 @@
   box-sizing: border-box;
 }
 
+[hidden]{display:none !important;}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
@@ -57,7 +59,13 @@ body {
   font-size: 20px;
   font-weight: 600;
   letter-spacing: -0.02em;
-  margin: 0 0 40px;
+  margin: 0 0 8px;
+}
+
+.welcome-tagline {
+  margin: 0 0 28px;
+  font-size: 14px;
+  color: var(--tm-muted);
 }
 
 .welcome-buttons {
@@ -336,14 +344,27 @@ body {
   font-weight: 600;
 }
 
-.one-rm-fields {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 50px);
+/* 1RM card header: title (left) + equipment pills (right) */
+.one-rm-header-row{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 10px;
 }
 
-.one-rm-fields > * { min-width: 0; }
-.one-rm-fields input { min-width: 0; width: 100%; box-sizing: border-box; }
+.one-rm-header-row .one-rm-title{
+  margin: 0;
+}
+
+.one-rm-equip{
+  justify-content: flex-end;
+}
+
+.one-rm-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
 
 .one-rm-result {
   margin-top: 4px;
@@ -356,27 +377,6 @@ body {
   color: var(--tm-teal);
   margin-left: 4px;
 }
-
-/* 1RM TEST – fix weight input overflowing on mobile */
-/* .one-rm-weight {
-  width: 120px;
-  max-width: 120px;
-}
-
-.one-rm-reps {
-  width: 120px;
-  max-width: 120px;
-}*/
-
-.one-rm-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.one-rm-fields > * { min-width: 0; }
-.one-rm-fields input { width: 100%; box-sizing: border-box; }
-
 
 /* WORKOUT SCREEN */
 
@@ -499,6 +499,48 @@ body {
   gap: 10px;
 }
 
+/* Completed status pill (shown only when a day is marked completed) */
+.completed-pill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(180,180,180,0.45);
+  background: rgba(180,180,180,0.12);
+  color: rgba(255,255,255,0.55);
+  font-size: 13px;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.completed-pill.is-complete{
+  border: 1px solid rgba(0,204,204,0.35);
+  background: rgba(0,204,204,0.10);
+  color: var(--tm-teal);
+}
+
+.completed-pill.is-incomplete{
+  /* explicit marker for clarity; base styling already "inactive" */
+}
+
+/* Reset Day (small danger pill; aligned with Settings reset affordance) */
+.workout-reset-day{
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,107,107,0.35);
+  background: rgba(255,107,107,0.08);
+  color: #ff6b6b;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.workout-reset-day:active{
+  transform: translateY(1px);
+}
+
 .day-pill {
   display: inline-flex;
   align-items: center;
@@ -569,6 +611,20 @@ body {
   border-radius: 18px;
   padding: 12px 14px 14px;
   box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+}
+
+/* Day completion state: subtle grey overlay on all cards for that day */
+.workout-day--completed .exercise-card{
+  position: relative;
+}
+
+.workout-day--completed .exercise-card::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  background: rgba(0,0,0,0.06);
+  pointer-events: none;
 }
 
 /* Header: Info/Edit above title */
@@ -989,6 +1045,27 @@ body {
 
 
 /* Settings: Reset Week dropdown row */
+
+/* Settings: make Reset Week row more compact (match button styling) */
+.settings-item.settings-row{
+  padding: 10px 12px; /* narrower vertically */
+  font-size: 15px;
+}
+
+.settings-row-label{
+  font-size: 15px;
+}
+
+.settings-row-select{
+  padding: 8px 10px;
+  font-size: 15px;
+}
+
+.settings-row-button{
+  padding: 8px 10px;
+  font-size: 15px;
+}
+
 .settings-row{
   display:flex;
   align-items:center;
@@ -1030,3 +1107,93 @@ body {
     .workout-day-header .btn-text:hover {
         color: #8f1d14;
     }
+
+
+/* Disclosure dropdowns (Profile / 1RM / Workout) */
+.tm-disclosure-group{
+  width: 100%;
+  margin-top: 12px;
+}
+
+.tm-disclosure-toggle{
+  width: 100%;
+  border: 1px solid var(--tm-border);
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--tm-text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.tm-chev{
+  color: var(--tm-muted);
+  font-size: 14px;
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform 0.15s ease;
+}
+
+.tm-disclosure-toggle[aria-expanded="true"] .tm-chev{
+  transform: rotate(180deg);
+}
+
+.tm-disclosure-content{
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid var(--tm-border);
+  font-size: 13px;
+  color: var(--tm-muted);
+  line-height: 1.35;
+}
+
+.tm-disclosure-group{
+  width: 100%;
+  margin-top: 12px;
+}
+
+.tm-disclosure-toggle{
+  width: 100%;
+  border: 1px solid var(--tm-border);
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--tm-text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.tm-chev{
+  color: var(--tm-muted);
+  font-size: 14px;
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform 0.15s ease;
+}
+
+.tm-disclosure-toggle[aria-expanded="true"] .tm-chev{
+  transform: rotate(180deg);
+}
+
+.tm-disclosure-content{
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid var(--tm-border);
+  font-size: 13px;
+  color: var(--tm-muted);
+  line-height: 1.35;
+}
