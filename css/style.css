@@ -358,7 +358,7 @@ body {
 }
 
 /* 1RM TEST – fix weight input overflowing on mobile */
-.one-rm-weight {
+/* .one-rm-weight {
   width: 120px;
   max-width: 120px;
 }
@@ -366,7 +366,17 @@ body {
 .one-rm-reps {
   width: 120px;
   max-width: 120px;
+}*/
+
+.one-rm-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
+
+.one-rm-fields > * { min-width: 0; }
+.one-rm-fields input { width: 100%; box-sizing: border-box; }
+
 
 /* WORKOUT SCREEN */
 
