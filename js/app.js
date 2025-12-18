@@ -16,7 +16,8 @@ function showScreen(id) {
 const STORAGE_KEYS = {
   profile: "trackmateProfile",
   oneRM: "trackmateOneRM",
-  workoutState: "trackmateWorkoutState"
+  workoutState: "trackmateWorkoutState",
+  oneRMEquip: "trackmateOneRMEquip"
 };
 
 function readJSON(key, fallback) {
@@ -45,6 +46,14 @@ function deepClone(obj) {
   } catch {
     return obj;
   }
+}
+
+// -------------------------
+// Workout day display helpers
+// -------------------------
+function getDisplayDayNumber(dayIndex) {
+  const dayNumbers = [1, 2, 3, 5, 6];
+  return dayNumbers[dayIndex] ?? (dayIndex + 1);
 }
 
 // -------------------------
@@ -484,6 +493,27 @@ function getExerciseState(state, week, dayIndex, exIndex) {
 // DOMContentLoaded - main
 // -------------------------
 document.addEventListener("DOMContentLoaded", () => {
+
+  // Disclosure (dropdown) toggles
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".tm-disclosure-toggle");
+    if (!btn) return;
+
+    const key = btn.getAttribute("data-disclosure");
+    const panel = document.querySelector(`[data-disclosure-content="${key}"]`);
+    if (!panel) return;
+
+    const isOpen = !panel.hasAttribute("hidden");
+    if (isOpen) {
+      panel.setAttribute("hidden", "");
+      btn.setAttribute("aria-expanded", "false");
+    } else {
+      panel.removeAttribute("hidden");
+      btn.setAttribute("aria-expanded", "true");
+    }
+  });
+
+
   // Back buttons
   document.querySelectorAll(".link-back").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -611,6 +641,34 @@ document.addEventListener("DOMContentLoaded", () => {
   const workoutThemeBadge = document.getElementById("workout-theme-badge");
   const workoutGoal = document.getElementById("workout-goal");
   const workoutExerciseList = document.getElementById("workout-exercise-list");
+  const workoutCompletedBadge = document.getElementById("workout-completed-badge");
+
+  function getCurrentDayState() {
+    const state = getWorkoutState();
+    return ensureDayState(state, currentWeek, currentDayIndex);
+  }
+
+  function isCurrentDayCompleted() {
+    return !!getCurrentDayState()?.completed;
+  }
+
+  function syncWorkoutCompletionUI() {
+    const completed = isCurrentDayCompleted();
+
+    // Visual overlay on cards
+    workoutExerciseList?.classList.toggle("workout-day--completed", completed);
+    if (workoutExerciseList) workoutExerciseList.dataset.completed = completed ? "true" : "false";
+
+    // Completed pill: grey when incomplete, teal when complete
+    if (workoutCompletedBadge) {
+      workoutCompletedBadge.classList.toggle("is-complete", completed);
+      workoutCompletedBadge.classList.toggle("is-incomplete", !completed);
+    }
+
+    // Bottom button label
+    const completeBtn = document.querySelector(".workout-complete");
+    if (completeBtn) completeBtn.textContent = completed ? "Edit Completed Workout" : "Complete Workout";
+  }
 
   const summaryVolumeEl = document.getElementById("summary-volume");
   const summaryRepsEl = document.getElementById("summary-reps");
@@ -629,6 +687,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentEditContext = null;
 
   function openSetEditor(exerciseName, weightPill, repsPill, context) {
+    if (isCurrentDayCompleted()) {
+      alert("This workout is marked as completed. Tap 'Edit Completed Workout' to make changes.");
+      return;
+    }
     currentEditWeightPill = weightPill;
     currentEditRepsPill = repsPill;
     currentEditContext = context;
@@ -667,7 +729,13 @@ document.addEventListener("DOMContentLoaded", () => {
       infoMuscles.textContent = "";
       infoMuscles.style.display = "none";
     }
-    infoDesc.textContent = info.description || exercise.notes || "No additional description is available yet.";
+    const meta = exerciseLibrary[exercise.name] || {};
+    const category = meta.category || findCategoryForExercise(exercise.name);
+    const equip = meta.equipment ? `Equipment: ${meta.equipment}` : "";
+    const catLine = category ? `Category: ${category}` : "";
+    const fallbackLines = [catLine, equip].filter(Boolean).join(" • ");
+    const fallback = fallbackLines ? `${fallbackLines}.` : "";
+    infoDesc.textContent = info.description || exercise.notes || fallback || "No additional description is available yet.";
     infoOverlay.classList.add("set-edit-overlay--active");
   }
   function closeExerciseInfo() { infoOverlay.classList.remove("set-edit-overlay--active"); }
@@ -718,8 +786,27 @@ document.addEventListener("DOMContentLoaded", () => {
       editCategoryList.appendChild(btn);
     });
   }
+  function findCategoryForExercise(exerciseName) {
+    const meta = exerciseLibrary[exerciseName];
+    if (meta?.category) return meta.category;
+
+    for (const [cat, list] of Object.entries(exerciseCategories)) {
+      if (Array.isArray(list) && list.includes(exerciseName)) return cat;
+    }
+    return null;
+  }
+
+  function buildAutoAlternatives(exerciseName, categoryName, limit = 8) {
+    const list = exerciseCategories[categoryName] || [];
+    return list.filter((n) => n !== exerciseName).slice(0, limit);
+  }
+
 
   function openExerciseEdit(dayRef, exRef, titleEl) {
+    if (isCurrentDayCompleted()) {
+      alert("This workout is marked as completed. Tap 'Edit Completed Workout' to make changes.");
+      return;
+    }
     editContext = { dayRef, exRef, titleEl };
 
     editCurrent.textContent = exRef.name;
@@ -728,7 +815,9 @@ document.addEventListener("DOMContentLoaded", () => {
     editCategoryList.innerHTML = "";
 
     const meta = exerciseLibrary[exRef.name];
-    const alternatives = meta?.alternatives || [];
+    const categoryName = findCategoryForExercise(exRef.name);
+    const curatedAlternatives = meta?.alternatives || [];
+    const alternatives = curatedAlternatives.length ? curatedAlternatives : (categoryName ? buildAutoAlternatives(exRef.name, categoryName, 8) : []);
     if (alternatives.length) {
       alternatives.forEach((name) => {
         const btn = document.createElement("button");
@@ -758,12 +847,12 @@ document.addEventListener("DOMContentLoaded", () => {
       editCategoryRow.appendChild(pill);
     });
 
-    if (meta?.category) {
+    if (categoryName) {
       const pills = editCategoryRow.querySelectorAll(".exercise-edit-category-pill");
       pills.forEach((p) => {
-        if (p.textContent === meta.category) {
+        if (p.textContent === categoryName) {
           p.classList.add("exercise-edit-category-pill--active");
-          renderCategoryList(meta.category);
+          renderCategoryList(categoryName);
         }
       });
     }
@@ -1163,18 +1252,19 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     updateWorkoutSummary(day);
+    syncWorkoutCompletionUI();
   }
 
   window.renderWorkoutDay = renderWorkoutDay;
 
   
 // Workout header action (top-right button): Reset current day (with confirmation)
-const workoutHeaderActionBtn = document.querySelector(".workout-day-header .btn-text");
+const workoutHeaderActionBtn = document.querySelector(".workout-day-header .workout-reset-day");
 if (workoutHeaderActionBtn) {
   workoutHeaderActionBtn.textContent = "Reset Day";
   workoutHeaderActionBtn.addEventListener("click", () => {
       const dayNumbers = [1, 2, 3, 5, 6];
-      const dayNumber = dayNumbers[currentDayIndex] ?? (currentDayIndex + 1);
+      const dayNumber = getDisplayDayNumber(currentDayIndex);
       if (confirm(`Reset Week ${currentWeek}, Day ${dayNumber}? This will clear all logged sets for this day.`)) {
           resetDay(currentWeek, currentDayIndex);
           renderWorkoutDay(currentDayIndex);
@@ -1201,7 +1291,37 @@ workoutDaySelect?.addEventListener("change", () => {
     r?.addEventListener("input", update);
   });
 
-  // Save 1RMs
+  
+  // 1RM equipment selector (persisted locally)
+  const oneRMEquipMap = readJSON(STORAGE_KEYS.oneRMEquip, {});
+  oneRmCards.forEach((card) => {
+    const key = card.dataset.exercise;
+    const row = card.querySelector(".one-rm-equip");
+    if (!row) return;
+
+    // Apply saved selection if present
+    const saved = oneRMEquipMap[key];
+    if (saved) {
+      row.querySelectorAll(".equipment-pill").forEach((b) => b.classList.remove("equipment-pill--active"));
+      const btn = row.querySelector(`.equipment-pill[data-equip="${saved}"]`);
+      if (btn) btn.classList.add("equipment-pill--active");
+    }
+
+    row.addEventListener("click", (e) => {
+      const btn = e.target.closest(".equipment-pill");
+      if (!btn) return;
+      const code = btn.getAttribute("data-equip");
+      if (!code) return;
+
+      row.querySelectorAll(".equipment-pill").forEach((b) => b.classList.remove("equipment-pill--active"));
+      btn.classList.add("equipment-pill--active");
+
+      oneRMEquipMap[key] = code;
+      writeJSON(STORAGE_KEYS.oneRMEquip, oneRMEquipMap);
+    });
+  });
+
+// Save 1RMs
   document.getElementById("btn-1rm-save")?.addEventListener("click", () => {
     const data = {};
     let hasAny = false;
@@ -1225,15 +1345,28 @@ workoutDaySelect?.addEventListener("change", () => {
     renderWorkoutDay(0);
   });
 
-  // Complete workout
+  // Complete workout (toggle)
+  // - If not completed: marks completed and applies grey overlay + "Completed" pill + button label change
+  // - If already completed: unlocks editing for that day (sets completed=false)
   document.querySelector(".workout-complete")?.addEventListener("click", () => {
     const state = getWorkoutState();
     const dayState = ensureDayState(state, currentWeek, currentDayIndex);
-    dayState.completed = true;
-    saveWorkoutState(state);
-    alert(`Saved. Week ${currentWeek}, Day ${currentDayIndex + 1} marked complete.`);
+
+    const dayNumber = getDisplayDayNumber(currentDayIndex);
+
+    if (!dayState.completed) {
+      dayState.completed = true;
+      saveWorkoutState(state);
+      alert(`Saved. Week ${currentWeek}, Day ${dayNumber} marked complete.`);
+    } else {
+      dayState.completed = false;
+      saveWorkoutState(state);
+      alert(`Editing enabled. Week ${currentWeek}, Day ${dayNumber} is now unlocked.`);
+    }
+
     const day = getProgramForWeek(currentWeek)[currentDayIndex];
     updateWorkoutSummary(day);
+    syncWorkoutCompletionUI();
   });
 
   // -------------------------
@@ -1292,6 +1425,9 @@ workoutDaySelect?.addEventListener("change", () => {
     } else if (action === "settings") {
       closeWorkoutMenu();
       showScreen("screen-settings");
+    } else if (action === "equipment-key") {
+      closeWorkoutMenu();
+      showScreen("screen-equipment-key");
     }
   });
 
