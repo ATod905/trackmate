@@ -356,7 +356,7 @@ body {
 
 /* 1RM TEST – constrain weight input width on mobile */
 .one-rm-fields input:first-child {
-    max-width: 140px;
+    max-width: 100px;
 }
 
 /* WORKOUT SCREEN */
