@@ -338,7 +338,7 @@ body {
 
 .one-rm-fields {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 90px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 50px);
   gap: 10px;
 }
 
@@ -359,7 +359,7 @@ body {
 
 /* 1RM TEST – constrain weight input width on mobile */
 .one-rm-fields input:first-child {
-    max-width: 100px;
+    max-width: 50px;
 }
 
 /* WORKOUT SCREEN */
