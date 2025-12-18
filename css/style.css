@@ -338,9 +338,12 @@ body {
 
 .one-rm-fields {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 90px);
   gap: 10px;
 }
+
+.one-rm-fields > * { min-width: 0; }
+.one-rm-fields input { min-width: 0; width: 100%; box-sizing: border-box; }
 
 .one-rm-result {
   margin-top: 4px;
