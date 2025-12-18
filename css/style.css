@@ -359,13 +359,13 @@ body {
 
 /* 1RM TEST – fix weight input overflowing on mobile */
 .one-rm-weight {
-  width: 140px;
-  max-width: 140px;
+  width: 120px;
+  max-width: 120px;
 }
 
 .one-rm-reps {
-  width: 70px;
-  max-width: 70px;
+  width: 120px;
+  max-width: 120px;
 }
 
 /* WORKOUT SCREEN */
