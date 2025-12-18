@@ -354,6 +354,11 @@ body {
   margin-left: 4px;
 }
 
+/* 1RM TEST – constrain weight input width on mobile */
+.one-rm-fields input:first-child {
+    max-width: 140px;
+}
+
 /* WORKOUT SCREEN */
 
 .header-logo-center {
