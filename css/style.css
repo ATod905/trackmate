@@ -357,9 +357,15 @@ body {
   margin-left: 4px;
 }
 
-/* 1RM TEST – constrain weight input width on mobile */
-.one-rm-fields input:first-child {
-    max-width: 50px;
+/* 1RM TEST – fix weight input overflowing on mobile */
+.one-rm-weight {
+  width: 140px;
+  max-width: 140px;
+}
+
+.one-rm-reps {
+  width: 70px;
+  max-width: 70px;
 }
 
 /* WORKOUT SCREEN */
