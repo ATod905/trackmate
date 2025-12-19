@@ -594,6 +594,13 @@
                 <button type="button" class="settings-item" data-settings-action="edit-program">Edit Program</button>
                 <button type="button" class="settings-item" data-settings-action="equipment-key">Equipment Key</button>
                 <button type="button" class="settings-item" data-settings-action="units">Units (kg / lb)</button>
+                <div class="settings-item settings-row">
+                    <label class="settings-row-label" for="settings-continue-mode">Continue to Workouts opens</label>
+                    <select id="settings-continue-mode" class="settings-row-select" aria-label="Choose continue behaviour">
+                        <option value="next">Next incomplete workout</option>
+                        <option value="resume">Resume last viewed</option>
+                    </select>
+                </div>
                 <div class="settings-item settings-item--danger settings-row">
                     <label class="settings-row-label" for="settings-reset-week-select">Reset Week</label>
                     <select id="settings-reset-week-select" class="settings-row-select" aria-label="Select week to reset">
