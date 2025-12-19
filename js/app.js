@@ -665,9 +665,19 @@ document.addEventListener("DOMContentLoaded", () => {
       workoutCompletedBadge.classList.toggle("is-incomplete", !completed);
     }
 
-    // Bottom button label
+    // Bottom button label + style
     const completeBtn = document.querySelector(".workout-complete");
-    if (completeBtn) completeBtn.textContent = completed ? "Edit Completed Workout" : "Complete Workout";
+    if (completeBtn) {
+      if (completed) {
+         completeBtn.textContent = "Edit Completed Workout";
+         completeBtn.classList.remove("btn-teal");
+         completeBtn.classList.add("btn-danger-pill");
+      } else {
+        completeBtn.textContent = "Complete Workout";
+        completeBtn.classList.remove("btn-danger-pill");
+        completeBtn.classList.add("btn-teal");
+      }
+    }
   }
 
   const summaryVolumeEl = document.getElementById("summary-volume");
