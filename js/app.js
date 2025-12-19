@@ -17,7 +17,9 @@ const STORAGE_KEYS = {
   profile: "trackmateProfile",
   oneRM: "trackmateOneRM",
   workoutState: "trackmateWorkoutState",
-  oneRMEquip: "trackmateOneRMEquip"
+  oneRMEquip: "trackmateOneRMEquip",
+  prefs: "trackmatePrefs",
+  lastViewed: "trackmateLastViewed"
 };
 
 function readJSON(key, fallback) {
@@ -523,12 +525,83 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Welcome
-  document.getElementById("btn-welcome-setup")?.addEventListener("click", () => showScreen("screen-profile"));
-  document.getElementById("btn-welcome-programs")?.addEventListener("click", () => showScreen("screen-programs"));
-  document.getElementById("btn-welcome-continue")?.addEventListener("click", () => {
+  
+  // -------------------------
+  // Continue behaviour (Next incomplete vs Resume last viewed)
+  // -------------------------
+  function getContinueMode() {
+    const prefs = readJSON(STORAGE_KEYS.prefs, {});
+    return (prefs && (prefs.continueMode === "resume" || prefs.continueMode === "next"))
+      ? prefs.continueMode
+      : "next";
+  }
+
+  function setContinueMode(mode) {
+    const safe = (mode === "resume" || mode === "next") ? mode : "next";
+    const prefs = readJSON(STORAGE_KEYS.prefs, {});
+    prefs.continueMode = safe;
+    writeJSON(STORAGE_KEYS.prefs, prefs);
+  }
+
+  function getLastViewedWorkout() {
+    const lv = readJSON(STORAGE_KEYS.lastViewed, null);
+    if (!lv) return null;
+    const week = parseInt(lv.week, 10);
+    const dayIndex = parseInt(lv.dayIndex, 10);
+    if (!Number.isFinite(week) || !Number.isFinite(dayIndex)) return null;
+    if (week < 1 || week > 6) return null;
+    if (dayIndex < 0 || dayIndex > 4) return null;
+    return { week, dayIndex };
+  }
+
+  function setLastViewedWorkout(week, dayIndex) {
+    writeJSON(STORAGE_KEYS.lastViewed, { week, dayIndex, ts: Date.now() });
+  }
+
+  function isWorkoutCompletedFor(week, dayIndex) {
+    const state = getWorkoutState();
+    const wKey = String(week);
+    const dKey = String(dayIndex);
+    return !!state?.weeks?.[wKey]?.[dKey]?.completed;
+  }
+
+  function findNextIncompleteWorkout() {
+    const weekOrder = [1, 2, 3, 4, 5, 6];
+    const dayIndices = [0, 1, 2, 3, 4]; // Day 1,2,3,5,6
+    for (const w of weekOrder) {
+      for (const d of dayIndices) {
+        if (!isWorkoutCompletedFor(w, d)) return { week: w, dayIndex: d };
+      }
+    }
+    return null;
+  }
+
+  function chooseContinueTarget() {
+    const mode = getContinueMode();
+    if (mode === "resume") {
+      const lv = getLastViewedWorkout();
+      if (lv) return lv;
+      // Fall back if no last-viewed exists yet
+    }
+    return findNextIncompleteWorkout() || { week: 1, dayIndex: 0 };
+  }
+
+  function enterWorkoutFromEntryPoint() {
+    const target = chooseContinueTarget();
+    currentWeek = target.week;
+    setActiveWeekTab(currentWeek);
+    // Ensure the day dropdown matches the chosen day
+    const sel = document.getElementById("workout-day-select");
+    if (sel) sel.value = String(target.dayIndex);
     closeWorkoutMenu();
     showScreen("screen-workout");
-    renderWorkoutDay(0);
+    renderWorkoutDay(target.dayIndex);
+  }
+
+document.getElementById("btn-welcome-setup")?.addEventListener("click", () => showScreen("screen-profile"));
+  document.getElementById("btn-welcome-programs")?.addEventListener("click", () => showScreen("screen-programs"));
+  document.getElementById("btn-welcome-continue")?.addEventListener("click", () => {
+    enterWorkoutFromEntryPoint();
   });
 
   // Program selection
@@ -536,9 +609,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Start choice
   document.getElementById("btn-start-workouts")?.addEventListener("click", () => {
-    closeWorkoutMenu();
-    showScreen("screen-workout");
-    renderWorkoutDay(0);
+    enterWorkoutFromEntryPoint();
   });
   document.getElementById("btn-go-1rm")?.addEventListener("click", () => showScreen("screen-1rm"));
 
@@ -1068,6 +1139,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!day) return;
 
     currentDayIndex = dayIndex;
+    setLastViewedWorkout(currentWeek, currentDayIndex);
 
     workoutThemeBadge.textContent = day.theme;
     workoutGoal.textContent = day.goal;
@@ -1350,9 +1422,7 @@ workoutDaySelect?.addEventListener("change", () => {
       alert("Please enter at least one lift to save your 1 Rep Max values.");
       return;
     }
-    closeWorkoutMenu();
-    showScreen("screen-workout");
-    renderWorkoutDay(0);
+    enterWorkoutFromEntryPoint();
   });
 
   // Complete workout (toggle)
@@ -1443,6 +1513,14 @@ workoutDaySelect?.addEventListener("change", () => {
 
   moveSettingsToBottom();
 
+  // Continue behaviour selector (Settings)
+  const continueModeSelect = document.getElementById("settings-continue-mode");
+  if (continueModeSelect) {
+    continueModeSelect.value = getContinueMode();
+    continueModeSelect.addEventListener("change", () => {
+      setContinueMode(continueModeSelect.value);
+    });
+  }
 
   // Settings screen actions
   document.querySelectorAll("[data-settings-action]").forEach((btn) => {
