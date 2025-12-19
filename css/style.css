@@ -117,6 +117,22 @@ body {
   color: #ffffff;
 }
 
+/* Danger pill (match Reset Day / destructive actions) */
+.btn-danger-pill{
+  border-radius: 999px;
+  border: 1px solid rgba(255,107,107,0.35);
+  background: rgba(255,107,107,0.08);
+  color: #ff6b6b;
+}
+
+.btn-danger-pill:focus-visible,
+.btn-danger-pill:active{
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255,107,107,0.18);
+}
+
+
+
 /* Focus / active states */
 
 .btn-outline-teal:focus-visible,
@@ -362,8 +378,17 @@ body {
 
 .one-rm-fields {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
+}
+
+.one-rm-fields > .field {
+  min-width: 0;
+}
+
+.one-rm-fields input {
+  width: 100%;
+  min-width: 0;
 }
 
 .one-rm-result {
