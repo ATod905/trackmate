@@ -8,6 +8,18 @@ function showScreen(id) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("screen--active"));
   const target = document.getElementById(id);
   if (target) target.classList.add("screen--active");
+
+  // Screen-specific UI sync (keep logic minimal to avoid regressions)
+  if (id === "screen-workout") {
+    try { syncWorkoutDaySelectOptionsForSeries(getActiveSeriesName()); } catch (_) {}
+    try { syncWorkoutEditProgramButton(); } catch (_) {}
+  }
+  if (id === "screen-programs") {
+    try { renderProgramsScreen(); } catch (_) {}
+  }
+  if (id === "screen-custom-builder") {
+    try { syncProgramDraftUI(); renderCustomBuilderForCurrentDay(); } catch (_) {}
+  }
 }
 
 // -------------------------
@@ -19,8 +31,26 @@ const STORAGE_KEYS = {
   workoutState: "trackmateWorkoutState",
   oneRMEquip: "trackmateOneRMEquip",
   prefs: "trackmatePrefs",
-  lastViewed: "trackmateLastViewed"
+  lastViewed: "trackmateLastViewed",
+  historyLog: "trackmateHistoryLog",
+  seriesRegistry: "trackmateSeriesRegistry",
+  customProgramDraft: "trackmateCustomProgramDraft"
 };
+// Series-scoped storage helpers
+function sanitizeStorageKeyPart(part) {
+  return (part || "").toString().trim().replace(/[^a-z0-9_\-]+/gi, "_").slice(0, 80) || "default";
+}
+
+function workoutStateStorageKeyForSeries(seriesName) {
+  const safe = sanitizeStorageKeyPart(seriesName || DEFAULT_SERIES_NAME);
+  return `trackmateWorkoutState::${safe}`;
+}
+
+function customProgramStorageKeyForSeries(seriesName) {
+  const safe = sanitizeStorageKeyPart(seriesName || "Custom");
+  return `trackmateCustomProgram::${safe}`;
+}
+
 
 function readJSON(key, fallback) {
   try {
@@ -42,6 +72,117 @@ function writeJSON(key, value) {
   }
 }
 
+// -------------------------
+// Custom programme draft (phased feature)
+// -------------------------
+function normaliseCustomProgramDraft(raw) {
+  // Legacy support: draft might have been stored as a string name.
+  if (typeof raw === "string") return { name: raw.trim(), days: {}, updatedAt: Date.now() };
+  if (!raw || typeof raw !== "object") return null;
+
+  const name = (raw.name || "").toString().trim();
+  const days = (raw.days && typeof raw.days === "object") ? raw.days : {};
+  const updatedAt = Number(raw.updatedAt || raw.updatedAt || Date.now());
+
+  // Ensure days 1–7 exist as arrays.
+  const nextDays = {};
+  for (let d = 1; d <= 7; d++) {
+    const key = String(d);
+    const arr = Array.isArray(days[key]) ? days[key] : [];
+    // Normalise each exercise entry.
+    nextDays[key] = arr
+      .filter((x) => x && typeof x === "object")
+      .map((x) => ({
+        name: (x.name || "").toString(),
+        prescription: (x.prescription || "").toString(),
+        notes: (x.notes || "").toString(),
+        // Preserve fields required by the custom programme builder.
+        equipment: (x.equipment || "").toString(),
+        setCount: Number.isFinite(parseInt(x.setCount, 10)) ? parseInt(x.setCount, 10) : undefined
+      }))
+      .filter((x) => x.name.trim().length > 0);
+  }
+
+  return { name, days: nextDays, updatedAt: Number.isFinite(updatedAt) ? updatedAt : Date.now() };
+}
+
+function getCustomProgramDraft() {
+  const raw = readJSON(STORAGE_KEYS.customProgramDraft, null);
+  const d = normaliseCustomProgramDraft(raw);
+  return d && d.name ? d : null;
+}
+
+function writeCustomProgramDraft(draft) {
+  const d = normaliseCustomProgramDraft(draft);
+  if (!d || !d.name) return false;
+  d.updatedAt = Date.now();
+  writeJSON(STORAGE_KEYS.customProgramDraft, d);
+  return true;
+}
+
+function setCustomProgramDraft(name) {
+  const cleaned = (name || "").toString().trim();
+  if (!cleaned) return false;
+
+  const existing = getCustomProgramDraft() || { name: cleaned, days: {}, updatedAt: Date.now() };
+  existing.name = cleaned;
+  return writeCustomProgramDraft(existing);
+}
+
+// Start a brand-new programme draft (blank Days 1–7).
+// This is used when the user enters a new programme name and presses "Start Building".
+// It intentionally discards any prior draft content to avoid unexpected carryover.
+function startNewCustomProgramDraft(name) {
+  const cleaned = (name || "").toString().trim();
+  if (!cleaned) return false;
+  const blank = { name: cleaned, days: {}, updatedAt: Date.now() };
+  for (let i = 1; i <= 7; i++) blank.days[String(i)] = [];
+  return writeCustomProgramDraft(blank);
+}
+
+function ensureCustomDraft() {
+  const d = getCustomProgramDraft();
+  if (d) return d;
+  // Create a blank draft if needed.
+  const blank = { name: "My Program", days: {}, updatedAt: Date.now() };
+  for (let i = 1; i <= 7; i++) blank.days[String(i)] = [];
+  writeCustomProgramDraft(blank);
+  return blank;
+}
+
+// -------------------------
+// Series helpers (Workout Series naming)
+// -------------------------
+const DEFAULT_SERIES_NAME = "Sklar Series";
+
+function getPrefsObject() {
+  const prefs = readJSON(STORAGE_KEYS.prefs, {});
+  return (prefs && typeof prefs === "object") ? prefs : {};
+}
+
+function setPrefsObject(nextPrefs) {
+  writeJSON(STORAGE_KEYS.prefs, nextPrefs && typeof nextPrefs === "object" ? nextPrefs : {});
+}
+
+function getActiveSeriesName() {
+  const prefs = getPrefsObject();
+  const name = (prefs.activeSeriesName || "").toString().trim();
+  return name || DEFAULT_SERIES_NAME;
+}
+
+function setActiveSeriesName(name) {
+  const cleaned = (name || "").toString().trim();
+  const prefs = getPrefsObject();
+  prefs.activeSeriesName = cleaned || DEFAULT_SERIES_NAME;
+  setPrefsObject(prefs);
+}
+
+function makeCopySeriesName(base) {
+  const b = (base || DEFAULT_SERIES_NAME).toString().trim() || DEFAULT_SERIES_NAME;
+  return `${b} (Copy)`;
+}
+
+
 function deepClone(obj) {
   try {
     return JSON.parse(JSON.stringify(obj));
@@ -54,7 +195,9 @@ function deepClone(obj) {
 // Workout day display helpers
 // -------------------------
 function getDisplayDayNumber(dayIndex) {
-  const dayNumbers = [1, 2, 3, 5, 6];
+  // Display consecutive day numbers to avoid users thinking a day is missing.
+  // Internally, the Sklar series still uses 5 planned workout days.
+  const dayNumbers = [1, 2, 3, 4, 5];
   return dayNumbers[dayIndex] ?? (dayIndex + 1);
 }
 
@@ -173,6 +316,396 @@ const exerciseCategories = {
   Arms: ["DB Hammer Curl + EZ-Bar Curl (Superset)", "Bicep Spider Curls + Rope Hammer Curls (Superset)", "Triceps Rope Pushdowns + Dips (Superset)", "Overhead Triceps Extensions (Rope or DB)"],
   Core: ["Side Plank Reach-Throughs", "Russian Twists (Weighted)", "Cable Woodchoppers or Weighted Decline Sit-Ups", "Knee Raises + In-and-Out Crunches"]
 };
+// -------------------------
+// Expanded exercise catalogue (auto-generated from your master list)
+// -------------------------
+const TM_RAW_EXERCISES = `
+Chest
+
+Barbell Bench Press
+Incline Barbell Bench Press
+Decline Barbell Bench Press
+Dumbbell Bench Press
+Incline Dumbbell Bench Press
+Decline Dumbbell Bench Press
+Chest Press Machine
+Incline Chest Press Machine
+Smith Machine Bench Press
+Smith Machine Incline Bench Press
+Smith Machine Decline Bench Press
+Floor Press (Barbell)
+Floor Press (Dumbbell)
+Spoto Press
+Guillotine Press
+Single-Arm Dumbbell Bench Press
+Neutral-Grip Dumbbell Bench Press
+Dumbbell Fly
+Incline Dumbbell Fly
+Decline Dumbbell Fly
+Cable Chest Fly (High to Low)
+Cable Chest Fly (Low to High)
+Single-Arm Cable Chest Fly
+Cable Chest Press
+Single-Arm Cable Chest Press
+Pec Deck / Chest Fly Machine
+Push-Up
+Incline Push-Up
+Decline Push-Up
+Weighted Push-Up
+Push-Up (Banded)
+Isometric Push-Up Hold
+Ring Push-Up
+Ring Fly
+Deficit Push-Up
+Dips (Chest Focus)
+Resistance Band Chest Press (Banded)
+Resistance Band Chest Fly (Banded)
+Resistance Band Incline Chest Press (Banded)
+
+Back
+
+Deadlift
+Romanian Deadlift
+Sumo Deadlift
+Trap Bar Deadlift
+Deficit Deadlift
+Rack Pull
+Good Morning
+Pull-Up
+Chin-Up
+Assisted Pull-Up
+Inverted Row
+Inverted Row (Feet Elevated)
+Australian Row
+Ring Row
+Lat Pulldown (Wide Grip)
+Lat Pulldown (Close Grip)
+Neutral-Grip Lat Pulldown
+Single-Arm Lat Pulldown
+Seated Cable Row
+Single-Arm Cable Row
+Bent-Over Barbell Row
+Pendlay Row
+Seal Row
+Meadows Row
+Kroc Row
+Dumbbell Row
+Chest-Supported Dumbbell Row
+T-Bar Row
+Machine Row
+Straight-Arm Pulldown
+Face Pull
+Resistance Band Lat Pulldown (Banded)
+Resistance Band Row (Banded)
+Resistance Band Face Pull (Banded)
+Resistance Band Straight-Arm Pulldown (Banded)
+Back Extension / Hyperextension
+Reverse Hyperextension
+Jefferson Curl
+
+Legs
+
+Back Squat
+Front Squat
+Pause Squat
+Tempo Squat
+Box Squat
+Goblet Squat
+Zercher Squat
+Smith Machine Squat
+Belt Squat
+Hack Squat
+Leg Press
+Single-Leg Press
+Bulgarian Split Squat
+Split Squat
+Walking Lunge
+Reverse Lunge
+Curtsy Lunge
+Step-Up
+Cossack Squat
+Romanian Deadlift
+Stiff-Leg Deadlift
+Single-Leg Romanian Deadlift
+Hip Thrust
+Barbell Hip Thrust
+Glute Bridge
+Cable Pull-Through
+Nordic Hamstring Curl
+Seated Leg Curl
+Lying Leg Curl
+Standing Leg Curl
+Leg Extension
+Standing Calf Raise
+Seated Calf Raise
+Donkey Calf Raise
+Standing Single-Leg Calf Raise
+Tibialis Raise
+Sled Push
+Sled Pull
+Resistance Band Squat (Banded)
+Resistance Band Hip Thrust (Banded)
+Resistance Band Lateral Walk (Banded)
+Resistance Band Glute Kickback (Banded)
+
+Biceps
+
+Barbell Curl
+EZ-Bar Curl
+Dumbbell Curl
+Alternating Dumbbell Curl
+Incline Dumbbell Curl
+Preacher Curl
+Machine Bicep Curl
+Concentration Curl
+Cable Curl
+Single-Arm Cable Curl
+High Cable Curl
+Low Cable Curl
+Bayesian Cable Curl
+Hammer Curl
+Cross-Body Hammer Curl
+Reverse Barbell Curl
+Reverse EZ-Bar Curl
+Spider Curl
+Drag Curl
+Zottman Curl
+Offset Dumbbell Curl
+Fat-Grip Dumbbell Curl
+Isometric Curl Hold
+Resistance Band Curl (Banded)
+Resistance Band Hammer Curl (Banded)
+Resistance Band Preacher Curl (Banded)
+Chin-Up (Biceps Focus)
+
+Triceps
+
+Close-Grip Bench Press
+Neutral-Grip Close-Grip Bench Press
+Skull Crushers (Barbell)
+EZ-Bar Skull Crushers
+Dumbbell Skull Crushers
+Floor Skull Crushers
+JM Press
+Overhead Dumbbell Tricep Extension
+Single-Arm Overhead Dumbbell Extension
+Cable Tricep Pushdown (Rope)
+Cable Tricep Pushdown (Bar)
+Single-Arm Cable Extension
+Overhead Cable Tricep Extension
+Cable Kickback
+Dumbbell Kickback
+Bench Dips
+Dips (Triceps Focus)
+Close-Grip Push-Up
+Push-Up (Banded)
+Machine Tricep Extension
+Tate Press
+Resistance Band Pushdown (Banded)
+Resistance Band Overhead Extension (Banded)
+Resistance Band Kickback (Banded)
+Isometric Tricep Extension Hold
+
+Shoulders
+
+Overhead Barbell Press
+Push Press
+Z Press
+Bradford Press
+Dumbbell Shoulder Press
+Single-Arm Dumbbell Shoulder Press
+Arnold Press
+Neutral-Grip Shoulder Press
+Seated Shoulder Press Machine
+Smith Machine Shoulder Press
+Lateral Raise
+Dumbbell Lateral Raise
+Cable Lateral Raise
+Lean-Away Cable Lateral Raise
+Lateral Raise (Banded)
+Front Raise (Dumbbell)
+Front Raise (Plate)
+Front Raise (Banded)
+Rear Delt Fly (Dumbbell)
+Rear Delt Fly (Machine)
+Cable Rear Delt Fly
+Rear Delt Fly (Banded)
+Upright Row
+Upright Row (Banded)
+Face Pull
+Shoulder Press (Banded)
+Cuban Press
+Plate Raise
+Y-Raise
+IYT Raises
+Scaption Raise
+Isometric Lateral Raise Hold
+Handstand Push-Up
+Pike Push-Up
+
+Core
+
+Plank
+Plank (Weighted)
+Side Plank
+Side Plank with Reach
+Copenhagen Plank
+Hollow Body Hold
+Dead Bug
+Bird Dog
+Hanging Leg Raise
+Hanging Knee Raise
+Captain’s Chair Leg Raise
+Toes-to-Bar
+Lying Leg Raise
+Reverse Crunch
+Crunch
+Cable Crunch
+Resistance Band Crunch (Banded)
+Sit-Up (Weighted or Bodyweight)
+V-Up
+Dragon Flag
+L-Sit Hold
+Russian Twist
+Bicycle Crunch
+Mountain Climbers
+Ab Wheel Rollout
+Swiss Ball Rollout
+Stability Ball Crunch
+Woodchopper (Cable)
+Resistance Band Woodchopper (Banded)
+Pallof Press
+Resistance Band Pallof Press (Banded)
+Farmer’s Carry
+Suitcase Carry
+
+`;
+
+function tmNormalizeLine(s){ return (s||"").replace(/\s+/g," ").trim(); }
+
+function tmParseRawExerciseList(rawText){
+  const lines = String(rawText||"").split(/\r?\n/).map(tmNormalizeLine).filter(Boolean);
+  const headers = new Set(["Chest","Back","Legs","Biceps","Triceps","Shoulders","Core"]);
+  const out = {}; let current=null;
+  for (const line of lines){
+    if (headers.has(line)){ current=line; out[current]=out[current]||[]; continue; }
+    if (!current) continue;
+    out[current].push(line);
+  }
+  Object.keys(out).forEach((k)=>{ const seen=new Set(); out[k]=out[k].filter((n)=>{const key=n.toLowerCase(); if(seen.has(key)) return false; seen.add(key); return true;});});
+  return out;
+}
+
+function tmInferEquipmentCode(name){
+  const n=(name||"").toLowerCase();
+  if (n.includes("kettlebell") || /\bkb\b/.test(n)) return "KB";
+  if (n.includes("barbell") || n.includes("ez-bar") || n.includes("ez bar")) return "BB";
+  if (n.includes("dumbbell") || /\bdb\b/.test(n)) return "DB";
+  if (n.includes("smith") || n.includes("machine") || n.includes("cable") || n.includes("pec deck") || n.includes("pulldown") || n.includes("leg press")) return "MC";
+  if (n.includes("band") || n.includes("banded") || n.includes("bodyweight") || n.includes("push-up") || n.includes("pull-up") || n.includes("chin-up") || n.includes("plank") || n.includes("carry") || n.includes("hollow") || n.includes("dead bug") || n.includes("bird dog")) return "BW";
+  return "MC";
+}
+
+function tmInferMovementPattern(name, bodyPart){
+  const n=(name||"").toLowerCase();
+  const bp=(bodyPart||"").toLowerCase();
+  if (bp==="core"){
+    if (n.includes("pallof")) return "Anti-rotation";
+    if (n.includes("woodchopper") || n.includes("twist")) return "Rotation";
+    if (n.includes("carry")) return "Loaded carry";
+    if (n.includes("plank") || n.includes("hollow") || n.includes("dead bug") || n.includes("bird dog")) return "Anti-extension";
+    if (n.includes("leg raise") || n.includes("knee raise") || n.includes("toes-to-bar") || n.includes("sit-up") || n.includes("crunch") || n.includes("v-up")) return "Hip flexion / Trunk flexion";
+    return "Core stability";
+  }
+  if (n.includes("overhead") || n.includes("shoulder press") || n.includes("push press") || n.includes("z press") || n.includes("bradford") || n.includes("handstand") || n.includes("pike push-up")) return "Vertical press";
+  if (n.includes("press") || n.includes("push-up") || n.includes("dip")) return "Horizontal press";
+  if (n.includes("row")) return "Horizontal pull";
+  if (n.includes("pull-up") || n.includes("chin-up") || n.includes("pulldown")) return "Vertical pull";
+  if (n.includes("squat") || n.includes("lunge") || n.includes("step-up") || n.includes("split squat") || n.includes("leg press")) return "Knee dominant";
+  if (n.includes("deadlift") || n.includes("good morning") || n.includes("hip thrust") || n.includes("glute bridge") || n.includes("pull-through") || n.includes("hamstring") || n.includes("hyperextension") || n.includes("back extension")) return "Hip hinge";
+  if (n.includes("calf") || n.includes("tibialis")) return "Ankle / Calf";
+  if (n.includes("curl")) return "Elbow flexion";
+  if (n.includes("extension") || n.includes("pushdown") || n.includes("skull")) return "Elbow extension";
+  if (n.includes("raise") || n.includes("fly") || n.includes("scaption") || n.includes("cuban") || n.includes("iyt")) return "Shoulder isolation";
+  return "General";
+}
+
+function tmInferDifficulty(name){
+  const n=(name||"").toLowerCase();
+  if (n.includes("dragon flag") || n.includes("jefferson curl") || n.includes("nordic") || n.includes("handstand") || n.includes("deficit deadlift") || n.includes("meadows row") || n.includes("kroc row")) return "Advanced";
+  if (n.includes("deadlift") || n.includes("squat") || n.includes("good morning") || n.includes("pendlay") || n.includes("seal row") || n.includes("push press") || n.includes("z press")) return "Intermediate";
+  if (n.includes("pull-up") || n.includes("chin-up")) return n.includes("assisted") ? "Beginner" : "Intermediate";
+  return "Beginner";
+}
+
+function tmInferMuscles(name, bodyPart){
+  const n=(name||"").toLowerCase();
+  const bp=(bodyPart||"").toLowerCase();
+  if (bp==="chest"){
+    const secondary=["Anterior deltoids"];
+    if (n.includes("press") || n.includes("push-up") || n.includes("dip")) secondary.push("Triceps");
+    return { muscleEmphasis: n.includes("incline") ? "Upper chest" : (n.includes("decline") ? "Lower chest" : "Mid chest"), primary:"Pectorals", secondary };
+  }
+  if (bp==="back"){
+    const primary=(n.includes("deadlift")||n.includes("good morning")||n.includes("hyperextension")) ? "Posterior chain" : "Lats / Upper back";
+    const secondary=[];
+    if (n.includes("row")||n.includes("pulldown")||n.includes("pull-up")||n.includes("chin-up")) secondary.push("Biceps");
+    secondary.push("Rear deltoids");
+    return { muscleEmphasis: n.includes("row") ? "Mid-back" : (n.includes("pulldown")||n.includes("pull-up") ? "Lats" : "Posterior chain"), primary, secondary };
+  }
+  if (bp==="legs"){
+    if (n.includes("calf")) return { muscleEmphasis:"Calves", primary:"Calves", secondary:["Tibialis (if applicable)"] };
+    if (n.includes("tibialis")) return { muscleEmphasis:"Tibialis", primary:"Tibialis anterior", secondary:["Calves"] };
+    if (n.includes("deadlift")||n.includes("hip thrust")||n.includes("glute")||n.includes("hamstring")||n.includes("pull-through")) return { muscleEmphasis:"Posterior chain", primary:"Glutes / Hamstrings", secondary:["Lower back"] };
+    return { muscleEmphasis:"Quads", primary:"Quadriceps", secondary:["Glutes","Hamstrings"] };
+  }
+  if (bp==="biceps") return { muscleEmphasis: n.includes("incline") ? "Long head" : "Overall", primary:"Biceps", secondary:[(n.includes("hammer")||n.includes("reverse"))?"Brachialis / Forearms":"Forearms"] };
+  if (bp==="triceps") return { muscleEmphasis: n.includes("overhead") ? "Long head" : "Overall", primary:"Triceps", secondary:[(n.includes("close-grip")||n.includes("bench"))?"Chest / Anterior deltoids":"Shoulders"] };
+  if (bp==="shoulders"){
+    const secondary=[]; if (n.includes("press")) secondary.push("Triceps"); if (n.includes("rear")||n.includes("face pull")) secondary.push("Upper back");
+    return { muscleEmphasis: n.includes("lateral")?"Lateral delts":(n.includes("rear")?"Rear delts":(n.includes("front")?"Anterior delts":"Overall")), primary:"Deltoids", secondary: secondary.length?secondary:["Upper back"] };
+  }
+  if (bp==="core"){
+    const secondary=[]; if (n.includes("carry")) secondary.push("Grip / Upper back"); if (n.includes("side plank")||n.includes("copenhagen")) secondary.push("Obliques / Adductors");
+    return { muscleEmphasis: (n.includes("woodchopper")||n.includes("twist"))?"Rotational":"Stability", primary:"Core", secondary: secondary.length?secondary:["Hip flexors (if applicable)"] };
+  }
+  return { muscleEmphasis:"General", primary:bodyPart, secondary:[] };
+}
+
+function tmMapBodyPartToCategory(bodyPart){ return (bodyPart==="Biceps"||bodyPart==="Triceps") ? "Arms" : bodyPart; }
+
+function tmBuildExerciseCatalog(){
+  const byPart=tmParseRawExerciseList(TM_RAW_EXERCISES);
+  const out=[];
+  Object.keys(byPart).forEach((bodyPart)=>{
+    byPart[bodyPart].forEach((name)=>{
+      const equipment=tmInferEquipmentCode(name);
+      const movementPattern=tmInferMovementPattern(name, bodyPart);
+      const difficulty=tmInferDifficulty(name);
+      const m=tmInferMuscles(name, bodyPart);
+      out.push({ name, bodyPart, movementPattern, difficulty, equipment, muscleEmphasis:m.muscleEmphasis, primary:m.primary, secondary:m.secondary });
+    });
+  });
+  const seen=new Set();
+  return out.filter((e)=>{ const key=(e.name||"").toLowerCase(); if(seen.has(key)) return false; seen.add(key); return true; });
+}
+
+const TM_EXERCISE_CATALOG = tmBuildExerciseCatalog();
+
+(function tmMergeIntoExistingLibraries(){
+  ["Back","Chest","Shoulders","Legs","Arms","Core"].forEach((k)=>{ if(!exerciseCategories[k]) exerciseCategories[k]=[]; });
+  TM_EXERCISE_CATALOG.forEach((e)=>{
+    const cat=tmMapBodyPartToCategory(e.bodyPart);
+    if (Array.isArray(exerciseCategories[cat]) && !exerciseCategories[cat].includes(e.name)) exerciseCategories[cat].push(e.name);
+    if (!exerciseLibrary[e.name]) exerciseLibrary[e.name]={ category:cat, equipment:e.equipment, alternatives:[] };
+    if (!exerciseDescriptions[e.name]){
+      const secondary = Array.isArray(e.secondary)&&e.secondary.length ? e.secondary.join(", ") : "";
+      exerciseDescriptions[e.name]={ muscles: secondary ? `${e.primary} (primary); ${secondary} (secondary)` : `${e.primary} (primary)`, description:"Description to be added." };
+    }
+  });
+})();
+
+
 
 // -------------------------
 // BMI / Units helpers
@@ -192,6 +725,92 @@ function calculateBMI(weight, height, units) {
   if (!metres || metres <= 0) return null;
   return kg / (metres * metres);
 }
+
+
+// -------------------------
+// Units conversion helpers
+// -------------------------
+function getActiveUnits() {
+  const profile = readJSON(STORAGE_KEYS.profile, null);
+  const prefs = readJSON(STORAGE_KEYS.prefs, {});
+  const u = profile?.units || prefs?.units || "metric";
+  return (u === "imperial") ? "imperial" : "metric";
+}
+
+function getWeightUnitLabel(units) {
+  const u = units || getActiveUnits();
+  return u === "imperial" ? "lb" : "kg";
+}
+
+function kgToLb(kg) { return Number(kg) * 2.2046226218; }
+function lbToKg(lb) { return Number(lb) * 0.45359237; }
+
+function roundWeightForDisplay(val, units) {
+  const n = Number(val);
+  if (!isFinite(n)) return "";
+  // Keep display clean: kg to 1 decimal (if needed), lb to whole number
+  if (units === "imperial") return String(Math.round(n));
+  const oneDec = Math.round(n * 10) / 10;
+  // Strip trailing .0
+  return (Math.abs(oneDec - Math.round(oneDec)) < 1e-9) ? String(Math.round(oneDec)) : String(oneDec);
+}
+
+function toDisplayWeightFromKg(kgVal, units) {
+  const kg = Number(kgVal);
+  if (!isFinite(kg)) return "";
+  return units === "imperial" ? roundWeightForDisplay(kgToLb(kg), units) : roundWeightForDisplay(kg, units);
+}
+
+function toKgFromDisplayWeight(displayVal, units) {
+  const n = Number(displayVal);
+  if (!isFinite(n)) return "";
+  const kg = (units === "imperial") ? lbToKg(n) : n;
+  // store with one decimal precision max
+  const oneDec = Math.round(kg * 10) / 10;
+  return String(oneDec);
+}
+
+function getWeightIncrementInUserUnits(equipmentCode, units) {
+  const incKg = getIncrementForEquipment(equipmentCode);
+  if ((units || getActiveUnits()) === "imperial") {
+    // 2.5 kg ≈ 5 lb; 1 kg ≈ 2.2 lb (use 2.5 lb for DB/KB to feel natural)
+    const code = (equipmentCode || "MC").toUpperCase();
+    if (code === "BB" || code === "MC") return 5;
+    if (code === "DB" || code === "KB") return 2.5;
+    return 0;
+  }
+  return incKg;
+}
+
+function roundToUserIncrement(value, equipmentCode, units) {
+  const inc = getWeightIncrementInUserUnits(equipmentCode, units);
+  if (!Number.isFinite(value)) return null;
+  if (!Number.isFinite(inc) || inc <= 0) return value;
+  return Math.round(value / inc) * inc;
+}
+
+function formatSuggestedWeightFromKg(kgValue, equipmentCode) {
+  const units = getActiveUnits();
+  if (!Number.isFinite(kgValue) || kgValue <= 0) return "";
+  if (units === "imperial") {
+    const lb = kgToLb(kgValue);
+    const rounded = roundToUserIncrement(lb, equipmentCode, units);
+    return (Number.isFinite(rounded) ? rounded : lb).toFixed(0);
+  }
+  // metric
+  const rounded = roundToUserIncrement(kgValue, equipmentCode, units);
+  return (Number.isFinite(rounded) ? rounded : kgValue).toFixed(0);
+}
+
+function formatWeightPill(valueKgStrOrNum, equipmentCode) {
+  const units = getActiveUnits();
+  const unit = getWeightUnitLabel(units);
+  const v = String(valueKgStrOrNum ?? "").trim();
+  if (!v) return unit;
+  const display = toDisplayWeightFromKg(v, units);
+  return display ? `${display} ${unit}` : unit;
+}
+
 
 // -------------------------
 // 1RM + Working weight helpers
@@ -331,7 +950,7 @@ function getOneRMBasedSuggestion(exName, targetReps, equipmentCode) {
   const oneRM = oneRMData?.[key];
   if (!Number.isFinite(oneRM) || oneRM <= 0) return "";
   const suggested = calcWorkingWeightKg(oneRM, targetReps, equipmentCode);
-  return suggested ? String(suggested) : "";
+  return suggested ? formatSuggestedWeightFromKg(suggested, equipmentCode) : "";
 }
 
 // -------------------------
@@ -426,20 +1045,168 @@ const programWeek1 = [
   }
 ];
 
-const programByWeek = { 1: deepClone(programWeek1), 2: deepClone(programWeek1), 3: deepClone(programWeek1), 4: deepClone(programWeek1), 5: deepClone(programWeek1), 6: deepClone(programWeek1) };
-function getProgramForWeek(weekNumber) {
-  return programByWeek[weekNumber] || programByWeek[1];
+const WEEKS_IN_SERIES = 6;
+
+function buildCustomWeekTemplateFromDraft(draft) {
+  const d = normaliseCustomProgramDraft(draft);
+  const name = (d?.name || "").toString().trim() || "Custom Program";
+  const days = (d?.days && typeof d.days === "object") ? d.days : {};
+
+  const week = [];
+  for (let i = 1; i <= 7; i++) {
+    const key = String(i);
+    const exs = Array.isArray(days[key]) ? days[key] : [];
+    week.push({
+      id: `custom_day${i}`,
+      theme: `DAY ${i}`,
+      goal: name,
+      exercises: exs.map((x) => ({
+        name: (x.name || "").toString(),
+        prescription: (x.prescription || "").toString(),
+        notes: (x.notes || "").toString(),
+        // Preserve builder-defined metadata so the workout screen can render consistently.
+        equipment: (x.equipment || "").toString(),
+        setCount: Number.isFinite(parseInt(x.setCount, 10)) ? Math.min(10, Math.max(1, parseInt(x.setCount, 10))) : undefined
+      })).filter((x) => x.name.trim().length > 0)
+    });
+  }
+  return week;
+}
+
+function loadCustomProgramForSeries(seriesName) {
+  const key = customProgramStorageKeyForSeries(seriesName);
+  const raw = readJSON(key, null);
+  const d = normaliseCustomProgramDraft(raw);
+  return d && d.name ? d : null;
+}
+
+
+// Open a stored custom programme in the builder for editing.
+// dayNumber is 1–7.
+function openProgrammeInBuilder(seriesName, dayNumber) {
+  const name = (seriesName || "").toString().trim();
+  if (!name) return;
+
+  const program = loadCustomProgramForSeries(name);
+  if (!program) {
+    alert("Could not load this programme for editing.");
+    return;
+  }
+
+  // Load into the draft store so the builder can render/edit.
+  writeCustomProgramDraft({ name: program.name, days: program.days, updatedAt: Date.now() });
+  setActiveSeriesName(name);
+
+  showScreen("screen-custom-builder");
+
+  const daySel = document.getElementById("custom-day-select");
+  if (daySel) {
+    const d = Math.min(7, Math.max(1, parseInt(dayNumber || 1, 10) || 1));
+    daySel.value = String(d);
+  }
+
+  syncProgramDraftUI();
+  renderCustomBuilderForCurrentDay();
+}
+
+function deleteCustomProgramme(seriesName) {
+  const name = (seriesName || "").toString().trim();
+  if (!name) return;
+
+  if (!confirm(`Delete "${name}"? This will remove the programme card and clear its saved progress.`)) return;
+
+  // Remove programme definition
+  try { localStorage.removeItem(customProgramStorageKeyForSeries(name)); } catch (_) {}
+
+  // Remove progress state for this series
+  try { localStorage.removeItem(workoutStateStorageKeyForSeries(name)); } catch (_) {}
+
+  // Remove from registry
+  try {
+    const reg = getSeriesRegistry();
+    if (reg && reg[name]) {
+      delete reg[name];
+      writeSeriesRegistry(reg);
+    }
+  } catch (_) {}
+
+  // Remove history entries for this series
+  try {
+    const log = getHistoryLog();
+    const cleaned = (log || []).filter((e) => ((e?.series || DEFAULT_SERIES_NAME).toString().trim() || DEFAULT_SERIES_NAME) !== name);
+    writeHistoryLog(cleaned);
+  } catch (_) {}
+
+  // If this programme was active, revert to default.
+  try {
+    if (getActiveSeriesName() === name) setActiveSeriesName(DEFAULT_SERIES_NAME);
+  } catch (_) {}
+}
+
+function getProgramWeekTemplateForSeries(seriesName) {
+  const name = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
+  if (name === DEFAULT_SERIES_NAME) return programWeek1;
+
+  const custom = loadCustomProgramForSeries(name);
+  if (custom) return buildCustomWeekTemplateFromDraft(custom);
+
+  // Fallback: if a custom series has no stored definition, show the default template.
+  return programWeek1;
+}
+
+function getPlannedWorkoutDaysCountForSeries(seriesName) {
+  const template = getProgramWeekTemplateForSeries(seriesName);
+  if (!Array.isArray(template)) return 0;
+  return template.reduce((acc, day) => {
+    const exs = Array.isArray(day?.exercises) ? day.exercises : [];
+    return acc + (exs.length > 0 ? 1 : 0);
+  }, 0);
+}
+
+function getTotalPlannedWorkoutsForSeries(seriesName) {
+  const days = getPlannedWorkoutDaysCountForSeries(seriesName);
+  if (!days) return 0;
+  return WEEKS_IN_SERIES * days;
+}
+
+function getProgramForWeek(weekNumber, seriesName) {
+  // TrackMate uses a 6-week run; custom programmes repeat the Week 1 template each week.
+  const template = getProgramWeekTemplateForSeries(seriesName);
+  return deepClone(template);
 }
 
 // -------------------------
 // Workout state persistence
 // -------------------------
-function getWorkoutState() {
-  return readJSON(STORAGE_KEYS.workoutState, { weeks: {} });
+function migrateLegacyWorkoutStateIfNeeded(seriesName) {
+  const series = (seriesName || DEFAULT_SERIES_NAME).toString().trim() || DEFAULT_SERIES_NAME;
+  const legacyRaw = localStorage.getItem(STORAGE_KEYS.workoutState);
+  if (!legacyRaw) return;
+
+  const targetKey = workoutStateStorageKeyForSeries(series);
+  const already = localStorage.getItem(targetKey);
+  if (already) return;
+
+  // Only migrate legacy state into the default series to avoid accidental cross-series contamination.
+  if (series !== DEFAULT_SERIES_NAME) return;
+
+  try {
+    localStorage.setItem(targetKey, legacyRaw);
+    // Keep legacy key for safety; do not remove.
+  } catch (_) {}
 }
 
-function saveWorkoutState(state) {
-  writeJSON(STORAGE_KEYS.workoutState, state);
+function getWorkoutState(seriesName) {
+  const series = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
+  migrateLegacyWorkoutStateIfNeeded(series);
+  const key = workoutStateStorageKeyForSeries(series);
+  return readJSON(key, { weeks: {} });
+}
+
+function saveWorkoutState(state, seriesName) {
+  const series = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
+  const key = workoutStateStorageKeyForSeries(series);
+  writeJSON(key, state);
 }
 
 function ensureDayState(state, week, dayIndex) {
@@ -467,6 +1234,13 @@ function resetDay(week, dayIndex) {
   const state = getWorkoutState();
   const wKey = String(week);
   const dKey = String(dayIndex);
+
+  // Resetting a day should also clear its "completed" marker in My Past Workouts
+  // for the active series, without touching any other historical entries.
+  try {
+    removeHistoryLogEntry(getActiveSeriesName(), week, dayIndex);
+  } catch (_) {}
+
   if (state.weeks?.[wKey]?.[dKey]) {
     delete state.weeks[wKey][dKey];
     if (Object.keys(state.weeks[wKey]).length === 0) state.weeks[wKey] = {};
@@ -495,6 +1269,24 @@ function getExerciseState(state, week, dayIndex, exIndex) {
 // DOMContentLoaded - main
 // -------------------------
 document.addEventListener("DOMContentLoaded", () => {
+  // Ensure the active series exists in the registry (used for ordering in My Past Workouts)
+  ensureSeriesRegistryEntry(getActiveSeriesName());
+
+  // History integrity: normalise + de-duplicate any legacy entries on load.
+  // This guarantees My Past Workouts cannot show repeated Week/Day rows for the same series.
+  try { getHistoryLog(); } catch (_) {}
+
+
+  // -------------------------
+  // PWA: service worker registration (safe no-op if unsupported)
+  // -------------------------
+  try {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("service-worker.js");
+    }
+  } catch (e) {
+    // Intentionally silent: SW registration failure should never block app usage.
+  }
 
   // Disclosure (dropdown) toggles
   document.addEventListener("click", (e) => {
@@ -543,6 +1335,25 @@ document.addEventListener("DOMContentLoaded", () => {
     writeJSON(STORAGE_KEYS.prefs, prefs);
   }
 
+
+  // Determine whether the currently-active programme is a custom programme.
+  // This build defaults to built-in (Sklar). Future custom builds should set one of the keys below.
+  function isCustomProgramActive() {
+    const activeId = localStorage.getItem("trackmateActiveProgramId") || "";
+    if (activeId && String(activeId).toLowerCase().startsWith("custom")) return true;
+
+    const activeType = localStorage.getItem("trackmateActiveProgramType") || "";
+    if (activeType && String(activeType).toLowerCase() === "custom") return true;
+
+    const programs = readJSON("trackmatePrograms", null);
+    if (programs && typeof programs === "object") {
+      const pid = programs.activeProgramId || programs.activeProgram || "";
+      if (pid && String(pid).toLowerCase().startsWith("custom")) return true;
+    }
+    return false;
+  }
+
+
   function getLastViewedWorkout() {
     const lv = readJSON(STORAGE_KEYS.lastViewed, null);
     if (!lv) return null;
@@ -567,7 +1378,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function findNextIncompleteWorkout() {
     const weekOrder = [1, 2, 3, 4, 5, 6];
-    const dayIndices = [0, 1, 2, 3, 4]; // Day 1,2,3,5,6
+    const template = getProgramWeekTemplateForSeries(getActiveSeriesName());
+    const dayIndices = (Array.isArray(template) ? template.map((_, idx) => idx) : [0,1,2,3,4]).filter((idx) => {
+      const exs = Array.isArray(template?.[idx]?.exercises) ? template[idx].exercises : [];
+      return exs.length > 0;
+    });
     for (const w of weekOrder) {
       for (const d of dayIndices) {
         if (!isWorkoutCompletedFor(w, d)) return { week: w, dayIndex: d };
@@ -598,14 +1413,630 @@ document.addEventListener("DOMContentLoaded", () => {
     renderWorkoutDay(target.dayIndex);
   }
 
+function syncProgramDraftUI() {
+  const draft = getCustomProgramDraft();
+  const input = document.getElementById("create-program-name");
+  if (input && draft?.name) input.value = draft.name;
+  const label = document.getElementById("custom-builder-program-title");
+  if (label) label.textContent = draft?.name || "—";
+  const err = document.getElementById("create-program-error");
+  if (err) err.hidden = true;
+}
+
+
+
+function syncWorkoutDaySelectOptionsForSeries(seriesName) {
+  const select = document.getElementById("workout-day-select");
+  if (!select) return;
+
+  const name = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
+  const current = select.value;
+
+  // Sklar: keep underlying day indices, but show user-friendly Day 1–5 labels (no "missing" day).
+  if (name === DEFAULT_SERIES_NAME) {
+    const options = [
+      { value: "0", label: "Day 1" },
+      { value: "1", label: "Day 2" },
+      { value: "2", label: "Day 3" },
+      { value: "4", label: "Day 4" }, // underlying Day 5
+      { value: "5", label: "Day 5" }, // underlying Day 6
+    ];
+    select.innerHTML = "";
+    options.forEach((o) => {
+      const opt = document.createElement("option");
+      opt.value = o.value;
+      opt.textContent = o.label;
+      select.appendChild(opt);
+    });
+    // Restore selection where possible
+    if (options.some((o) => o.value === current)) select.value = current;
+    else select.value = "0";
+    return;
+  }
+
+  // Custom programmes: Days 1–7
+  select.innerHTML = "";
+  for (let i = 0; i < 7; i++) {
+    const opt = document.createElement("option");
+    opt.value = String(i);
+    opt.textContent = `Day ${i + 1}`;
+    select.appendChild(opt);
+  }
+  // Restore selection where possible
+  if (current && Number(current) >= 0 && Number(current) <= 6) select.value = current;
+  else select.value = "0";
+}
+
+function syncWorkoutEditProgramButton() {
+  const btn = document.getElementById("workout-edit-program");
+  if (!btn) return;
+  const active = getActiveSeriesName();
+  const isSklar = active === DEFAULT_SERIES_NAME;
+  // Only show for custom programmes.
+  btn.hidden = isSklar;
+}
+
+function getCustomBuilderSelectedDay() {
+  const sel = document.getElementById("custom-day-select");
+  const v = parseInt(sel?.value || "1", 10);
+  return Number.isNaN(v) ? 1 : Math.min(7, Math.max(1, v));
+}
+
+function showCustomBuilderError(message) {
+  const err = document.getElementById("custom-builder-error");
+  if (!err) return;
+  const msg = (message || "").toString().trim();
+  if (!msg) {
+    err.hidden = true;
+    err.textContent = "";
+    return;
+  }
+  err.textContent = msg;
+  err.hidden = false;
+}
+
+function renderCustomBuilderForCurrentDay() {
+  const draft = ensureCustomDraft();
+  const titleEl = document.getElementById("custom-builder-program-title");
+  if (titleEl) titleEl.textContent = draft.name || "—";
+
+  const day = getCustomBuilderSelectedDay();
+  const list = document.getElementById("custom-builder-list");
+  if (!list) return;
+
+  const dayKey = String(day);
+  const exercises = Array.isArray(draft.days?.[dayKey]) ? draft.days[dayKey] : [];
+  list.innerHTML = "";
+
+  if (exercises.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "choice-text";
+    empty.style.margin = "6px 0 0 0";
+    empty.textContent = "No exercises yet. Tap “+ Add Exercise” to start building this day.";
+    list.appendChild(empty);
+    showCustomBuilderError("");
+    return;
+  }
+
+  // Build exercise cards that match the TrackMate workout card UI.
+  exercises.forEach((ex, exIndex) => {
+    const card = document.createElement("div");
+    card.className = "exercise-card";
+
+    const header = document.createElement("div");
+    header.className = "exercise-card-header";
+
+    const topRow = document.createElement("div");
+    topRow.className = "exercise-header-top-row";
+
+    const meta = exerciseLibrary?.[ex.name] || {};
+    const defaultEquip = meta?.equipment || "MC";
+    const selectedEquip = (ex.equipment || defaultEquip);
+
+    const title = document.createElement("p");
+    title.className = "exercise-title";
+    title.textContent = ex.name;
+
+    const equipmentRow = buildEquipmentRow(card, selectedEquip, (code) => {
+      const d = ensureCustomDraft();
+      const arr = Array.isArray(d.days?.[dayKey]) ? d.days[dayKey] : [];
+      if (!arr[exIndex]) return;
+      arr[exIndex].equipment = code;
+      d.days[dayKey] = arr;
+      writeCustomProgramDraft(d);
+      refreshBuilderCardSuggestions(card, arr[exIndex], code);
+    });
+
+    const linksRow = document.createElement("div");
+    linksRow.className = "exercise-header-links-row";
+
+    const links = document.createElement("div");
+    links.className = "exercise-header-links";
+
+    const infoBtn = document.createElement("button");
+    infoBtn.type = "button";
+    infoBtn.textContent = "Info";
+    infoBtn.addEventListener("click", () => openExerciseInfo({ name: ex.name, notes: ex.notes || "" }));
+
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.textContent = "Edit";
+    editBtn.addEventListener("click", () => openCustomExercisePicker({ mode: "replace", dayKey, index: exIndex }));
+
+    links.appendChild(infoBtn);
+    links.appendChild(editBtn);
+    linksRow.appendChild(links);
+
+    topRow.appendChild(equipmentRow);
+    topRow.appendChild(linksRow);
+    header.appendChild(topRow);
+    header.appendChild(title);
+    card.appendChild(header);
+
+    if (ex.notes) {
+      const note = document.createElement("p");
+      note.className = "exercise-note";
+      note.textContent = `Note: ${ex.notes}`;
+      card.appendChild(note);
+    }
+
+    const setsGrid = document.createElement("div");
+    setsGrid.className = "sets-grid";
+
+    const targetReps = getTargetRepsFromPrescription(ex.prescription) || 8;
+    const equipCode = card.dataset.equipment || selectedEquip;
+
+    const visibleSets = Number.isFinite(parseInt(ex.setCount, 10)) ? Math.min(10, Math.max(1, parseInt(ex.setCount, 10))) : 4;
+    const MAX_SETS = 10;
+    for (let setIndex = 0; setIndex < MAX_SETS; setIndex++) {
+      const cell = document.createElement("div");
+      cell.className = "set-cell";
+      if (setIndex >= visibleSets) cell.hidden = true;
+
+      const label = document.createElement("div");
+      label.className = "set-label";
+      label.textContent = `Set ${setIndex + 1}:`;
+
+      const fields = document.createElement("div");
+      fields.className = "set-fields";
+
+      const weightPill = document.createElement("div");
+      weightPill.className = "input-pill input-pill--small";
+
+      const repsPill = document.createElement("div");
+      repsPill.className = "input-pill input-pill--small";
+
+      const wSuggest = getBuilderSuggestedWeightDisplay(ex.name, targetReps, equipCode);
+      const unit = getWeightUnitLabel(getActiveUnits());
+      weightPill.textContent = wSuggest ? `${wSuggest} ${unit}` : unit;
+      repsPill.textContent = `${targetReps} reps`;
+      weightPill.classList.add("input-pill--suggested");
+      repsPill.classList.add("input-pill--suggested");
+
+      fields.appendChild(weightPill);
+      fields.appendChild(repsPill);
+
+      cell.appendChild(label);
+      cell.appendChild(fields);
+      setsGrid.appendChild(cell);
+    }
+
+    card.appendChild(setsGrid);
+    list.appendChild(card);
+  });
+
+  showCustomBuilderError("");
+}
+
+function getBuilderSuggestedWeightDisplay(exName, targetReps, equipmentCode) {
+  if (isCoreOrBW(exName)) return "00";
+
+  const equip = (equipmentCode || "MC").toUpperCase();
+  const oneRM = getOneRMBasedSuggestion(exName, targetReps, equip);
+  if (oneRM) return String(oneRM);
+
+  // Fall back to profile-based suggestion (kg internally) then format to display units.
+  const profile = readJSON(STORAGE_KEYS.profile, null);
+  const profileWeightKg = profile?.units === "imperial"
+    ? (Number(profile.weight) * 0.453592)
+    : Number(profile?.weight);
+
+  const kgStr = profileFallbackSuggestionKg(exName, profileWeightKg, equip);
+  const kgNum = parseFloat(kgStr);
+  if (!kgStr || !Number.isFinite(kgNum) || kgNum <= 0) return "";
+  return formatSuggestedWeightFromKg(kgNum, equip);
+}
+
+function refreshBuilderCardSuggestions(card, ex, equipCode) {
+  const targetReps = getTargetRepsFromPrescription(ex.prescription) || 8;
+  const wSuggest = getBuilderSuggestedWeightDisplay(ex.name, targetReps, equipCode);
+  const unit = getWeightUnitLabel(getActiveUnits());
+  const weightPills = card.querySelectorAll(".set-fields .input-pill");
+  for (let i = 0; i < weightPills.length; i += 2) {
+    const wPill = weightPills[i];
+    const rPill = weightPills[i + 1];
+    if (wPill) wPill.textContent = wSuggest ? `${wSuggest} ${unit}` : unit;
+    if (rPill) rPill.textContent = `${targetReps} reps`;
+  }
+}
+
+function getCustomPickerEquipmentFilter() {
+  const sel = document.getElementById("custom-equipment-key");
+  const v = (sel?.value || "").toString().trim().toUpperCase();
+  if (!v || v === "ALL") return "";
+  return v;
+}
+
+// Persist the last used category in the custom exercise picker (defaults to Back).
+const CUSTOM_PICKER_CATEGORY_KEY = "trackmateCustomPickerLastCategory";
+
+function getCustomPickerLastCategory() {
+  const v = (localStorage.getItem(CUSTOM_PICKER_CATEGORY_KEY) || "").toString().trim();
+  return v || "Back";
+}
+
+function setCustomPickerLastCategory(categoryName) {
+  const v = (categoryName || "").toString().trim();
+  if (!v) return;
+  localStorage.setItem(CUSTOM_PICKER_CATEGORY_KEY, v);
+}
+
+function openCustomExercisePicker(context) {
+  // context: { mode: 'add'|'replace', dayKey, index? }
+  const overlay = document.getElementById("custom-ex-picker");
+  const listEl = document.getElementById("custom-ex-picker-list");
+  const search = document.getElementById("custom-ex-picker-search");
+  const categoryRow = document.getElementById("custom-ex-picker-category-row");
+  const titleEl = document.getElementById("custom-ex-picker-title");
+  const editMeta = document.getElementById("custom-ex-picker-edit-meta");
+  const editCurrent = document.getElementById("custom-ex-picker-current");
+  const setsRow = document.getElementById("custom-ex-picker-sets-row");
+  if (!overlay || !listEl || !search) return;
+
+  overlay.dataset.mode = context?.mode || "add";
+  overlay.dataset.dayKey = context?.dayKey || String(getCustomBuilderSelectedDay());
+  overlay.dataset.index = (typeof context?.index === "number") ? String(context.index) : "";
+
+  // Header + sets selector.
+  // For custom programmes we show Sets pills in BOTH add and edit flows:
+  // - Add: user chooses set count before selecting an exercise.
+  // - Edit: user can change set count for the existing exercise instance.
+  const isReplace = overlay.dataset.mode === "replace";
+  if (titleEl) titleEl.textContent = isReplace ? "Edit Exercise" : "Add an exercise";
+
+  if (editMeta && editCurrent && setsRow) {
+    // Show the sets row for both modes.
+    editMeta.style.display = "block";
+    setsRow.innerHTML = "";
+
+    // Default set count comes from last used, falling back to 4.
+    const lastSets = parseInt(localStorage.getItem("trackmateCustomLastSetCount") || "4", 10);
+    const defaultSets = Number.isFinite(lastSets) ? Math.min(10, Math.max(1, lastSets)) : 4;
+
+    // In add mode we don't show a current exercise name.
+    if (!isReplace) {
+      editCurrent.textContent = "";
+      editCurrent.style.display = "none";
+      overlay.dataset.addSetCount = String(defaultSets);
+
+      for (let n = 1; n <= 10; n++) {
+        const pill = document.createElement("button");
+        pill.type = "button";
+        pill.className = "exercise-edit-sets-pill" + (n === defaultSets ? " exercise-edit-sets-pill--active" : "");
+        pill.textContent = String(n);
+        pill.addEventListener("click", () => {
+          overlay.dataset.addSetCount = String(n);
+          localStorage.setItem("trackmateCustomLastSetCount", String(n));
+          setsRow.querySelectorAll(".exercise-edit-sets-pill").forEach((p) => p.classList.remove("exercise-edit-sets-pill--active"));
+          pill.classList.add("exercise-edit-sets-pill--active");
+        });
+        setsRow.appendChild(pill);
+      }
+      // No further edit-mode setup required.
+    }
+
+    if (isReplace) {
+      editCurrent.style.display = "block";
+      const d = ensureCustomDraft();
+      const dayKey = overlay.dataset.dayKey;
+      const arr = Array.isArray(d.days?.[dayKey]) ? d.days[dayKey] : [];
+      const idx = parseInt(overlay.dataset.index || "-1", 10);
+      const ex = (Number.isFinite(idx) && idx >= 0 && idx < arr.length) ? arr[idx] : null;
+
+      const currentName = (ex?.name || "").toString();
+      editCurrent.textContent = currentName;
+
+      const currentSets = Number.isFinite(parseInt(ex?.setCount, 10))
+        ? Math.min(10, Math.max(1, parseInt(ex.setCount, 10)))
+        : defaultSets;
+
+      for (let n = 1; n <= 10; n++) {
+        const pill = document.createElement("button");
+        pill.type = "button";
+        pill.className = "exercise-edit-sets-pill" + (n === currentSets ? " exercise-edit-sets-pill--active" : "");
+        pill.textContent = String(n);
+        pill.addEventListener("click", () => {
+          // Persist set count on the exercise definition (builder context)
+          const d2 = ensureCustomDraft();
+          const arr2 = Array.isArray(d2.days?.[dayKey]) ? d2.days[dayKey] : [];
+          if (!(Number.isFinite(idx) && idx >= 0 && idx < arr2.length)) return;
+          arr2[idx].setCount = n;
+          d2.days[dayKey] = arr2;
+          writeCustomProgramDraft(d2);
+          localStorage.setItem("trackmateCustomLastSetCount", String(n));
+
+          // Update UI highlight without forcing a full overlay re-open
+          setsRow.querySelectorAll(".exercise-edit-sets-pill").forEach((p) => p.classList.remove("exercise-edit-sets-pill--active"));
+          pill.classList.add("exercise-edit-sets-pill--active");
+
+          // Re-render the builder list behind the modal so the card updates immediately
+          renderCustomBuilderForCurrentDay();
+        });
+        setsRow.appendChild(pill);
+      }
+    }
+  }
+
+  let activeCategory = getCustomPickerLastCategory();
+
+  function applyActiveCategoryUI() {
+    if (!categoryRow) return;
+    categoryRow.querySelectorAll(".exercise-edit-category-pill").forEach((p) => {
+      p.classList.remove("exercise-edit-category-pill--active");
+      if ((p.getAttribute("data-custom-cat") || "") === activeCategory) {
+        p.classList.add("exercise-edit-category-pill--active");
+      }
+    });
+  }
+
+  function buildFilteredNames(q) {
+    const query = (q || "").toString().trim().toLowerCase();
+    const equipFilter = getCustomPickerEquipmentFilter();
+
+    // If the user is typing, search across all exercises (overrides category).
+    const useCategory = !query;
+    const names = Object.keys(exerciseLibrary || {});
+
+    return names
+      .filter((name) => {
+        const meta = exerciseLibrary?.[name] || {};
+        if (equipFilter) {
+          if ((meta.equipment || "").toString().toUpperCase() !== equipFilter) return false;
+        }
+
+        if (useCategory) {
+          const cat = (meta.category || "").toString().trim();
+          if (activeCategory && cat !== activeCategory) return false;
+        }
+
+        if (!query) return true;
+        return name.toLowerCase().includes(query);
+      })
+      .slice(0, 80);
+  }
+
+  function renderList(q) {
+    const items = buildFilteredNames(q);
+    listEl.innerHTML = "";
+    if (!items.length) {
+      const p = document.createElement("p");
+      p.className = "exercise-edit-empty";
+      p.textContent = "No matches. Try a different search term or change the Equipment Key filter.";
+      listEl.appendChild(p);
+      return;
+    }
+    items.forEach((name) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "exercise-edit-option";
+      btn.textContent = name;
+      btn.addEventListener("click", () => {
+        const d = ensureCustomDraft();
+        const dayKey = overlay.dataset.dayKey;
+        const arr = Array.isArray(d.days?.[dayKey]) ? d.days[dayKey] : [];
+        const meta = exerciseLibrary?.[name] || {};
+        // Determine set count for this add/replace action.
+        // - Add mode: prefer the set count selected in the overlay (pills above search).
+        // - Replace mode: preserve the existing exercise's set count unless the user changes it.
+        const lastSets = parseInt(localStorage.getItem("trackmateCustomLastSetCount") || "4", 10);
+        const fallbackSetCount = Number.isFinite(lastSets) ? Math.min(10, Math.max(1, lastSets)) : 4;
+        const overlayAddSets = parseInt(overlay.dataset.addSetCount || "", 10);
+        const chosenAddSetCount = Number.isFinite(overlayAddSets) ? Math.min(10, Math.max(1, overlayAddSets)) : fallbackSetCount;
+        const newExBase = {
+          name,
+          prescription: "4 × 8",
+          notes: "",
+          equipment: meta.equipment || "MC"
+        };
+
+        if (overlay.dataset.mode === "replace") {
+          const idx = parseInt(overlay.dataset.index || "-1", 10);
+          if (Number.isFinite(idx) && idx >= 0 && idx < arr.length) {
+            // Preserve any setCount already chosen for this slot unless the user changes it in Edit.
+            const keepSetCount = Number.isFinite(parseInt(arr[idx]?.setCount, 10))
+              ? Math.min(10, Math.max(1, parseInt(arr[idx].setCount, 10)))
+              : fallbackSetCount;
+            arr[idx] = { ...arr[idx], ...newExBase, setCount: keepSetCount };
+          }
+        } else {
+          arr.push({ ...newExBase, setCount: chosenAddSetCount });
+        }
+        d.days[dayKey] = arr;
+        writeCustomProgramDraft(d);
+        closeCustomExercisePicker();
+        renderCustomBuilderForCurrentDay();
+      });
+      listEl.appendChild(btn);
+    });
+  }
+
+  function onInput() {
+    renderList(search.value);
+    // When searching, the list ignores category, but we keep the last used category highlighted.
+    applyActiveCategoryUI();
+  }
+  search.oninput = onInput;
+
+  // Category browsing (defaults to last used)
+  if (categoryRow) {
+    categoryRow.onclick = (ev) => {
+      const target = ev.target;
+      if (!(target instanceof HTMLElement)) return;
+      const cat = (target.getAttribute("data-custom-cat") || "").toString().trim();
+      if (!cat) return;
+      activeCategory = cat;
+      setCustomPickerLastCategory(cat);
+      applyActiveCategoryUI();
+      // Only re-filter by category if the user is not currently searching.
+      if (!(search.value || "").toString().trim()) renderList("");
+    };
+  }
+
+  // initial
+  search.value = "";
+  applyActiveCategoryUI();
+  renderList("");
+  overlay.classList.add("set-edit-overlay--active");
+  overlay.setAttribute("aria-hidden", "false");
+  setTimeout(() => search.focus(), 50);
+}
+
+function closeCustomExercisePicker() {
+  const overlay = document.getElementById("custom-ex-picker");
+  if (!overlay) return;
+  overlay.classList.remove("set-edit-overlay--active");
+  overlay.setAttribute("aria-hidden", "true");
+}
+
+function saveCustomProgrammeAndUse() {
+  const draft = ensureCustomDraft();
+  const name = (draft.name || "").toString().trim();
+  if (!name) {
+    showCustomBuilderError("Please enter a programme name.");
+    return false;
+  }
+
+  // Validate: at least one exercise somewhere across the week
+  const hasAny = Object.keys(draft.days || {}).some((k) => (draft.days[k] || []).some((x) => (x?.name || "").toString().trim().length > 0));
+  if (!hasAny) {
+    showCustomBuilderError("Please add at least one exercise before saving.");
+    return false;
+  }
+
+  // Persist programme definition under the series name
+  const key = customProgramStorageKeyForSeries(name);
+  const existedBefore = !!localStorage.getItem(key);
+  writeJSON(key, { name, days: draft.days, updatedAt: Date.now() });
+  // Register this programme so it appears on Select a Program
+  try { ensureSeriesRegistryEntry(name, Date.now()); } catch (_) {}
+
+  // Register series metadata (non-destructive)
+  const reg = getSeriesRegistry();
+  if (!reg[name]) {
+    const ts = Date.now();
+    const baseKey = deriveSeriesBaseKey(name) || name;
+    const version = getNextSeriesVersionForBase(reg, baseKey);
+    reg[name] = { createdAt: ts, baseKey, version, type: "custom" };
+  } else {
+    reg[name].type = reg[name].type || "custom";
+  }
+  writeSeriesRegistry(reg);
+
+  setActiveSeriesName(name);
+
+  // Only reset progress when this is a brand-new programme.
+  // If the user is editing an existing programme, preserve their current progress.
+  if (!existedBefore) resetProgrammeProgress();
+
+  showCustomBuilderError("");
+  return true;
+}
 document.getElementById("btn-welcome-setup")?.addEventListener("click", () => showScreen("screen-profile"));
-  document.getElementById("btn-welcome-programs")?.addEventListener("click", () => showScreen("screen-programs"));
+  document.getElementById("btn-welcome-programs")?.addEventListener("click", () => {
+    showScreen("screen-programs");
+    syncProgramDraftUI();
+  });
+  document.getElementById("btn-welcome-history")?.addEventListener("click", () => {
+    openHistoryLanding();
+  });
+
   document.getElementById("btn-welcome-continue")?.addEventListener("click", () => {
     enterWorkoutFromEntryPoint();
   });
 
+  function updateWelcomeForProfile() {
+    const profile = readJSON(STORAGE_KEYS.profile, null);
+    const setupBtn = document.getElementById("btn-welcome-setup");
+    const historyBtn = document.getElementById("btn-welcome-history");
+    const continueBtn = document.getElementById("btn-welcome-continue");
+    if (profile && profile.name) {
+      if (setupBtn) setupBtn.style.display = "none";
+      if (historyBtn) historyBtn.style.display = "block";
+      if (continueBtn) continueBtn.textContent = "Continue";
+    } else {
+      if (setupBtn) setupBtn.style.display = "block";
+      if (historyBtn) historyBtn.style.display = "none";
+      if (continueBtn) continueBtn.textContent = "Continue to Workouts";
+    }
+  }
+  updateWelcomeForProfile();
+
+
   // Program selection
-  document.getElementById("btn-program-sklar")?.addEventListener("click", () => showScreen("screen-start-choice"));
+  // Selecting the built-in Sklar programme should always reset the active series
+  // back to the default. This prevents users remaining on a previously selected
+  // custom programme when they expect to be in Sklar.
+  document.getElementById("btn-program-sklar")?.addEventListener("click", () => {
+    setActiveSeriesName(DEFAULT_SERIES_NAME);
+    showScreen("screen-start-choice");
+  });
+
+  // Create your own programme (Phase 1: name capture + start building placeholder)
+  document.getElementById("btn-program-create")?.addEventListener("click", () => {
+    const input = document.getElementById("create-program-name");
+    const err = document.getElementById("create-program-error");
+    const name = (input?.value || "").toString().trim();
+    if (!name) {
+      if (err) err.hidden = false;
+      input?.focus();
+      return;
+    }
+    if (err) err.hidden = true;
+    // Starting a new programme must begin from a blank slate (Days 1–7 empty).
+    // This prevents previously added draft exercises from appearing in a new programme.
+    startNewCustomProgramDraft(name);
+    syncProgramDraftUI();
+    showScreen("screen-custom-builder");
+    renderCustomBuilderForCurrentDay();
+  })
+
+  // Custom programme builder (Phase 2)
+  document.getElementById("custom-day-select")?.addEventListener("change", () => {
+    renderCustomBuilderForCurrentDay();
+  });
+
+  document.getElementById("btn-custom-add-exercise")?.addEventListener("click", () => {
+    const day = getCustomBuilderSelectedDay();
+    openCustomExercisePicker({ mode: "add", dayKey: String(day) });
+  });
+
+  // Custom exercise picker close handlers
+  document.getElementById("custom-ex-picker-close")?.addEventListener("click", () => closeCustomExercisePicker());
+  document.getElementById("custom-ex-picker")?.addEventListener("click", (e) => {
+    if (e.target && e.target.id === "custom-ex-picker") closeCustomExercisePicker();
+  });
+
+  document.getElementById("btn-custom-save-and-use")?.addEventListener("click", () => {
+    const ok = saveCustomProgrammeAndUse();
+    if (!ok) return;
+
+    // Ensure the workout day selector matches the active (custom) series
+    syncWorkoutDaySelectOptionsForSeries(getActiveSeriesName());
+
+    // Route straight into workouts
+    enterWorkoutFromEntryPoint();
+  });
+;
 
   // Start choice
   document.getElementById("btn-start-workouts")?.addEventListener("click", () => {
@@ -624,6 +2055,7 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
   const weightInput = document.getElementById("profile-weight");
   const ageInput = document.getElementById("profile-age");
   const bmiDisplay = document.getElementById("profile-bmi");
+  const heightPreview = document.getElementById("profile-height-preview");
   const labelHeight = document.getElementById("label-height-unit");
   const labelWeight = document.getElementById("label-weight-unit");
 
@@ -650,6 +2082,58 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
     bmiDisplay.textContent = (bmi && Number.isFinite(bmi)) ? bmi.toFixed(1) : "—";
   }
 
+
+function updateHeightPreview() {
+  if (!heightPreview) return;
+  const units = unitsHidden.value || "metric";
+  const hRaw = parseFloat(heightInput.value);
+  if (!Number.isFinite(hRaw) || hRaw <= 0) { heightPreview.textContent = "—"; return; }
+
+  // Always provide ft/in preview; also include the converted metric/imperial value for confidence.
+  if (units === "imperial") {
+    // input is inches
+    const inches = hRaw;
+    const cm = inches * 2.54;
+    const ft = Math.floor(inches / 12);
+    const inchRem = inches - (ft * 12);
+    heightPreview.textContent = `≈ ${cm.toFixed(1)} cm • ${ft}'${inchRem.toFixed(1)}"`;
+  } else {
+    // input is cm
+    const cm = hRaw;
+    const inches = cm / 2.54;
+    const ft = Math.floor(inches / 12);
+    const inchRem = inches - (ft * 12);
+    heightPreview.textContent = `≈ ${ft}'${inchRem.toFixed(1)}" • ${inches.toFixed(1)} in`;
+  }
+}
+
+  function loadProfileIntoForm() {
+    const saved = readJSON(STORAGE_KEYS.profile, null);
+    if (!saved) return;
+
+    nameInput.value = saved.name || "";
+    ageInput.value = (saved.age !== null && saved.age !== undefined) ? String(saved.age) : "";
+    heightInput.value = (saved.height !== null && saved.height !== undefined) ? String(saved.height) : "";
+    weightInput.value = (saved.weight !== null && saved.weight !== undefined) ? String(saved.weight) : "";
+
+    // Units + segmented state
+    unitsHidden.value = saved.units || "metric";
+    unitsButtons.forEach((b) => {
+      b.classList.toggle("segmented-option--active", b.dataset.unitsOption === unitsHidden.value);
+    });
+
+    // Sex + segmented state
+    sexHidden.value = saved.sex || "";
+    sexButtons.forEach((b) => {
+      b.classList.toggle("segmented-option--active", b.dataset.sexOption === sexHidden.value);
+    });
+
+    updateUnitLabels();
+    updateBMI();
+    updateHeightPreview();
+  }
+
+
   sexButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
       sexButtons.forEach((b) => b.classList.remove("segmented-option--active"));
@@ -662,15 +2146,49 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
     btn.addEventListener("click", () => {
       unitsButtons.forEach((b) => b.classList.remove("segmented-option--active"));
       btn.classList.add("segmented-option--active");
-      unitsHidden.value = btn.dataset.unitsOption;
+      const prevUnits = unitsHidden.value || "metric";
+      const nextUnits = btn.dataset.unitsOption || "metric";
+      unitsHidden.value = nextUnits;
+
+      // Convert in-form values when toggling units so users can continue editing
+      // without their inputs being overwritten.
+      try {
+        const hVal = parseFloat(heightInput.value);
+        if (Number.isFinite(hVal) && hVal > 0 && prevUnits !== nextUnits) {
+          if (prevUnits === "metric" && nextUnits === "imperial") {
+            // cm -> inches
+            heightInput.value = String((hVal / 2.54).toFixed(1));
+          } else if (prevUnits === "imperial" && nextUnits === "metric") {
+            // inches -> cm
+            heightInput.value = String((hVal * 2.54).toFixed(1));
+          }
+        }
+
+        const wVal = parseFloat(weightInput.value);
+        if (Number.isFinite(wVal) && wVal > 0 && prevUnits !== nextUnits) {
+          if (prevUnits === "metric" && nextUnits === "imperial") {
+            // kg -> lb
+            weightInput.value = String((wVal * 2.2046226218).toFixed(1));
+          } else if (prevUnits === "imperial" && nextUnits === "metric") {
+            // lb -> kg
+            weightInput.value = String((wVal / 2.2046226218).toFixed(1));
+          }
+        }
+      } catch (_) {
+        // no-op
+      }
+
       updateUnitLabels();
       updateBMI();
+      updateHeightPreview();
     });
   });
 
-  heightInput?.addEventListener("input", updateBMI);
+  heightInput?.addEventListener("input", () => { updateBMI(); updateHeightPreview(); });
   weightInput?.addEventListener("input", updateBMI);
   updateUnitLabels();
+  updateHeightPreview();
+  loadProfileIntoForm();
 
   profileForm?.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -685,7 +2203,684 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
     };
     writeJSON(STORAGE_KEYS.profile, profile);
     showScreen("screen-start-choice");
+    updateWelcomeForProfile();
   });
+
+
+// -------------------------
+// History (My Workouts)
+// -------------------------
+function buildHistoryEntries() {
+  // Prefer the dedicated history log if present (supports Reuse without losing history).
+  const log = getHistoryLog();
+  if (log.length) {
+    return log
+      .filter((e) => e && Number.isFinite(Number(e.week)) && Number.isFinite(Number(e.dayIndex)))
+      .map((e) => ({
+        week: parseInt(e.week, 10),
+        dayIndex: parseInt(e.dayIndex, 10),
+        completedAt: Number(e.completedAt || 0),
+        series: e.series || DEFAULT_SERIES_NAME
+      }))
+      .sort((a, b) => Number(b.completedAt || 0) - Number(a.completedAt || 0));
+  }
+
+  // Fallback for legacy installs: derive entries from per-day completion flags.
+  const state = getWorkoutState();
+  const entries = [];
+  const weeks = state?.weeks || {};
+  Object.keys(weeks).forEach((wKey) => {
+    const days = weeks[wKey] || {};
+    Object.keys(days).forEach((dKey) => {
+      const dayState = days[dKey];
+      if (dayState && dayState.completed) {
+        const completedAt = Number(dayState.completedAt || 0);
+        entries.push({
+          week: parseInt(wKey, 10),
+          dayIndex: parseInt(dKey, 10),
+          completedAt: completedAt,
+          series: DEFAULT_SERIES_NAME});
+      }
+    });
+  });
+  // Most recent first
+  entries.sort((a, b) => Number(b.completedAt || 0) - Number(a.completedAt || 0));
+  return entries;
+}
+
+function formatCompletedDate(ts) {
+  if (!ts) return "Completed: —";
+  try {
+    const d = new Date(ts);
+    return `Completed: ${d.toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "numeric" })}`;
+  } catch (e) {
+    return "Completed: —";
+  }
+}
+
+function formatShortDate(ts) {
+  if (!ts) return "—";
+  try {
+    const d = new Date(ts);
+    return d.toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "numeric" });
+  } catch {
+    return "—";
+  }
+}
+
+
+function getHistoryLog() {
+  const raw = readJSON(STORAGE_KEYS.historyLog, []);
+  const log = Array.isArray(raw) ? raw : [];
+
+  let changed = false;
+
+  // 1) Patch legacy entries (missing fields / inconsistent types)
+  const patched = log
+    .filter((e) => e && typeof e === "object")
+    .map((e) => {
+      const series = (e.series || DEFAULT_SERIES_NAME).toString().trim() || DEFAULT_SERIES_NAME;
+      const week = Number(e.week);
+      const dayIndex = Number(e.dayIndex);
+      const completedAt = Number(e.completedAt || 0);
+
+      const next = { series, week, dayIndex, completedAt };
+
+      // Detect if we normalised anything
+      if (
+        e.series !== series ||
+        Number(e.week) !== week ||
+        Number(e.dayIndex) !== dayIndex ||
+        Number(e.completedAt || 0) !== completedAt
+      ) {
+        changed = true;
+      }
+      return next;
+    });
+
+  const deduped = dedupeHistoryLog(patched);
+
+  // If de-dupe changed anything, persist the cleaned log.
+  if (deduped.length !== patched.length) changed = true;
+  if (changed) writeHistoryLog(deduped);
+  return deduped;
+}
+
+function dedupeHistoryLog(log) {
+  const arr = Array.isArray(log) ? log : [];
+
+  // Only one entry per series + week + dayIndex. Keep most recent completedAt.
+  const byKey = new Map();
+  for (const e of arr) {
+    if (!e || typeof e !== "object") continue;
+    const series = (e.series || DEFAULT_SERIES_NAME).toString().trim() || DEFAULT_SERIES_NAME;
+    const week = Number(e.week);
+    const dayIndex = Number(e.dayIndex);
+    const completedAt = Number(e.completedAt || 0);
+    if (!Number.isFinite(week) || !Number.isFinite(dayIndex)) continue;
+
+    const key = `${series}::${week}::${dayIndex}`;
+    const existing = byKey.get(key);
+    if (!existing || completedAt > Number(existing.completedAt || 0)) {
+      byKey.set(key, { series, week, dayIndex, completedAt });
+    }
+  }
+
+  const out = Array.from(byKey.values());
+  out.sort((a, b) => Number(b.completedAt || 0) - Number(a.completedAt || 0));
+  return out;
+}
+
+function writeHistoryLog(log) {
+  // Hard guardrail: always store a de-duplicated history log.
+  const cleaned = dedupeHistoryLog(log);
+  writeJSON(STORAGE_KEYS.historyLog, cleaned);
+}
+
+function getSeriesRegistry() {
+  const reg = readJSON(STORAGE_KEYS.seriesRegistry, {});
+  return reg && typeof reg === "object" ? reg : {};
+}
+
+function writeSeriesRegistry(reg) {
+  writeJSON(STORAGE_KEYS.seriesRegistry, reg && typeof reg === "object" ? reg : {});
+}
+
+// Discover custom programmes directly from localStorage (robust against missing/old registry entries).
+function discoverCustomProgrammeNamesFromStorage() {
+  const names = new Set();
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      if (!k.startsWith("trackmateCustomProgram::")) continue;
+      const p = readJSON(k, null);
+      const name = (p && typeof p === "object" ? (p.name || "") : "").toString().trim();
+      if (name) names.add(name);
+    }
+  } catch (_) {}
+  return Array.from(names);
+}
+
+// -------------------------
+// Programmes screen: render created custom programmes list
+// -------------------------
+
+function renderProgramsScreen() {
+  const block = document.getElementById("created-programs-block");
+  const list = document.getElementById("created-programs-list");
+  if (!block || !list) return;
+
+  // Normalise first so older entries pick up baseKey/version.
+  const reg = normaliseSeriesRegistrySchema();
+
+  // 1) Registry-sourced custom programmes
+  const fromRegistry = Object.keys(reg || {}).filter((n) => reg[n] && reg[n].type === "custom");
+
+  // 2) Storage-sourced custom programmes (covers older builds where registry.type was not set)
+  const fromStorage = discoverCustomProgrammeNamesFromStorage();
+
+  // Union and sort newest first (prefer registry createdAt, else programme updatedAt, else 0)
+  const union = Array.from(new Set([...fromRegistry, ...fromStorage])).filter(Boolean);
+
+  // Backfill registry entries so future loads are consistent
+  let regChanged = false;
+  union.forEach((name) => {
+    const key = customProgramStorageKeyForSeries(name);
+    const p = readJSON(key, null);
+    const updatedAt = Number(p?.updatedAt || 0);
+
+    if (!reg[name]) {
+      const ts = updatedAt || Date.now();
+      const baseKey = deriveSeriesBaseKey(name);
+      const version = getNextSeriesVersionForBase(reg, baseKey);
+      reg[name] = { createdAt: ts, baseKey, version, type: "custom" };
+      regChanged = true;
+    } else {
+      if (!reg[name].type) {
+        reg[name].type = "custom";
+        regChanged = true;
+      }
+      if (!Number.isFinite(Number(reg[name].createdAt))) {
+        reg[name].createdAt = updatedAt || Date.now();
+        regChanged = true;
+      }
+    }
+  });
+  if (regChanged) writeSeriesRegistry(reg);
+
+  const names = union.sort((a, b) => (Number(reg[b]?.createdAt || 0) - Number(reg[a]?.createdAt || 0)));
+
+  list.innerHTML = "";
+
+  if (!names.length) {
+    block.hidden = true;
+    return;
+  }
+
+  names.forEach((seriesName) => {
+    const safeName = (seriesName || "").toString();
+
+    const card = document.createElement("div");
+    card.className = "choice-card";
+    card.style.marginTop = "12px";
+
+    const title = document.createElement("h3");
+    title.className = "choice-title";
+    title.textContent = safeName;
+
+    const sub = document.createElement("p");
+    sub.className = "choice-text";
+    sub.textContent = "Your custom programme. Continue, edit, or delete it below.";
+
+    const actions = document.createElement("div");
+    actions.className = "program-card-actions";
+
+    const btnContinue = document.createElement("button");
+    btnContinue.type = "button";
+    btnContinue.className = "btn-teal-pill";
+    btnContinue.textContent = "Continue";
+    btnContinue.addEventListener("click", () => {
+      setActiveSeriesName(seriesName);
+      enterWorkoutFromEntryPoint();
+    });
+
+    const btnEdit = document.createElement("button");
+    btnEdit.type = "button";
+    btnEdit.className = "btn-outline-teal-pill";
+    btnEdit.textContent = "Edit";
+    btnEdit.addEventListener("click", () => {
+      openProgrammeInBuilder(seriesName, 1);
+    });
+
+    const btnDelete = document.createElement("button");
+    btnDelete.type = "button";
+    btnDelete.className = "btn-danger-pill";
+    btnDelete.textContent = "Delete";
+    btnDelete.addEventListener("click", () => {
+      deleteCustomProgramme(seriesName);
+      renderProgramsScreen();
+    });
+
+    actions.appendChild(btnContinue);
+    actions.appendChild(btnEdit);
+    actions.appendChild(btnDelete);
+
+    card.appendChild(title);
+    card.appendChild(sub);
+    card.appendChild(actions);
+    list.appendChild(card);
+  });
+
+  block.hidden = false;
+}
+
+function deriveSeriesBaseKey(seriesName) {
+  const n = (seriesName || "").toString().trim();
+  if (!n) return "";
+  return n.replace(/\s*\(Copy\)\s*$/i, "").trim();
+}
+
+function getNextSeriesVersionForBase(reg, baseKey) {
+  const base = (baseKey || "").toString().trim();
+  if (!base) return 1;
+  let maxV = 0;
+  Object.keys(reg || {}).forEach((k) => {
+    const entry = reg[k];
+    if (!entry || typeof entry !== "object") return;
+    const b = (entry.baseKey || deriveSeriesBaseKey(k) || "").toString().trim();
+    if (b !== base) return;
+    const v = Number(entry.version);
+    if (Number.isFinite(v) && v > maxV) maxV = v;
+  });
+  return maxV + 1;
+}
+
+// Backfill registry entries with baseKey/version if they predate this schema.
+function normaliseSeriesRegistrySchema() {
+  const reg = getSeriesRegistry();
+  let changed = false;
+  const byBase = {};
+
+  // Collect entries per base, sorted by createdAt.
+  Object.keys(reg).forEach((name) => {
+    const entry = reg[name];
+    const ts = Number(entry?.createdAt);
+    const createdAt = Number.isFinite(ts) ? ts : Date.now();
+    const baseKey = (entry?.baseKey || deriveSeriesBaseKey(name) || "").toString().trim();
+    if (!byBase[baseKey]) byBase[baseKey] = [];
+    byBase[baseKey].push({ name, createdAt });
+  });
+
+  Object.keys(byBase).forEach((baseKey) => {
+    const arr = byBase[baseKey].sort((a, b) => a.createdAt - b.createdAt);
+    arr.forEach((item, idx) => {
+      const entry = reg[item.name] || {};
+      if (!entry.baseKey) {
+        entry.baseKey = baseKey;
+        changed = true;
+      }
+      if (!Number.isFinite(Number(entry.version))) {
+        entry.version = idx + 1;
+        changed = true;
+      }
+      if (!Number.isFinite(Number(entry.createdAt))) {
+        entry.createdAt = item.createdAt;
+        changed = true;
+      }
+      reg[item.name] = entry;
+    });
+  });
+
+  if (changed) writeSeriesRegistry(reg);
+  return reg;
+}
+
+function ensureSeriesRegistryEntry(seriesName, createdAt) {
+  const name = (seriesName || "").toString().trim();
+  if (!name) return;
+  const reg = normaliseSeriesRegistrySchema();
+  if (!reg[name]) {
+    const ts = Number(createdAt || Date.now());
+    const baseKey = deriveSeriesBaseKey(name);
+    const version = getNextSeriesVersionForBase(reg, baseKey);
+    reg[name] = { createdAt: ts, baseKey, version };
+    writeSeriesRegistry(reg);
+  }
+}
+
+
+function appendHistoryLog(entry) {
+  const e = entry || {};
+  const series = (e.series || DEFAULT_SERIES_NAME).toString().trim() || DEFAULT_SERIES_NAME;
+  const week = Number(e.week);
+  const dayIndex = Number(e.dayIndex);
+  const completedAt = Number(e.completedAt || 0);
+
+  if (!Number.isFinite(week) || !Number.isFinite(dayIndex)) return;
+
+  const log = getHistoryLog();
+
+  // Ensure only one entry per series + week + dayIndex.
+  const existingIndex = log.findIndex((x) =>
+    x && ((x.series || DEFAULT_SERIES_NAME).toString().trim() || DEFAULT_SERIES_NAME) === series &&
+    Number(x.week) === week &&
+    Number(x.dayIndex) === dayIndex
+  );
+
+  const next = { series, week, dayIndex, completedAt };
+
+  if (existingIndex >= 0) {
+    log[existingIndex] = next;
+  } else {
+    log.push(next);
+  }
+
+  writeHistoryLog(log);
+}
+
+function removeHistoryLogEntry(seriesName, week, dayIndex) {
+  const series = (seriesName || DEFAULT_SERIES_NAME).toString();
+  const w = Number(week);
+  const d = Number(dayIndex);
+  if (!Number.isFinite(w) || !Number.isFinite(d)) return;
+  const log = getHistoryLog().filter((x) =>
+    !(x && ((x.series || DEFAULT_SERIES_NAME).toString().trim() || DEFAULT_SERIES_NAME) === series && Number(x.week) === w && Number(x.dayIndex) === d)
+  );
+  writeHistoryLog(log);
+}
+
+function purgeHistorySeries(seriesName) {
+  const log = getHistoryLog().filter((e) => e && e.series !== seriesName);
+  writeHistoryLog(log);
+}
+
+function renameHistorySeries(oldName, newName) {
+  const from = (oldName || "").toString().trim();
+  const to = (newName || "").toString().trim();
+  if (!from || !to || from === to) return;
+  const log = getHistoryLog().map((e) => {
+    if (!e || e.series !== from) return e;
+    return { ...e, series: to };
+  });
+  writeHistoryLog(log);
+}
+
+
+function resetProgrammeProgress() {
+  // Clears logged sets/reps/weights + completion state for workouts,
+  // but does not touch profile, 1RM, preferences, or history log.
+  const state = getWorkoutState();
+  state.weeks = {};
+  saveWorkoutState(state);
+}
+
+// History (Past Workouts) series view state
+let historyActiveSeries = null;
+
+function openHistoryLanding() {
+  // Always open the landing list view (never inside an individual series).
+  historyActiveSeries = null;
+  renderHistoryList();
+  showScreen("screen-history");
+}
+
+function renderHistoryList() {
+  const list = document.getElementById("history-list");
+  if (!list) return;
+  list.innerHTML = "";
+
+  const entries = buildHistoryEntries();
+
+  if (!entries.length) {
+    const empty = document.createElement("div");
+    empty.className = "form-card";
+    empty.textContent = "No completed workouts yet.";
+    list.appendChild(empty);
+    return;
+  }
+
+  // For now, completed workouts belong to the built-in Sklar programme.
+  // This is intentionally simple and can be extended later when custom programmes store programme IDs in history.
+  const SERIES_NAME = getActiveSeriesName();
+
+  
+  if (!historyActiveSeries) {
+    // Series list view (all series found in history, plus the current active series)
+    const activeSeries = getActiveSeriesName();
+    const namesSet = new Set(entries.map((e) => (e.series || activeSeries)));
+    namesSet.add(activeSeries);
+
+    const seriesNames = Array.from(namesSet).filter(Boolean);
+
+// Order series by most recent activity (latest completion OR creation), newest first
+const reg = normaliseSeriesRegistrySchema();
+const seriesSorted = seriesNames
+  .map((name) => {
+    const seriesEntries = entries.filter((e) => (e.series || activeSeries) === name);
+    const completedMostRecent = seriesEntries.reduce((m, e) => Math.max(m, Number(e.completedAt || 0)), 0);
+    const createdAt = Number(reg[name]?.createdAt || 0);
+    return { name, sortTs: Math.max(completedMostRecent, createdAt) };
+  })
+  .sort((a, b) => (b.sortTs || 0) - (a.sortTs || 0))
+  .map((x) => x.name);
+
+    seriesSorted.forEach((seriesName) => {
+      const seriesEntries = entries.filter((e) => (e.series || activeSeries) === seriesName);
+      const completedCount = seriesEntries.length;
+      const mostRecent = seriesEntries.reduce((m, e) => Math.max(m, Number(e.completedAt || 0)), 0);
+      const registryCreatedAt = Number(reg[seriesName]?.createdAt || 0);
+      const firstCompletion = seriesEntries.reduce((m, e) => {
+        const v = Number(e.completedAt || 0);
+        if (!v) return m;
+        return m ? Math.min(m, v) : v;
+      }, 0);
+      const createdAt = registryCreatedAt || firstCompletion || 0;
+      const version = Number(reg[seriesName]?.version) || 1;
+      const isSeriesCompleted = completedCount >= getTotalPlannedWorkoutsForSeries(seriesName);
+
+      const card = document.createElement("div");
+      card.className = "history-card";
+
+      const title = document.createElement("div");
+      title.className = "history-title";
+      title.textContent = seriesName;
+
+      title.addEventListener("dblclick", () => {
+        const next = prompt("Rename workout series:", seriesName);
+        if (next === null) return;
+        const cleaned = next.toString().trim();
+        if (!cleaned) return;
+        renameHistorySeries(seriesName, cleaned);
+        if (seriesName === getActiveSeriesName()) {
+          setActiveSeriesName(cleaned);
+        }
+        // If we were viewing this series, keep the view consistent.
+        if (historyActiveSeries === seriesName) {
+          historyActiveSeries = cleaned;
+        }
+        renderHistoryList();
+      });
+
+      const meta = document.createElement("div");
+      meta.className = "history-meta";
+
+      const line1 = document.createElement("div");
+      line1.className = "history-meta-line";
+      line1.textContent = `${seriesName} - version ${version}`;
+
+      const line2 = document.createElement("div");
+      line2.className = "history-meta-line";
+      line2.textContent = `Series Started: ${formatShortDate(createdAt)}`;
+
+      const line3 = document.createElement("div");
+      line3.className = "history-meta-line";
+      line3.textContent = `Completed workout(s): ${completedCount}`;
+
+      meta.appendChild(line1);
+      meta.appendChild(line2);
+      meta.appendChild(line3);
+
+      if (isSeriesCompleted) {
+        const line4 = document.createElement("div");
+        line4.className = "history-meta-line";
+        line4.textContent = `Completed Series: ${formatShortDate(mostRecent)}`;
+        meta.appendChild(line4);
+      }
+
+      const actions = document.createElement("div");
+      actions.className = "history-actions";
+
+      const openBtn = document.createElement("button");
+      openBtn.type = "button";
+      openBtn.className = "btn btn-teal-pill btn-small";
+      openBtn.textContent = "Open";
+      openBtn.addEventListener("click", () => {
+        historyActiveSeries = seriesName;
+        renderHistoryList();
+      });
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "btn btn-danger-pill btn-small";
+      deleteBtn.textContent = "Delete";
+      deleteBtn.addEventListener("click", () => {
+        if (!confirm(`Delete "${seriesName}" history? This will remove all completed workouts for this series.`)) return;
+        purgeHistorySeries(seriesName);
+        if (seriesName === getActiveSeriesName()) {
+          resetProgrammeProgress();
+        }
+        historyActiveSeries = null;
+        renderHistoryList();
+      });
+
+      const reuseBtn = document.createElement("button");
+      reuseBtn.type = "button";
+      reuseBtn.className = "btn btn-outline-teal-pill btn-small";
+      reuseBtn.textContent = "Reuse";
+      reuseBtn.addEventListener("click", () => {
+        const proposed = makeCopySeriesName(seriesName);
+        const nextName = prompt(`Reuse as a new series?\n\nEnter a name for the copied series:`, proposed);
+        if (nextName === null) return; // user cancelled
+        ensureSeriesRegistryEntry(nextName, Date.now());
+        setActiveSeriesName(nextName);
+
+        // Start the copied series from a fresh progress state (history remains with the source series)
+        resetProgrammeProgress();
+
+        // Route back into workouts (Week 1, Day 1)
+        showScreen("screen-workout");
+        currentWeek = 1;
+        setActiveWeekTab(1);
+        const sel = document.getElementById("workout-day-select");
+        if (sel) sel.value = "0";
+        renderWorkoutDay(0);
+        syncWorkoutCompletionUI();
+
+        historyActiveSeries = null;
+        renderHistoryList();
+      });
+
+      actions.appendChild(openBtn);
+      actions.appendChild(deleteBtn);
+      actions.appendChild(reuseBtn);
+
+      card.appendChild(title);
+      card.appendChild(meta);
+      card.appendChild(actions);
+
+      list.appendChild(card);
+    });
+
+    return;
+  }
+
+  // Series detail view
+  const header = document.createElement("div");
+  header.className = "history-series-header";
+
+  const backBtn = document.createElement("button");
+  backBtn.type = "button";
+  backBtn.className = "btn btn-secondary";
+  backBtn.textContent = "Back to series";
+  backBtn.addEventListener("click", () => {
+    historyActiveSeries = null;
+    renderHistoryList();
+  });
+
+  const hTitle = document.createElement("div");
+  hTitle.className = "history-series-title";
+  hTitle.textContent = historyActiveSeries;
+
+  header.appendChild(backBtn);
+  header.appendChild(hTitle);
+  list.appendChild(header);
+
+  // Hard de-duplication guardrail: only show one entry per series + week + day.
+  const seriesEntries = dedupeHistoryLog(
+    entries
+      .filter((e) => (e.series || getActiveSeriesName()) === historyActiveSeries)
+      .map((e) => ({
+        series: historyActiveSeries,
+        week: Number(e.week),
+        dayIndex: Number(e.dayIndex),
+        completedAt: Number(e.completedAt || 0)
+      }))
+  );
+
+  seriesEntries.forEach((e) => {
+      const card = document.createElement("div");
+      card.className = "history-card";
+
+      const title = document.createElement("div");
+      title.className = "history-title";
+      const displayDay = getDisplayDayNumber(e.dayIndex);
+      title.textContent = `Week ${e.week} • Day ${displayDay}`;
+
+      const meta = document.createElement("div");
+      meta.className = "history-meta";
+      meta.textContent = formatCompletedDate(e.completedAt);
+
+      const actions = document.createElement("div");
+      actions.className = "history-actions";
+
+      const openBtn = document.createElement("button");
+      openBtn.type = "button";
+    openBtn.className = "btn btn-teal-pill btn-small";
+      openBtn.textContent = "Open";
+      openBtn.addEventListener("click", () => {
+        // Ensure the correct series is active before opening a workout from history.
+        // Without this, custom series entries may incorrectly open the Sklar programme.
+        try { setActiveSeriesName(historyActiveSeries); } catch (_) {}
+        showScreen("screen-workout");
+        currentWeek = e.week;
+        setActiveWeekTab(currentWeek);
+        currentDayIndex = e.dayIndex;
+        const select = document.getElementById("workout-day-select");
+        if (select) select.value = String(currentDayIndex);
+        renderWorkoutDay(currentDayIndex);
+      });
+
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "btn btn-danger";
+      delBtn.textContent = "Delete";
+      delBtn.addEventListener("click", () => {
+        if (!confirm("Delete this workout record? This will clear logged sets and completion status for that day.")) return;
+        resetDay(e.week, e.dayIndex);
+        renderHistoryList();
+      });
+
+      actions.appendChild(openBtn);
+      actions.appendChild(delBtn);
+
+      card.appendChild(title);
+      card.appendChild(meta);
+      card.appendChild(actions);
+
+      list.appendChild(card);
+    });
+}
 
   // Week tabs
   const weekTabs = document.querySelectorAll(".week-tab");
@@ -710,6 +2905,7 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
   // Workout elements
   const workoutDaySelect = document.getElementById("workout-day-select");
   const workoutThemeBadge = document.getElementById("workout-theme-badge");
+  const workoutProgramName = document.getElementById("workout-program-name");
   const workoutGoal = document.getElementById("workout-goal");
   const workoutExerciseList = document.getElementById("workout-exercise-list");
   const workoutCompletedBadge = document.getElementById("workout-completed-badge");
@@ -749,7 +2945,10 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
         completeBtn.classList.add("btn-teal");
       }
     }
+    // Reuse-week button is only relevant for custom programmes
+    
   }
+
 
   const summaryVolumeEl = document.getElementById("summary-volume");
   const summaryRepsEl = document.getElementById("summary-reps");
@@ -777,7 +2976,15 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
     currentEditContext = context;
 
     setEditExercise.textContent = exerciseName;
-    setEditWeight.value = weightPill.dataset.value || "";
+    const units = getActiveUnits();
+    const unit = getWeightUnitLabel(units);
+    const weightLabel = document.getElementById("set-edit-weight-label");
+    if (weightLabel) weightLabel.textContent = `Weight (${unit})`;
+    if (setEditWeight) {
+      setEditWeight.step = (units === "imperial") ? "1" : "0.5";
+      setEditWeight.placeholder = (units === "imperial") ? "e.g. 90" : "e.g. 40";
+    }
+    setEditWeight.value = (weightPill.dataset.valueDisplay || weightPill.dataset.value || "");
     setEditReps.value = repsPill.dataset.value || "";
 
     setEditOverlay.classList.add("set-edit-overlay--active");
@@ -826,15 +3033,19 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
   // Exercise edit modal
   const editOverlay = document.getElementById("exercise-edit-overlay");
   const editCurrent = document.getElementById("exercise-edit-current");
+  const editSetsWrap = document.getElementById("exercise-edit-sets-wrap");
+  const editSetsRow = document.getElementById("exercise-edit-sets-row");
   const editSuggested = document.getElementById("exercise-edit-suggested");
   const editCategoryRow = document.getElementById("exercise-edit-category-row");
   const editCategoryList = document.getElementById("exercise-edit-category-list");
   const editClose = document.getElementById("exercise-edit-close");
 
-  let editContext = null; // { dayRef, exRef, titleEl }
+  let editContext = null; // { dayRef, exRef, titleEl, exIndex }
 
   function closeExerciseEdit() {
     editContext = null;
+    if (editSetsWrap) editSetsWrap.style.display = "none";
+    if (editSetsRow) editSetsRow.innerHTML = "";
     editOverlay.classList.remove("set-edit-overlay--active");
   }
   editClose?.addEventListener("click", closeExerciseEdit);
@@ -883,17 +3094,80 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
   }
 
 
-  function openExerciseEdit(dayRef, exRef, titleEl) {
+  function openExerciseEdit(dayRef, exRef, titleEl, exIndex) {
     if (isCurrentDayCompleted()) {
       alert("This workout is marked as completed. Tap 'Edit Completed Workout' to make changes.");
       return;
     }
-    editContext = { dayRef, exRef, titleEl };
+    editContext = { dayRef, exRef, titleEl, exIndex };
 
     editCurrent.textContent = exRef.name;
     editSuggested.innerHTML = "";
     editCategoryRow.innerHTML = "";
     editCategoryList.innerHTML = "";
+
+    // Sets selector
+    // - Sklar: stored in workout state per exercise instance
+    // - Custom programmes: stored on the programme definition (persisted), per day + exercise index
+    if (editSetsWrap && editSetsRow) {
+      const activeSeries = getActiveSeriesName();
+      const isSklar = activeSeries === DEFAULT_SERIES_NAME;
+      const isCustom = !isSklar;
+
+      editSetsWrap.style.display = (isSklar || isCustom) ? "flex" : "none";
+      editSetsRow.innerHTML = "";
+
+      let currentSets = 4;
+      if (isSklar) {
+        const state = getWorkoutState();
+        ensureDayState(state, currentWeek, currentDayIndex);
+        const exState = getExerciseState(state, currentWeek, currentDayIndex, exIndex);
+        currentSets = Number.isFinite(parseInt(exState.setCount, 10))
+          ? Math.min(10, Math.max(1, parseInt(exState.setCount, 10)))
+          : 4;
+      } else {
+        // Custom: prefer the exercise definition's setCount
+        const defCnt = Number.isFinite(parseInt(exRef.setCount, 10))
+          ? Math.min(10, Math.max(1, parseInt(exRef.setCount, 10)))
+          : 4;
+        currentSets = defCnt;
+      }
+
+      for (let n = 1; n <= 10; n++) {
+        const pill = document.createElement("button");
+        pill.type = "button";
+        pill.className = "exercise-edit-sets-pill" + (n === currentSets ? " exercise-edit-sets-pill--active" : "");
+        pill.textContent = String(n);
+        pill.addEventListener("click", () => {
+          if (isSklar) {
+            const state = getWorkoutState();
+            ensureDayState(state, currentWeek, currentDayIndex);
+            const exState = getExerciseState(state, currentWeek, currentDayIndex, exIndex);
+            exState.setCount = n;
+            saveWorkoutState(state);
+          } else {
+            // Persist to the custom programme definition.
+            const seriesName = getActiveSeriesName();
+            const program = loadCustomProgramForSeries(seriesName);
+            if (program) {
+              const dayKey = String(currentDayIndex + 1);
+              const arr = Array.isArray(program.days?.[dayKey]) ? program.days[dayKey] : [];
+              if (arr[exIndex]) {
+                arr[exIndex].setCount = n;
+                program.days[dayKey] = arr;
+                writeJSON(customProgramStorageKeyForSeries(seriesName), { name: program.name, days: program.days, updatedAt: Date.now() });
+              }
+            }
+          }
+
+          closeExerciseEdit();
+          renderWorkoutDay(currentDayIndex);
+          const day = getProgramForWeek(currentWeek)[currentDayIndex];
+          updateWorkoutSummary(day);
+        });
+        editSetsRow.appendChild(pill);
+      }
+    }
 
     const meta = exerciseLibrary[exRef.name];
     const categoryName = findCategoryForExercise(exRef.name);
@@ -941,9 +3215,34 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
     editOverlay.classList.add("set-edit-overlay--active");
   }
 
-  // Compute expected total sets: 4 per exercise (matches UI)
+  // Compute expected total sets for the current day.
+  // Sklar defaults to 4, but can be overridden per exercise via Exercise Edit.
   function expectedTotalSetsForDay(day) {
-    return (day?.exercises?.length || 0) * 4;
+    const exercises = day?.exercises || [];
+    if (!exercises.length) return 0;
+
+    const activeSeries = getActiveSeriesName();
+    if (activeSeries === DEFAULT_SERIES_NAME) {
+      const state = getWorkoutState();
+      ensureDayState(state, currentWeek, currentDayIndex);
+      let total = 0;
+      exercises.forEach((_, exIndex) => {
+        const exState = getExerciseState(state, currentWeek, currentDayIndex, exIndex);
+        const cnt = Number.isFinite(parseInt(exState.setCount, 10))
+          ? Math.min(10, Math.max(1, parseInt(exState.setCount, 10)))
+          : 4;
+        total += cnt;
+      });
+      return total;
+    }
+
+    // Custom programmes store setCount on the exercise definition
+    return exercises.reduce((acc, ex) => {
+      const cnt = Number.isFinite(parseInt(ex.setCount, 10))
+        ? Math.min(10, Math.max(1, parseInt(ex.setCount, 10)))
+        : 4;
+      return acc + cnt;
+    }, 0);
   }
 
   function updateWorkoutSummary(day) {
@@ -970,7 +3269,8 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
     });
 
     const expected = expectedTotalSetsForDay(day);
-    summaryVolumeEl.textContent = totalVolume > 0 ? `${totalVolume.toFixed(0)} kg` : "0 kg";
+        const unit = getWeightUnitLabel(getActiveUnits());
+    summaryVolumeEl.textContent = totalVolume > 0 ? `${totalVolume.toFixed(0)} ${unit}` : `0 ${unit}`;
     summaryRepsEl.textContent = totalReps > 0 ? String(totalReps) : "0";
     summaryProgressEl.textContent = `${completedSets}/${expected}`;
   }
@@ -986,20 +3286,24 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
     const rSuggestion = currentEditRepsPill?.dataset?.suggestion || "";
 
     // If user leaves fields blank, commit suggested values for a faster workflow
-    const w = wRaw || wSuggestion || "";
+    const units = getActiveUnits();
+    const wDisplay = wRaw || wSuggestion || "";
+    const wKg = wDisplay ? toKgFromDisplayWeight(wDisplay, units) : "";
+    const w = wDisplay;
     const r = rRaw || rSuggestion || "";
     // Update pills text (NO parentheses)
-    currentEditWeightPill.dataset.value = w;
+    currentEditWeightPill.dataset.valueDisplay = w;
+    currentEditWeightPill.dataset.valueKg = wKg;
     currentEditRepsPill.dataset.value = r;
 
     if (w) {
-      currentEditWeightPill.textContent = `${w} kg`;
+      currentEditWeightPill.textContent = formatWeightPill(wKg || "", currentEditContext?.equipmentCode);
       currentEditWeightPill.classList.remove("input-pill--suggested");
     } else if (wSuggestion) {
-      currentEditWeightPill.textContent = `${wSuggestion} kg`;
+      currentEditWeightPill.textContent = formatWeightPill(currentEditWeightPill?.dataset?.suggestionKg || "", currentEditContext?.equipmentCode);
       currentEditWeightPill.classList.add("input-pill--suggested");
     } else {
-      currentEditWeightPill.textContent = "kg";
+      currentEditWeightPill.textContent = getWeightUnitLabel(getActiveUnits());
       currentEditWeightPill.classList.remove("input-pill--suggested");
     }
 
@@ -1018,7 +3322,7 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
     const state = getWorkoutState();
     const { week, dayIndex, exIndex, setIndex } = currentEditContext;
     const setState = getSetState(state, week, dayIndex, exIndex, setIndex);
-    setState.w = w;
+    setState.w = wKg;
     setState.r = r;
     saveWorkoutState(state);
 
@@ -1069,7 +3373,16 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
 
     const targetReps = getTargetRepsFromPrescription(ex.prescription) || 8;
     const oneRMBase = getOneRMBasedSuggestion(ex.name, targetReps, equipCode);
-    const baseSuggestion = oneRMBase || profileFallbackSuggestionKg(ex.name, profileWeightKg, equipCode);
+    const baseSuggestionKg = oneRMBase ? null : null;
+    const baseSuggestion = oneRMBase || (() => {
+      const kgStr = profileFallbackSuggestionKg(ex.name, profileWeightKg, equipCode);
+      const kgNum = parseFloat(kgStr);
+      if (!kgStr) return "";
+      if (getActiveUnits() === "imperial") {
+        return formatSuggestedWeightFromKg(Number.isFinite(kgNum) ? kgNum : 0, equipCode) || "";
+      }
+      return kgStr;
+    })();
 
     const stPrev = getWorkoutState(); // for progression lookup
     const prevDayState = currentWeek > 1 ? ensureDayState(stPrev, currentWeek - 1, dayIndex) : null;
@@ -1096,10 +3409,10 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
         const prevW = prevSet?.w;
         const prevR = prevSet?.r;
         if (prevW && prevR && meetsTargetReps(prevR, targetReps)) {
-          const inc = getIncrementForEquipment(equipCode);
+          const inc = getWeightIncrementInUserUnits(equipCode, getActiveUnits());
           const wNum = parseFloat(prevW);
           if (Number.isFinite(wNum) && inc > 0) {
-            const next = roundToIncrement(wNum + inc, inc);
+            const next = roundToUserIncrement(wNum + inc, equipCode, getActiveUnits());
             suggestionW = next ? String(next) : String(wNum);
           } else {
             suggestionW = String(prevW);
@@ -1112,15 +3425,17 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
       }
 
       // Persist suggestions on the pill datasets
-      wPill.dataset.suggestion = suggestionW;
+      wPill.dataset.suggestionKg = String(suggestionW ?? "");
+            const units2 = getActiveUnits();
+            wPill.dataset.suggestion = toDisplayWeightFromKg(suggestionW, units2);
       rPill.dataset.suggestion = suggestionR;
 
       if (!hasUserW) {
         if (suggestionW !== "") {
-          wPill.textContent = `${suggestionW} kg`;
+          wPill.textContent = formatWeightPill(String(suggestionW ?? ""), equipCode);
           wPill.classList.add("input-pill--suggested");
         } else {
-          wPill.textContent = "kg";
+          wPill.textContent = getWeightUnitLabel(getActiveUnits());
           wPill.classList.remove("input-pill--suggested");
         }
       }
@@ -1139,10 +3454,33 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
     if (!day) return;
 
     currentDayIndex = dayIndex;
+    
     setLastViewedWorkout(currentWeek, currentDayIndex);
 
-    workoutThemeBadge.textContent = day.theme;
-    workoutGoal.textContent = day.goal;
+    const activeSeries = getActiveSeriesName();
+
+    // Ensure the Edit pill visibility stays in sync when switching programmes/days.
+    try { syncWorkoutEditProgramButton(); } catch (_) {}
+
+    // For custom programmes, hide the theme badge (avoid the extra green pill).
+    if (workoutThemeBadge) {
+      const isCustom = activeSeries !== DEFAULT_SERIES_NAME;
+      workoutThemeBadge.hidden = isCustom;
+      workoutThemeBadge.textContent = isCustom ? "" : (day.theme || "");
+    }
+
+    // Subheading text beneath the programme title
+    if (workoutGoal) {
+      workoutGoal.textContent = (activeSeries === DEFAULT_SERIES_NAME) ? day.goal : "";
+    }
+
+    // Programme title (shown above day selector)
+    if (workoutProgramName) {
+      workoutProgramName.textContent = (activeSeries === DEFAULT_SERIES_NAME)
+        ? "Sklar 6-Week Strength & Hypertrophy"
+        : activeSeries;
+    }
+
 
     // Ensure state structure exists
     const state = getWorkoutState();
@@ -1200,7 +3538,7 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
       const editBtn = document.createElement("button");
       editBtn.type = "button";
       editBtn.textContent = "Edit";
-      editBtn.addEventListener("click", () => openExerciseEdit(day, ex, title));
+      editBtn.addEventListener("click", () => openExerciseEdit(day, ex, title, exIndex));
 
       links.appendChild(infoBtn);
       links.appendChild(editBtn);
@@ -1228,8 +3566,16 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
       const targetReps = getTargetRepsFromPrescription(ex.prescription) || 8; // safe default
 
       // Base suggestion: 1RM if mapped, else profile fallback with caps
-      const oneRMBase = getOneRMBasedSuggestion(ex.name, targetReps, equipCode);
-      const baseSuggestion = oneRMBase || profileFallbackSuggestionKg(ex.name, profileWeightKg, equipCode);
+const oneRMBase = getOneRMBasedSuggestion(ex.name, targetReps, equipCode);
+const baseSuggestion = oneRMBase || (() => {
+  const kgStr = profileFallbackSuggestionKg(ex.name, profileWeightKg, equipCode);
+  if (!kgStr) return "";
+  if (getActiveUnits() === "imperial") {
+    const kgNum = parseFloat(kgStr);
+    return formatSuggestedWeightFromKg(Number.isFinite(kgNum) ? kgNum : 0, equipCode) || "";
+  }
+  return kgStr;
+})();
 
       // Progressive overload: if week>1, use last week's logged weight when successful
       function progressedSuggestion(setIndex) {
@@ -1247,10 +3593,10 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
         const prevR = prevSet?.r;
 
         if (prevW && prevR && meetsTargetReps(prevR, targetReps)) {
-          const inc = getIncrementForEquipment(equipCode);
+          const inc = getWeightIncrementInUserUnits(equipCode, getActiveUnits());
           const wNum = parseFloat(prevW);
           if (Number.isFinite(wNum) && inc > 0) {
-            const next = roundToIncrement(wNum + inc, inc);
+            const next = roundToUserIncrement(wNum + inc, equipCode, getActiveUnits());
             return next ? String(next) : String(wNum);
           }
           return String(prevW);
@@ -1260,7 +3606,12 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
         return baseSuggestion;
       }
 
-      for (let setIndex = 0; setIndex < 4; setIndex++) {
+      const activeSeries = getActiveSeriesName();
+      const setCount = (activeSeries === DEFAULT_SERIES_NAME)
+        ? (Number.isFinite(parseInt(exState.setCount, 10)) ? Math.min(10, Math.max(1, parseInt(exState.setCount, 10))) : 4)
+        : (Number.isFinite(parseInt(ex.setCount, 10)) ? Math.min(10, Math.max(1, parseInt(ex.setCount, 10))) : 4);
+
+      for (let setIndex = 0; setIndex < setCount; setIndex++) {
         const cell = document.createElement("div");
         cell.className = "set-cell";
 
@@ -1294,13 +3645,13 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
 
         // Render weight pill (NO parentheses)
         if (saved.w !== "") {
-          weightPill.textContent = `${saved.w} kg`;
+          weightPill.textContent = formatWeightPill(saved.w, exState?.equipment || defaultEquip);
           weightPill.classList.remove("input-pill--suggested");
         } else if (suggestionW !== "") {
-          weightPill.textContent = `${suggestionW} kg`;
+          weightPill.textContent = formatWeightPill(suggestionW, exState?.equipment || defaultEquip);
           weightPill.classList.add("input-pill--suggested");
         } else {
-          weightPill.textContent = "kg";
+          weightPill.textContent = getWeightUnitLabel(getActiveUnits());
           weightPill.classList.remove("input-pill--suggested");
         }
 
@@ -1316,7 +3667,7 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
           repsPill.classList.remove("input-pill--suggested");
         }
 
-        const context = { week: currentWeek, dayIndex, exIndex, setIndex };
+        const context = { week: currentWeek, dayIndex, exIndex, setIndex, equipmentCode: exState?.equipment || defaultEquip };
 
         weightPill.addEventListener("click", () => openSetEditor(ex.name, weightPill, repsPill, context));
         repsPill.addEventListener("click", () => openSetEditor(ex.name, weightPill, repsPill, context));
@@ -1345,13 +3696,39 @@ const workoutHeaderActionBtn = document.querySelector(".workout-day-header .work
 if (workoutHeaderActionBtn) {
   workoutHeaderActionBtn.textContent = "Reset Day";
   workoutHeaderActionBtn.addEventListener("click", () => {
-      const dayNumbers = [1, 2, 3, 5, 6];
       const dayNumber = getDisplayDayNumber(currentDayIndex);
       if (confirm(`Reset Week ${currentWeek}, Day ${dayNumber}? This will clear all logged sets for this day.`)) {
           resetDay(currentWeek, currentDayIndex);
           renderWorkoutDay(currentDayIndex);
       }
     });
+}
+
+// Quick route to edit the active custom programme (adds exercises/days)
+const workoutEditProgramBtn = document.getElementById("workout-edit-program");
+if (workoutEditProgramBtn) {
+  workoutEditProgramBtn.addEventListener("click", () => {
+    const active = getActiveSeriesName();
+    if (active === DEFAULT_SERIES_NAME) return;
+    const program = loadCustomProgramForSeries(active);
+    if (!program) {
+      alert("Could not load this programme for editing.");
+      return;
+    }
+    // Load into the draft store so the builder can render/edit.
+    writeCustomProgramDraft({ name: program.name, days: program.days, updatedAt: Date.now() });
+    // Keep the builder aligned to the current day where possible.
+    showScreen("screen-custom-builder");
+
+    const daySel = document.getElementById("custom-day-select");
+    if (daySel) {
+      const d = Math.min(7, Math.max(1, currentDayIndex + 1));
+      daySel.value = String(d);
+    }
+
+    syncProgramDraftUI();
+    renderCustomBuilderForCurrentDay();
+  });
 }
 
 workoutDaySelect?.addEventListener("change", () => {
@@ -1366,8 +3743,15 @@ workoutDaySelect?.addEventListener("change", () => {
     const r = card.querySelector(".one-rm-reps");
     const out = card.querySelector(".one-rm-result-value");
     function update() {
-      const est = estimateOneRM(parseFloat(w.value), parseFloat(r.value));
-      out.textContent = est ? est.toFixed(1) : "—";
+      const units = getActiveUnits();
+      const wNum = parseFloat(w.value);
+      const rNum = parseFloat(r.value);
+      if (!Number.isFinite(wNum) || wNum <= 0 || !Number.isFinite(rNum) || rNum <= 0) { out.textContent = "—"; return; }
+      const weightKg = (units === "imperial") ? lbToKg(wNum) : wNum;
+      const estKg = estimateOneRM(weightKg, rNum);
+      if (!estKg) { out.textContent = "—"; return; }
+      const estDisplay = (units === "imperial") ? kgToLb(estKg) : estKg;
+      out.textContent = `${estDisplay.toFixed(1)} ${getWeightUnitLabel(units)}`;
     }
     w?.addEventListener("input", update);
     r?.addEventListener("input", update);
@@ -1411,8 +3795,10 @@ workoutDaySelect?.addEventListener("change", () => {
     oneRmCards.forEach((card) => {
       const key = card.dataset.exercise;
       const out = card.querySelector(".one-rm-result-value");
-      const val = out && out.textContent !== "—" ? parseFloat(out.textContent) : null;
-      data[key] = (val !== null && Number.isFinite(val)) ? val : null;
+      const units = getActiveUnits();
+      const val = out && out.textContent !== "—" ? parseFloat(String(out.textContent).replace(/[^0-9.\-]/g, "")) : null;
+      const valKg = (val !== null && Number.isFinite(val)) ? ((units === "imperial") ? lbToKg(val) : val) : null;
+      data[key] = (valKg !== null && Number.isFinite(valKg)) ? valKg : null;
       if (data[key] !== null) hasAny = true;
     });
 
@@ -1428,6 +3814,8 @@ workoutDaySelect?.addEventListener("change", () => {
   // Complete workout (toggle)
   // - If not completed: marks completed and applies grey overlay + "Completed" pill + button label change
   // - If already completed: unlocks editing for that day (sets completed=false)
+
+
   document.querySelector(".workout-complete")?.addEventListener("click", () => {
     const state = getWorkoutState();
     const dayState = ensureDayState(state, currentWeek, currentDayIndex);
@@ -1436,11 +3824,22 @@ workoutDaySelect?.addEventListener("change", () => {
 
     if (!dayState.completed) {
       dayState.completed = true;
+      dayState.completedAt = Date.now();
       saveWorkoutState(state);
+      // Write a dedicated history entry (supports Reuse without losing Past Workouts)
+      appendHistoryLog({
+        series: getActiveSeriesName(),
+        week: currentWeek,
+        dayIndex: currentDayIndex,
+        completedAt: dayState.completedAt
+      });
       alert(`Saved. Week ${currentWeek}, Day ${dayNumber} marked complete.`);
     } else {
       dayState.completed = false;
+      dayState.completedAt = null;
       saveWorkoutState(state);
+      // Remove any saved history entry for this day (prevents duplicates when re-completing).
+      removeHistoryLogEntry(getActiveSeriesName(), currentWeek, currentDayIndex);
       alert(`Editing enabled. Week ${currentWeek}, Day ${dayNumber} is now unlocked.`);
     }
 
@@ -1457,9 +3856,19 @@ workoutDaySelect?.addEventListener("change", () => {
   const menuClose = document.getElementById("workout-menu-close");
   const menuNav = workoutMenu?.querySelector(".workout-menu-nav");
 
-  function openWorkoutMenu() { workoutMenu?.classList.add("workout-menu--open"); }
-  function closeWorkoutMenu() { workoutMenu?.classList.remove("workout-menu--open"); }
+  function openWorkoutMenu() {
+    workoutMenu?.classList.add("workout-menu--open");
+    document.body.classList.add("tm-menu-open");
+  }
+  function closeWorkoutMenu() {
+    workoutMenu?.classList.remove("workout-menu--open");
+    document.body.classList.remove("tm-menu-open");
+  }
   window.closeWorkoutMenu = closeWorkoutMenu;
+
+  // Always start with the menu closed (also handles bfcache restores)
+  closeWorkoutMenu();
+  window.addEventListener("pageshow", () => closeWorkoutMenu());
 
   menuButtons.forEach((b) => b.addEventListener("click", openWorkoutMenu));
   menuClose?.addEventListener("click", closeWorkoutMenu);
@@ -1499,6 +3908,7 @@ workoutDaySelect?.addEventListener("change", () => {
     } else if (action === "profile") {
       closeWorkoutMenu();
       showScreen("screen-profile");
+      loadProfileIntoForm();
     } else if (action === "programs") {
       closeWorkoutMenu();
       showScreen("screen-programs");
@@ -1508,6 +3918,12 @@ workoutDaySelect?.addEventListener("change", () => {
     } else if (action === "equipment-key") {
       closeWorkoutMenu();
       showScreen("screen-equipment-key");
+    } else if (action === "history") {
+      closeWorkoutMenu();
+      openHistoryLanding();
+    } else if (action === "home") {
+      closeWorkoutMenu();
+      showScreen("screen-welcome");
     }
   });
 
@@ -1528,7 +3944,21 @@ workoutDaySelect?.addEventListener("change", () => {
       const action = btn.getAttribute("data-settings-action");
       if (action === "edit-profile") {
         showScreen("screen-profile");
+        loadProfileIntoForm();
       } else if (action === "edit-program") {
+        const active = getActiveSeriesName();
+        if (active !== DEFAULT_SERIES_NAME) {
+          const program = loadCustomProgramForSeries(active);
+          if (program) {
+            writeCustomProgramDraft({ name: program.name, days: program.days, updatedAt: Date.now() });
+            syncProgramDraftUI();
+            const daySel = document.getElementById("custom-day-select");
+            if (daySel) daySel.value = String(Math.min(7, Math.max(1, currentDayIndex + 1)));
+            showScreen("screen-custom-builder");
+            renderCustomBuilderForCurrentDay();
+            return;
+          }
+        }
         showScreen("screen-programs");
       } else if (action === "reset-week") {
         // Prefer dropdown selector if present; otherwise fall back to prompt
@@ -1555,6 +3985,7 @@ workoutDaySelect?.addEventListener("change", () => {
       } else if (action === "units") {
         // Route to profile units for now
         showScreen("screen-profile");
+        loadProfileIntoForm();
       }
     });
   });
