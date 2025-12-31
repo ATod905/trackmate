@@ -51,6 +51,21 @@ function customProgramStorageKeyForSeries(seriesName) {
   return `trackmateCustomProgram::${safe}`;
 }
 
+function canonicalSeriesName(name) {
+  // Canonical form used ONLY for matching/comparisons (not for display).
+  // Normalises whitespace and strips punctuation so that earlier builds that
+  // stored/registered programme names with different punctuation/underscores
+  // still match consistently for delete/dedup/cleanup.
+  return (name || "")
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/[_\-]+/g, " ")
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 
 function readJSON(key, fallback) {
   try {
@@ -1089,7 +1104,22 @@ function openProgrammeInBuilder(seriesName, dayNumber) {
 
   const program = loadCustomProgramForSeries(name);
   if (!program) {
-    alert("Could not load this programme for editing.");
+    // Allow editing of the *current draft* even if it has not been saved as a programme definition.
+    // This prevents confusing dead-end cards where Continue/Edit cannot load anything.
+    const draft = getCustomProgramDraft();
+    if (!draft || canonicalSeriesName(draft.name) !== canonicalSeriesName(name)) {
+      alert("Could not load this programme for editing.");
+      return;
+    }
+    setActiveSeriesName(name);
+    showScreen("screen-custom-builder");
+    const daySel = document.getElementById("custom-day-select");
+    if (daySel) {
+      const d = Math.min(7, Math.max(1, parseInt(dayNumber || 1, 10) || 1));
+      daySel.value = String(d);
+    }
+    syncProgramDraftUI();
+    renderCustomBuilderForCurrentDay();
     return;
   }
 
@@ -1111,21 +1141,68 @@ function openProgrammeInBuilder(seriesName, dayNumber) {
 
 function deleteCustomProgramme(seriesName) {
   const name = (seriesName || "").toString().trim();
-  if (!name) return;
+  if (!name) return false;
 
-  if (!confirm(`Delete "${name}"? This will remove the programme card and clear its saved progress.`)) return;
+  const canon = canonicalSeriesName(name);
 
-  // Remove programme definition
-  try { localStorage.removeItem(customProgramStorageKeyForSeries(name)); } catch (_) {}
+  if (!confirm(`Delete "${name}"? This will remove the programme card and clear its saved progress.`)) return false;
 
-  // Remove progress state for this series
-  try { localStorage.removeItem(workoutStateStorageKeyForSeries(name)); } catch (_) {}
+  // Remove programme definition (robust: match by stored payload name, not by key decoding)
+  try {
+    // Remove the primary definition key first (fast path)
+    localStorage.removeItem(customProgramStorageKeyForSeries(name));
+
+    // Defensive sweep: remove any custom programme keys whose *stored programme name*
+    // canonicalises to the same value. This handles earlier builds where key sanitisation
+    // (underscores / punctuation removal / casing) caused mismatches.
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      const isCurrent = k.startsWith("trackmateCustomProgram::");
+      const isLegacy1 = k.startsWith("trackmateCustomProgram:");
+      const isLegacy2 = k.startsWith("trackmateCustomProgramme::");
+      if (!isCurrent && !isLegacy1 && !isLegacy2) continue;
+      const payload = readJSON(k, null);
+      const payloadName = (payload && typeof payload === "object" ? (payload.name || "") : "").toString();
+      if (payloadName && canonicalSeriesName(payloadName) === canon) {
+        try { localStorage.removeItem(k); } catch (_) {}
+      }
+    }
+  } catch (_) {}
+
+  // If the current draft matches this programme, clear it so it does not re-appear
+  // as a "Draft programme" card after deletion.
+  try {
+    const draft = getCustomProgramDraft();
+    if (draft && canonicalSeriesName(draft.name) === canon) {
+      localStorage.removeItem(STORAGE_KEYS.customProgramDraft);
+      // Legacy draft keys (older builds)
+      try { localStorage.removeItem("trackmateCustomProgrammeDraft"); } catch (_) {}
+    }
+  } catch (_) {}
+
+  // Remove progress state for this series (robust: match workout state by stored seriesName)
+  try {
+    localStorage.removeItem(workoutStateStorageKeyForSeries(name));
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      if (!k.startsWith("trackmateWorkoutState::")) continue;
+      const payload = readJSON(k, null);
+      const payloadSeries = (payload && typeof payload === "object" ? (payload.seriesName || payload.series || "") : "").toString();
+      if (payloadSeries && canonicalSeriesName(payloadSeries) === canon) {
+        try { localStorage.removeItem(k); } catch (_) {}
+      }
+    }
+  } catch (_) {}
 
   // Remove from registry
   try {
     const reg = getSeriesRegistry();
-    if (reg && reg[name]) {
-      delete reg[name];
+    if (reg) {
+      Object.keys(reg).forEach((k) => {
+        if (canonicalSeriesName(k) === canon) delete reg[k];
+      });
       writeSeriesRegistry(reg);
     }
   } catch (_) {}
@@ -1133,14 +1210,19 @@ function deleteCustomProgramme(seriesName) {
   // Remove history entries for this series
   try {
     const log = getHistoryLog();
-    const cleaned = (log || []).filter((e) => ((e?.series || DEFAULT_SERIES_NAME).toString().trim() || DEFAULT_SERIES_NAME) !== name);
+    const cleaned = (log || []).filter((e) => {
+      const s = (e?.series || DEFAULT_SERIES_NAME).toString();
+      return canonicalSeriesName(s) !== canon;
+    });
     writeHistoryLog(cleaned);
   } catch (_) {}
 
   // If this programme was active, revert to default.
   try {
-    if (getActiveSeriesName() === name) setActiveSeriesName(DEFAULT_SERIES_NAME);
+    if (canonicalSeriesName(getActiveSeriesName()) === canon) setActiveSeriesName(DEFAULT_SERIES_NAME);
   } catch (_) {}
+
+  return true;
 }
 
 function getProgramWeekTemplateForSeries(seriesName) {
@@ -1416,7 +1498,10 @@ document.addEventListener("DOMContentLoaded", () => {
 function syncProgramDraftUI() {
   const draft = getCustomProgramDraft();
   const input = document.getElementById("create-program-name");
-  if (input && draft?.name) input.value = draft.name;
+  // Do not auto-populate the "Create Your Program" name field on the Select a Program
+  // screen. Users should always see an empty input when returning, to avoid reusing names.
+  // The draft name is still preserved for the builder title and saved programme logic.
+  if (input) { input.value = ""; input.setAttribute("value",""); requestAnimationFrame(() => { try { input.value=""; } catch(_){} }); }
   const label = document.getElementById("custom-builder-program-title");
   if (label) label.textContent = draft?.name || "—";
   const err = document.getElementById("create-program-error");
@@ -1948,6 +2033,10 @@ function saveCustomProgrammeAndUse() {
   // If the user is editing an existing programme, preserve their current progress.
   if (!existedBefore) resetProgrammeProgress();
 
+  // Ensure the programme appears immediately on the Programmes screen even if the
+  // user navigates back without a full reload (non-invasive UI sync).
+  try { renderProgramsScreen(); } catch (_) {}
+
   showCustomBuilderError("");
   return true;
 }
@@ -1955,6 +2044,8 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
   document.getElementById("btn-welcome-programs")?.addEventListener("click", () => {
     showScreen("screen-programs");
     syncProgramDraftUI();
+    // Defensive re-render: ensures Created Programmes are visible immediately when arriving from Home.
+    try { renderProgramsScreen(); } catch (_) {}
   });
   document.getElementById("btn-welcome-history")?.addEventListener("click", () => {
     openHistoryLanding();
@@ -2040,7 +2131,9 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
 
   // Start choice
   document.getElementById("btn-start-workouts")?.addEventListener("click", () => {
-    enterWorkoutFromEntryPoint();
+    // Logical flow: starting workouts should take the user to Select a Program
+    // where they can create a programme or choose an existing one.
+    showScreen("screen-programs");
   });
   document.getElementById("btn-go-1rm")?.addEventListener("click", () => showScreen("screen-1rm"));
 
@@ -2353,20 +2446,36 @@ function discoverCustomProgrammeNamesFromStorage() {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (!k) continue;
-      if (!k.startsWith("trackmateCustomProgram::")) continue;
+
+      // Current + legacy key prefixes
+      const isCurrent = k.startsWith("trackmateCustomProgram::");
+      const isLegacy1 = k.startsWith("trackmateCustomProgram:");
+      const isLegacy2 = k.startsWith("trackmateCustomProgramme::");
+      if (!isCurrent && !isLegacy1 && !isLegacy2) continue;
+
       const p = readJSON(k, null);
-      const name = (p && typeof p === "object" ? (p.name || "") : "").toString().trim();
-      if (name) names.add(name);
+      const nm = (p && typeof p === "object" ? (p.name || "") : "").toString().trim();
+      if (nm) names.add(nm);
     }
   } catch (_) {}
   return Array.from(names);
 }
+
 
 // -------------------------
 // Programmes screen: render created custom programmes list
 // -------------------------
 
 function renderProgramsScreen() {
+  // UX guardrail: the "Create Your Program" name field should always be blank
+  // when the user returns to the Select a Program screen.
+  try {
+    const nameInput = document.getElementById("create-program-name");
+    if (nameInput) { nameInput.value = ""; nameInput.setAttribute("value",""); requestAnimationFrame(() => { try { nameInput.value=""; } catch(_){} }); }
+    const err = document.getElementById("create-program-error");
+    if (err) err.hidden = true;
+  } catch (_) {}
+
   const block = document.getElementById("created-programs-block");
   const list = document.getElementById("created-programs-list");
   if (!block || !list) return;
@@ -2377,13 +2486,53 @@ function renderProgramsScreen() {
   // 1) Registry-sourced custom programmes
   const fromRegistry = Object.keys(reg || {}).filter((n) => reg[n] && reg[n].type === "custom");
 
+  // Note: "Created Programmes" should reflect *actual saved programme definitions*.
+  // Registry entries can become stale (e.g., if a programme definition key was removed in earlier tests).
+  // We therefore treat storage as the source of truth, and use the registry for metadata only.
+
   // 2) Storage-sourced custom programmes (covers older builds where registry.type was not set)
   const fromStorage = discoverCustomProgrammeNamesFromStorage();
 
-  // Union and sort newest first (prefer registry createdAt, else programme updatedAt, else 0)
-  const union = Array.from(new Set([...fromRegistry, ...fromStorage])).filter(Boolean);
+  // 3) Draft-sourced (covers cases where the user has built a programme but has not yet
+  // saved it into the per-series store for any reason). This is a safety net only.
+  const draft = getCustomProgramDraft();
+  const fromDraft = (draft && draft.name) ? [draft.name] : [];
 
-  // Backfill registry entries so future loads are consistent
+  // Union (registry is metadata only; storage is the source of truth).
+  // We only show cards for:
+  //  - saved programme definitions, or
+  //  - the current draft programme (single), as a safety net.
+  const unionRaw = Array.from(new Set([...fromStorage, ...fromRegistry, ...fromDraft])).filter(Boolean);
+
+  const draftCanon = (draft && draft.name) ? canonicalSeriesName(draft.name) : "";
+  const union = unionRaw.filter((nm) => {
+    try {
+      if (loadCustomProgramForSeries(nm)) return true;
+      return !!(draftCanon && canonicalSeriesName(nm) === draftCanon);
+    } catch (_) {
+      return false;
+    }
+  });
+
+    // Clean up stale registry entries (custom) that no longer have a saved programme definition
+  // and are not the current draft. This prevents "ghost" cards from re-appearing after deletion.
+  try {
+    // draftCanon already computed above
+    let changed = false;
+    Object.keys(reg || {}).forEach((k) => {
+      if (!(reg[k] && reg[k].type === "custom")) return;
+      const canonK = canonicalSeriesName(k);
+      if (draftCanon && canonK === draftCanon) return; // keep draft-visible entry
+      const hasDef = !!loadCustomProgramForSeries(k);
+      if (!hasDef) {
+        delete reg[k];
+        changed = true;
+      }
+    });
+    if (changed) writeSeriesRegistry(reg);
+  } catch (_) {}
+
+// Backfill registry entries so future loads are consistent
   let regChanged = false;
   union.forEach((name) => {
     const key = customProgramStorageKeyForSeries(name);
@@ -2421,6 +2570,8 @@ function renderProgramsScreen() {
   names.forEach((seriesName) => {
     const safeName = (seriesName || "").toString();
 
+    const hasSavedProgramme = !!loadCustomProgramForSeries(seriesName);
+
     const card = document.createElement("div");
     card.className = "choice-card";
     card.style.marginTop = "12px";
@@ -2431,7 +2582,9 @@ function renderProgramsScreen() {
 
     const sub = document.createElement("p");
     sub.className = "choice-text";
-    sub.textContent = "Your custom programme. Continue, edit, or delete it below.";
+    sub.textContent = hasSavedProgramme
+      ? "Your custom programme. Continue, edit, or delete it below."
+      : "Draft programme. Save it from the builder to enable full Continue behaviour.";
 
     const actions = document.createElement("div");
     actions.className = "program-card-actions";
@@ -2441,6 +2594,10 @@ function renderProgramsScreen() {
     btnContinue.className = "btn-teal-pill";
     btnContinue.textContent = "Continue";
     btnContinue.addEventListener("click", () => {
+      if (!hasSavedProgramme) {
+        openProgrammeInBuilder(seriesName, 1);
+        return;
+      }
       setActiveSeriesName(seriesName);
       enterWorkoutFromEntryPoint();
     });
@@ -2458,8 +2615,8 @@ function renderProgramsScreen() {
     btnDelete.className = "btn-danger-pill";
     btnDelete.textContent = "Delete";
     btnDelete.addEventListener("click", () => {
-      deleteCustomProgramme(seriesName);
-      renderProgramsScreen();
+      const didDelete = deleteCustomProgramme(seriesName);
+      if (didDelete) renderProgramsScreen();
     });
 
     actions.appendChild(btnContinue);
@@ -3960,23 +4117,6 @@ workoutDaySelect?.addEventListener("change", () => {
           }
         }
         showScreen("screen-programs");
-      } else if (action === "reset-week") {
-        // Prefer dropdown selector if present; otherwise fall back to prompt
-        const select = document.getElementById("settings-reset-week-select");
-        let weekNum = select ? parseInt(select.value, 10) : NaN;
-        if (!Number.isFinite(weekNum)) {
-          const weekStr = prompt("Which week would you like to reset? Enter a number 1–6:", String(currentWeek));
-          weekNum = parseInt(weekStr, 10);
-        }
-        if (!Number.isFinite(weekNum) || weekNum < 1 || weekNum > 6) return;
-
-        if (confirm(`Reset Week ${weekNum}? This will clear logged sets and completion status for that week only.`)) {
-          resetWeek(weekNum);
-          showScreen("screen-workout");
-          currentWeek = weekNum;
-          setActiveWeekTab(weekNum);
-          renderWorkoutDay(currentDayIndex);
-        }
       } else if (action === "reset-all") {
         if (confirm("Reset all TrackMate data? This cannot be undone.")) {
           Object.values(STORAGE_KEYS).forEach((k) => localStorage.removeItem(k));
