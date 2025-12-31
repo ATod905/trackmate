@@ -50,7 +50,7 @@
                 </button>
             </div>
 
-            <p class="welcome-version">Version 2.2.2</p>
+            <p class="welcome-version">Version 2.3.0</p>
         </main>
 
         <!-- PROFILE SCREEN - PAGE 2 -->
@@ -389,22 +389,22 @@
             </p>
 
             <section class="choice-card">
-                <h2 class="choice-title">Start Workouts</h2>
-                <p class="choice-text">
-                    We’ll use your profile to estimate your starting weights and begin Week 1.
-                </p>
-                <button id="btn-start-workouts" class="btn btn-teal btn-full">
-                    Start Workouts
-                </button>
-            </section>
-
-            <section class="choice-card">
                 <h2 class="choice-title">Do a 1 Rep Max Test (1RM)</h2>
                 <p class="choice-text">
                     Use a weight you can lift 3–6 times and we’ll estimate your 1-rep maxes.
                 </p>
                 <button id="btn-go-1rm" class="btn btn-outline-teal btn-full">
                     Run 1 Rep Max Test
+                </button>
+            </section>
+
+            <section class="choice-card">
+                <h2 class="choice-title">Start Workouts</h2>
+                <p class="choice-text">
+                    We’ll use your profile to estimate your starting weights and begin Week 1.
+                </p>
+                <button id="btn-start-workouts" class="btn btn-teal btn-full">
+                    Start Workouts
                 </button>
             </section>
         </main>
@@ -766,7 +766,6 @@
             <div class="settings-list">
                 <button type="button" class="settings-item" data-settings-action="edit-profile">Edit Profile</button>
                 <button type="button" class="settings-item" data-settings-action="edit-program">Edit Program</button>
-                <button type="button" class="settings-item" data-settings-action="equipment-key">Equipment Key</button>
                 <button type="button" class="settings-item" data-settings-action="units">Units (kg / lb)</button>
                 <div class="settings-item settings-row">
                     <label class="settings-row-label" for="settings-continue-mode">Continue to Workouts opens</label>
@@ -774,18 +773,6 @@
                         <option value="next">Next incomplete workout</option>
                         <option value="resume">Resume last viewed</option>
                     </select>
-                </div>
-                <div class="settings-item settings-item--danger settings-row">
-                    <label class="settings-row-label" for="settings-reset-week-select">Reset Week</label>
-                    <select id="settings-reset-week-select" class="settings-row-select" aria-label="Select week to reset">
-                        <option value="1">Week 1</option>
-                        <option value="2">Week 2</option>
-                        <option value="3">Week 3</option>
-                        <option value="4">Week 4</option>
-                        <option value="5">Week 5</option>
-                        <option value="6">Week 6</option>
-                    </select>
-                    <button type="button" class="settings-row-button" data-settings-action="reset-week">Reset</button>
                 </div>
                 <button type="button" class="settings-item settings-item--danger" data-settings-action="reset-all">Reset All Data</button>
             </div>
