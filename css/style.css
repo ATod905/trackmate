@@ -117,6 +117,35 @@ body {
   color: #ffffff;
 }
 
+
+/* Teal pill (match danger pill shape) */
+.btn-teal-pill{
+  border-radius: 999px;
+  border: 1px solid var(--tm-teal);
+  background: var(--tm-teal);
+  color: #ffffff;
+}
+
+.btn-teal-pill:focus-visible,
+.btn-teal-pill:active{
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(31, 154, 160, 0.18);
+}
+
+/* Outline teal pill (match Select a New Program button scheme, but pill shape) */
+.btn-outline-teal-pill{
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid var(--tm-teal);
+  color: var(--tm-teal);
+}
+
+.btn-outline-teal-pill:focus-visible,
+.btn-outline-teal-pill:active{
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(31, 154, 160, 0.18);
+}
+
 /* Danger pill (match Reset Day / destructive actions) */
 .btn-danger-pill{
   border-radius: 999px;
@@ -247,6 +276,13 @@ body {
   box-shadow: 0 0 0 2px rgba(31, 154, 160, 0.12);
 }
 
+/* Small inline errors (used in phased features like Program Builder) */
+.tm-error {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #a51d2d;
+}
+
 /* Inline field (for BMI display) */
 
 .field-inline {
@@ -326,6 +362,66 @@ body {
 
 .btn-full {
   width: 100%;
+}
+
+/* Program selection: custom programme cards (Continue / Edit / Delete) */
+.program-card-actions{
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.program-card-actions .btn-teal-pill,
+.program-card-actions .btn-outline-teal-pill,
+.program-card-actions .btn-danger-pill{
+  flex: 1;
+  padding: 12px 10px;
+  font-size: 14px;
+}
+
+/* Program selection: custom programme cards (Continue / Edit / Delete) */
+.program-card-actions{
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.program-card-actions .btn-teal-pill,
+.program-card-actions .btn-outline-teal-pill,
+.program-card-actions .btn-danger-pill{
+  flex: 1;
+  padding: 12px 10px;
+  font-size: 14px;
+}
+
+/* Program selection: custom programme cards (Continue / Edit / Delete) */
+.program-card-actions{
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.program-card-actions .btn-teal-pill,
+.program-card-actions .btn-outline-teal-pill,
+.program-card-actions .btn-danger-pill{
+  flex: 1;
+  padding: 12px 10px;
+  font-size: 14px;
+}
+
+/* Program selection: custom programme cards (Continue / Edit / Delete) */
+.program-card-actions{
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.program-card-actions .btn-teal-pill,
+.program-card-actions .btn-outline-teal-pill,
+.program-card-actions .btn-danger-pill{
+  flex: 1;
+  padding: 12px 10px;
+  font-size: 14px;
 }
 
 /* 1RM TEST SCREEN */
@@ -563,6 +659,30 @@ body {
 }
 
 .workout-reset-day:active{
+  transform: translateY(1px);
+}
+
+/* Edit Program (custom series only) */
+.workout-edit-program{
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-radius: 999px;
+
+  /* White pill with teal outline + teal text (non-destructive) */
+  background: #ffffff;
+  border: 2px solid #2aa6a3;
+  color: #2aa6a3;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.workout-edit-program:hover{
+  background: #2aa6a3;
+  color: #ffffff;
+}
+
+.workout-edit-program:active{
   transform: translateY(1px);
 }
 
@@ -1033,6 +1153,41 @@ body {
   color: var(--tm-muted);
 }
 
+/* Exercise Edit: Sets selector (Sklar) */
+.exercise-edit-sets-wrap{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin: 6px 0 14px;
+}
+
+.exercise-edit-sets-label{
+  font-size: 14px;
+  color: var(--tm-muted);
+}
+
+.exercise-edit-sets-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+
+.exercise-edit-sets-pill{
+  border-radius: 999px;
+  border: 1px solid var(--tm-border);
+  background: #ffffff;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--tm-muted);
+  cursor:pointer;
+}
+
+.exercise-edit-sets-pill--active{
+  background: var(--tm-teal);
+  border-color: var(--tm-teal);
+  color:#ffffff;
+}
+
 
 /* Workout menu divider + Settings */
 .workout-menu-divider{
@@ -1221,4 +1376,239 @@ body {
   font-size: 13px;
   color: var(--tm-muted);
   line-height: 1.35;
+}
+
+
+/* -------------------------
+   History / My Workouts
+------------------------- */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 14px 16px 24px;
+}
+.history-card {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 14px;
+  padding: 12px 12px;
+}
+.history-title {
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 6px;
+}
+.history-meta {
+  margin: 0 0 10px;
+  opacity: 0.85;
+}
+.history-actions {
+  display: flex;
+  gap: 10px;
+}
+.history-actions .btn {
+  flex: 1;
+}
+
+/* v2.1.0-final: ensure Past Workouts action buttons use matching font size */
+.history-actions .btn-teal-pill,
+.history-actions .btn-danger-pill{
+  font-size: 13px;
+}
+
+/* Smaller outline button for workout footer reuse */
+.workout-reuse-week {
+  font-weight: 600;
+}
+
+
+/* Past Workouts: series navigation */
+.history-series-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin:8px 0 12px 0;
+}
+.history-series-title{
+  font-weight:700;
+  color:#0f172a;
+}
+
+/* Home screen hamburger (fixed so it never affects layout) */
+.home-hamburger{
+  position: fixed;
+  /* Slightly lower and further from the right edge */
+  top: 28px;
+  right: 28px;
+
+  /* Reduce icon size by ~40% */
+  width: 17px;
+  height: 13px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+
+  /* Ensure the slide-out menu sits above this button when open */
+  z-index: 30;
+}
+
+
+.home-hamburger span{
+  display: block;
+  width: 100%;
+  height: 2px;
+  background-color: #0f172a;
+  border-radius: 2px;
+}
+
+/* When menu is open, prevent the home hamburger from sitting above / intercepting clicks */
+body.tm-menu-open .home-hamburger{
+  pointer-events: none;
+}
+
+
+
+/* Compact buttons (My Workouts actions) */
+.btn-small{
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.history-meta-line{
+  display:block;
+  line-height: 1.25;
+}
+
+/* -------------------------
+   Custom programme builder (Phase 2)
+   ------------------------- */
+
+.custom-builder-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  width:100%;
+}
+
+.select--pill{
+  border-radius:999px !important;
+  padding: 12px 16px !important;
+  min-width: 140px;
+}
+
+.btn-pill{
+  border-radius:999px;
+  padding: 12px 18px;
+}
+
+/* Custom builder: slightly tighter pill controls (only on builder screen) */
+#screen-custom-builder .select--pill{
+  padding: 9px 14px !important;
+  font-size: 14px;
+}
+
+#screen-custom-builder #btn-custom-add-exercise.btn-pill{
+  padding: 9px 16px;
+  font-size: 14px;
+}
+
+/* Custom builder: match Equipment Key styling used elsewhere */
+#screen-custom-builder #custom-equipment-key{
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 12px;
+  border: 1px solid var(--tm-border);
+  padding: 10px 12px;
+  font-size: 15px;
+  background: #fff;
+}
+
+/* Custom builder: consistent spacing between cards */
+.custom-builder-list .exercise-card{
+  margin-bottom: 18px;
+}
+.custom-builder-list .exercise-card:last-child{
+  margin-bottom: 0;
+}
+
+/* Custom builder: set-count selector */
+.custom-set-count{
+  border: 1px solid var(--tm-border);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 13px;
+  background: #fff;
+}
+
+.field select {
+  border-radius: 12px;
+  border: 1px solid var(--tm-border);
+  padding: 10px 12px;
+  font-size: 15px;
+  background: #fff;
+}
+
+.custom-builder-list .custom-ex-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 12px;
+}
+
+.custom-builder-list .custom-ex-row .field {
+  flex: 1;
+  margin: 0;
+}
+
+
+/* v2.2.0: Programme name + day focus block (above day selector) */
+/* Ensure Sklar title + focus line are LEFT-aligned (not centred) */
+.workout-program-block{
+  width: 100%;
+  max-width: 430px;
+  margin: 10px auto 0;
+  padding: 10px 16px 6px;
+  text-align: left;
+  align-self: stretch; /* override centred screen alignment */
+}
+
+.workout-program-name{
+  font-weight: 800;
+  font-size: 16px;
+  color: #111;
+  line-height: 1.2;
+  margin: 0 0 4px;
+  text-align: left;
+}
+
+.workout-program-block .workout-goal{
+  font-size: 13px;
+  color: #333;
+  line-height: 1.25;
+  margin: 0;
+  text-align: left;
+}
+
+/* Program selection: custom programme cards (Continue / Edit / Delete) */
+.program-card-actions{
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.program-card-actions .btn-teal-pill,
+.program-card-actions .btn-outline-teal-pill,
+.program-card-actions .btn-danger-pill{
+  flex: 1;
+  padding: 12px 10px;
+  font-size: 14px;
 }
