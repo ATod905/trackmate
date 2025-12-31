@@ -9,6 +9,11 @@ function showScreen(id) {
   const target = document.getElementById(id);
   if (target) target.classList.add("screen--active");
 
+  // Keep the welcome message in sync with the saved profile.
+  if (id === "screen-welcome") {
+    try { syncWelcomeTitle(); } catch (_) {}
+  }
+
   // Screen-specific UI sync (keep logic minimal to avoid regressions)
   if (id === "screen-workout") {
     try { syncWorkoutDaySelectOptionsForSeries(getActiveSeriesName()); } catch (_) {}
@@ -20,6 +25,51 @@ function showScreen(id) {
   if (id === "screen-custom-builder") {
     try { syncProgramDraftUI(); renderCustomBuilderForCurrentDay(); } catch (_) {}
   }
+}
+
+// -------------------------
+// Welcome screen personalisation
+// -------------------------
+function getProfileFirstName() {
+  const profile = readJSON(STORAGE_KEYS.profile, null);
+  const full = (profile && profile.name) ? String(profile.name).trim() : "";
+  if (!full) return "";
+  // Use the first token as the first name/nickname.
+  return full.split(/\s+/)[0].trim();
+}
+
+function syncWelcomeTitle() {
+  const el = document.getElementById("welcomeTitle");
+  if (!el) return;
+  const first = getProfileFirstName();
+  el.textContent = first ? `Welcome back, ${first}` : "Welcome!";
+}
+
+// -------------------------
+// Logo-as-home shortcut
+// -------------------------
+function bindHomeLogoShortcuts() {
+  const logos = document.querySelectorAll('[data-home-logo="true"]');
+  logos.forEach((logo) => {
+    if (!logo || logo.dataset.homeLogoBound === "1") return;
+    logo.dataset.homeLogoBound = "1";
+    logo.style.cursor = "pointer";
+    logo.setAttribute("role", "button");
+    logo.setAttribute("tabindex", "0");
+
+    const goHome = () => {
+      try { if (typeof window.closeWorkoutMenu === "function") window.closeWorkoutMenu(); } catch (_) {}
+      showScreen("screen-welcome");
+    };
+
+    logo.addEventListener("click", goHome);
+    logo.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        goHome();
+      }
+    });
+  });
 }
 
 // -------------------------
@@ -1351,6 +1401,9 @@ function getExerciseState(state, week, dayIndex, exIndex) {
 // DOMContentLoaded - main
 // -------------------------
 document.addEventListener("DOMContentLoaded", () => {
+  // Make all TrackMate logos act as a Home shortcut.
+  try { bindHomeLogoShortcuts(); } catch (_) {}
+
   // Ensure the active series exists in the registry (used for ordering in My Past Workouts)
   ensureSeriesRegistryEntry(getActiveSeriesName());
 
@@ -2069,6 +2122,9 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
       if (historyBtn) historyBtn.style.display = "none";
       if (continueBtn) continueBtn.textContent = "Continue to Workouts";
     }
+
+    // Update the welcome heading text.
+    try { syncWelcomeTitle(); } catch (_) {}
   }
   updateWelcomeForProfile();
 
@@ -2079,7 +2135,17 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
   // custom programme when they expect to be in Sklar.
   document.getElementById("btn-program-sklar")?.addEventListener("click", () => {
     setActiveSeriesName(DEFAULT_SERIES_NAME);
-    showScreen("screen-start-choice");
+    // From Select a Program, users expect to enter the programme immediately.
+    // Route directly to Week 1 • Day 1 of the Sklar series.
+    try { syncWorkoutDaySelectOptionsForSeries(DEFAULT_SERIES_NAME); } catch (_) {}
+    currentWeek = 1;
+    currentDayIndex = 0;
+    setActiveWeekTab(1);
+    const sel = document.getElementById("workout-day-select");
+    if (sel) sel.value = "0";
+    closeWorkoutMenu();
+    showScreen("screen-workout");
+    renderWorkoutDay(0);
   });
 
   // Create your own programme (Phase 1: name capture + start building placeholder)
