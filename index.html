@@ -50,7 +50,7 @@
                 </button>
             </div>
 
-            <p class="welcome-version">Version 2.3.2</p>
+			<p class="welcome-version">Version 2.5.9</p>
         </main>
 
         <!-- PROFILE SCREEN - PAGE 2 -->
@@ -690,6 +690,10 @@
                         <span class="summary-value" id="summary-reps">0</span>
                     </div>
                     <div class="workout-summary-item">
+                        <span class="summary-label">Calories (est.)</span>
+                        <span class="summary-value" id="summary-calories">0</span>
+                    </div>
+                    <div class="workout-summary-item">
                         <span class="summary-label">Progress</span>
                         <span class="summary-value" id="summary-progress">0/0</span>
                     </div>
@@ -864,6 +868,36 @@
     </div>
   </div>
 
+  <!-- Cardio Set Edit modal -->
+  <div id="cardio-edit-overlay" class="set-edit-overlay" aria-hidden="true">
+    <div class="set-edit-modal">
+      <h2 class="set-edit-title">Edit Cardio</h2>
+
+      <p id="cardio-edit-exercise" class="set-edit-exercise"></p>
+      <p id="cardio-edit-setlabel" class="set-edit-setlabel"></p>
+
+      <div class="set-edit-row">
+        <label for="cardio-edit-time" class="set-edit-label">Time (minutes)</label>
+        <input id="cardio-edit-time" class="set-edit-input" inputmode="decimal" placeholder="e.g. 20" />
+      </div>
+
+      <div class="set-edit-row">
+        <label for="cardio-edit-incline" class="set-edit-label">Incline / Elevation</label>
+        <input id="cardio-edit-incline" class="set-edit-input" inputmode="decimal" placeholder="e.g. 8" />
+      </div>
+
+      <div class="set-edit-row">
+        <label for="cardio-edit-intensity" class="set-edit-label">Intensity</label>
+        <input id="cardio-edit-intensity" class="set-edit-input" placeholder="e.g. Level 6 / RPE 7" />
+      </div>
+
+      <div class="set-edit-actions">
+        <button type="button" id="cardio-edit-cancel" class="btn btn-outline-teal">Cancel</button>
+        <button type="button" id="cardio-edit-save" class="btn btn-teal">Save</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Exercise Info modal -->
   <div id="exercise-info-overlay" class="set-edit-overlay">
     <div class="set-edit-modal">
@@ -883,7 +917,8 @@
 
   <!-- Exercise Edit modal -->
   <div id="exercise-edit-overlay" class="set-edit-overlay">
-    <div class="set-edit-modal">
+    <div class="set-edit-modal set-edit-modal--exercise-edit">
+      <button type="button" id="exercise-edit-cancel" class="exercise-edit-cancel" aria-label="Cancel">&times;</button>
       <h2 class="set-edit-title">Edit Exercise</h2>
 
       <!-- Current exercise name -->
