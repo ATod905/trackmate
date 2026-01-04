@@ -520,6 +520,7 @@ body {
   margin: 0 auto 8px;
   padding: 12px 16px 0;
   position: relative;
+  z-index: 0; /* enables ::before behind text without escaping stacking context */
   display: flex;
   justify-content: center;   /* centre logo */
   align-items: center;
@@ -607,6 +608,68 @@ body {
   background: var(--tm-teal);
 }
 
+
+
+
+
+/* v2.7.1 – Week selector active pill (compact, low-profile, no layout shift)
+   - Applies wherever .week-tab--active is used (Sklar + Custom)
+   - Uses an inset-stroked, pale teal "tag" behind the label (no padding/size change)
+*/
+.week-tab--active{
+  font-weight: 600;
+  color: var(--tm-teal);
+}
+
+/* Pill background rendered via an absolutely-positioned pseudo-element
+   so the selector row height/spacing does not change. */
+.week-tab--active::before{
+  content: "";
+  position: absolute;
+  z-index: -1;
+  /* Extend slightly past text so it never touches the “W” or the number */
+  left: -4px;
+  right: -4px;
+
+  /* Keep low-profile (label-style) */
+  top: 2px;
+  bottom: 2px;
+
+  border-radius: 999px;
+  background: rgba(31, 154, 160, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(31, 154, 160, 0.35);
+}
+
+/* Remove any underline/indicator bar previously used to mark the active week */
+.week-tab--active::after{
+  content: none !important;
+  display: none !important;
+}
+
+/* v2.6.0 – Week selector mobile tightening (Weeks 1–6) */
+@media (max-width: 480px) {
+  .week-tabs {
+    max-width: 100%;
+    gap: 4px;               /* tighten spacing between weeks */
+    padding: 0 2px 2px;     /* reduce horizontal padding */
+    overflow-x: hidden;     /* no horizontal scrolling */
+    justify-content: space-between;
+  }
+
+  .week-tab {
+    font-size: 11px;        /* mobile-only font reduction */
+    padding: 6px 0;         /* keep tap height usable; no extra horizontal padding */
+    min-width: 0;           /* allow flex children to shrink */
+    flex: 1 1 0;            /* distribute evenly so all 6 fit */
+    text-align: center;
+  }
+
+  /* Ensure active week does not enlarge spacing/padding vs inactive on mobile */
+  .week-tab--active {
+    padding: 6px 0;
+    min-width: 0;
+  }
+}
 /* Day pill + Edit */
 
 .workout-day-header {
@@ -758,18 +821,43 @@ body {
   box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
 }
 
-/* Day completion state: subtle grey overlay on all cards for that day */
-.workout-day--completed .exercise-card{
-  position: relative;
+/* Exercise completion state (UI-only): grey-out when ALL sets are logged */
+.exercise-card--completed {
+  background: #f3f4f6;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
 }
 
-.workout-day--completed .exercise-card::after{
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 18px;
-  background: rgba(0,0,0,0.06);
-  pointer-events: none;
+.exercise-card--completed .input-pill {
+  background: #e5e7eb;
+}
+
+.exercise-card--completed .exercise-title {
+  color: #0f172a;
+}
+
+/* Day completion state: teal/light teal background on ALL cards for that day (UI-only)
+   Note: this must OVERRIDE per-exercise completion grey-out once the day is completed. */
+.workout-day--completed .exercise-card {
+  position: relative;
+  background: #ecfdf5; /* very light teal/green (consistent with Completed pill family) */
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+}
+
+/* Ensure any in-progress grey styling is overridden when the day is completed */
+.workout-day--completed .exercise-card--completed {
+  background: #ecfdf5;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+}
+
+/* Optional: keep input pills visually consistent on the completed-day background */
+.workout-day--completed .exercise-card .input-pill,
+.workout-day--completed .exercise-card--completed .input-pill {
+  background: rgba(0, 204, 204, 0.08);
+}
+
+/* Remove the previous grey overlay that could read as "disabled" */
+.workout-day--completed .exercise-card::after {
+  content: none;
 }
 
 /* Header: Info/Edit above title */
@@ -840,6 +928,29 @@ body {
   font-size: 13px;
   color: var(--tm-muted);
   cursor: pointer;
+}
+
+/* Small icon-only action buttons (e.g., delete exercise) */
+.exercise-header-links .icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  margin-left: 2px;
+  border-radius: 6px;
+  color: var(--tm-muted);
+}
+
+.exercise-header-links .icon-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+}
+
+.exercise-header-links .icon-btn:active {
+  transform: scale(0.98);
 }
 
 .exercise-title {
@@ -922,6 +1033,7 @@ body {
 .workout-summary-row {
   display: flex;
   justify-content: space-between;
+  gap: 10px;
   margin-bottom: 6px;
 }
 
@@ -929,6 +1041,13 @@ body {
   display: flex;
   flex-direction: column;
   font-size: 13px;
+  flex: 1;
+  min-width: 0;
+}
+
+.workout-summary-item .summary-label,
+.workout-summary-item .summary-value {
+  white-space: nowrap;
 }
 
 .summary-label {
@@ -1060,6 +1179,64 @@ body {
   border-radius: 18px 18px 0 0;
   padding: 16px 18px 20px;
   box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.25);
+}
+
+/* -------------------------
+   Cardio set editor (uses same overlay)
+-------------------------- */
+.set-edit-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.set-edit-label {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.set-edit-input {
+  width: 100%;
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(0,0,0,0.18);
+  color: #fff;
+  font-size: 16px;
+}
+
+.set-edit-setlabel {
+  margin-top: -4px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* Exercise Edit: small, unobtrusive top-right cancel so accidental "+" adds can be discarded */
+.set-edit-modal--exercise-edit {
+  position: relative;
+}
+
+.exercise-edit-cancel {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(122, 134, 147, 0.35);
+  background: rgba(122, 134, 147, 0.10);
+  color: var(--tm-muted);
+  font-size: 20px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.exercise-edit-cancel:active {
+  transform: scale(0.98);
 }
 
 .set-edit-title {
@@ -1518,7 +1695,27 @@ body.tm-menu-open .home-hamburger{
 
 #screen-custom-builder #btn-custom-add-exercise.btn-pill{
   padding: 9px 16px;
-  font-size: 14px;
+  font-size: 13px; /* smaller text while keeping a generous hitbox */
+}
+
+/* -------------------------
+   Sklar: Add extra exercise
+   ------------------------- */
+.add-exercise-btn {
+  display: block;
+  width: 100%;
+  margin: 12px 0 0;
+  padding: 10px 0;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 15px; /* smaller text/icon while preserving tappable padding */
+  line-height: 1;
+}
+
+.add-exercise-btn:active {
+  transform: scale(0.99);
 }
 
 /* Custom builder: match Equipment Key styling used elsewhere */
