@@ -28,6 +28,47 @@ function showScreen(id) {
 }
 
 // -------------------------
+// Cross-screen recalculation hooks
+// -------------------------
+// When 1RM values change, refresh UI that derives suggested weights.
+// This is UI-only: it must not wipe logged data or change completion logic.
+function handleOneRMUpdatedUIRefresh() {
+  try {
+    const activeId = document.querySelector(".screen.screen--active")?.id || "";
+    if (activeId === "screen-workout" && typeof window.renderWorkoutDay === "function") {
+      // Re-render current day to recompute suggestion pills from the latest 1RMs.
+      window.renderWorkoutDay(currentDayIndex);
+      return;
+    }
+    if (activeId === "screen-programs" && typeof window.renderProgramsScreen === "function") {
+      window.renderProgramsScreen();
+      return;
+    }
+  } catch (_) {}
+}
+
+// Listen for in-app events (same tab) as well as storage events (other tabs)
+document.addEventListener("trackmate:oneRMUpdated", handleOneRMUpdatedUIRefresh);
+
+// When a custom programme definition is updated (e.g., Week 1 edits mirrored from
+// the Workout screen), refresh any screens that render the builder/program lists.
+function handleProgramDefinitionUpdatedUIRefresh(e) {
+  try {
+    const activeId = document.querySelector(".screen.screen--active")?.id || "";
+    if (activeId === "screen-programs" && typeof window.renderProgramsScreen === "function") {
+      window.renderProgramsScreen();
+      return;
+    }
+    if (activeId === "screen-custom-builder" && typeof window.renderCustomBuilderForCurrentDay === "function") {
+      window.renderCustomBuilderForCurrentDay();
+      return;
+    }
+  } catch (_) {}
+}
+document.addEventListener("trackmate:programDefinitionUpdated", handleProgramDefinitionUpdatedUIRefresh);
+
+
+// -------------------------
 // Welcome screen personalisation
 // -------------------------
 function getProfileFirstName() {
@@ -86,6 +127,13 @@ const STORAGE_KEYS = {
   seriesRegistry: "trackmateSeriesRegistry",
   customProgramDraft: "trackmateCustomProgramDraft"
 };
+
+// React to 1RM changes made in another tab/window.
+window.addEventListener("storage", (e) => {
+  try {
+    if (e && e.key === STORAGE_KEYS.oneRM) handleOneRMUpdatedUIRefresh();
+  } catch (_) {}
+});
 // Series-scoped storage helpers
 function sanitizeStorageKeyPart(part) {
   return (part || "").toString().trim().replace(/[^a-z0-9_\-]+/gi, "_").slice(0, 80) || "default";
@@ -135,6 +183,21 @@ function writeJSON(key, value) {
     console.warn(`Could not save ${key}`, e);
     return false;
   }
+}
+
+// -------------------------
+// Tiny inline icons (no external dependencies)
+// -------------------------
+function getTrashIconSVG() {
+  // Simple trash can outline (stroke uses currentColor)
+  return `
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M6 6l1 16a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M10 11v7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M14 11v7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>`;
 }
 
 // -------------------------
@@ -371,6 +434,46 @@ const exerciseLibrary = {
     equipment: "DB",
     alternatives: ["Side Plank Reach-Throughs", "Cable Woodchoppers or Weighted Decline Sit-Ups"]
   }
+  ,
+  // -------------------------
+  // Cardio catalogue (separate exercise type)
+  // -------------------------
+  "Treadmill": {
+    category: "Cardio",
+    equipment: "MC",
+    type: "cardio",
+    alternatives: ["Bike (Stationary)", "Rowing Machine", "Stair Climber"]
+  },
+  "Bike (Stationary)": {
+    category: "Cardio",
+    equipment: "MC",
+    type: "cardio",
+    alternatives: ["Treadmill", "Rowing Machine", "Stair Climber"]
+  },
+  "Rowing Machine": {
+    category: "Cardio",
+    equipment: "MC",
+    type: "cardio",
+    alternatives: ["Treadmill", "Bike (Stationary)", "Ski Erg"]
+  },
+  "Stair Climber": {
+    category: "Cardio",
+    equipment: "MC",
+    type: "cardio",
+    alternatives: ["Treadmill", "Bike (Stationary)", "Incline Walk"]
+  },
+  "Ski Erg": {
+    category: "Cardio",
+    equipment: "MC",
+    type: "cardio",
+    alternatives: ["Rowing Machine", "Bike (Stationary)", "Treadmill"]
+  },
+  "Incline Walk": {
+    category: "Cardio",
+    equipment: "MC",
+    type: "cardio",
+    alternatives: ["Treadmill", "Stair Climber"]
+  }
 };
 
 const exerciseCategories = {
@@ -379,8 +482,14 @@ const exerciseCategories = {
   Shoulders: ["Rear Delt Cable Fly (Face Pull Style)", "Rear Delt Bent-Over Flys", "Side-Angle DB Lateral Raise", "Seated DB Shoulder Press or Military Press", "Front DB Raise or Barbell Raise"],
   Legs: ["Front Squats (BB or Goblet)", "Leg Press", "Romanian Deadlift (BB or DB)", "Walking Lunges (DB)", "Leg Extensions (Slow Tempo)"],
   Arms: ["DB Hammer Curl + EZ-Bar Curl (Superset)", "Bicep Spider Curls + Rope Hammer Curls (Superset)", "Triceps Rope Pushdowns + Dips (Superset)", "Overhead Triceps Extensions (Rope or DB)"],
-  Core: ["Side Plank Reach-Throughs", "Russian Twists (Weighted)", "Cable Woodchoppers or Weighted Decline Sit-Ups", "Knee Raises + In-and-Out Crunches"]
+  Core: ["Side Plank Reach-Throughs", "Russian Twists (Weighted)", "Cable Woodchoppers or Weighted Decline Sit-Ups", "Knee Raises + In-and-Out Crunches"],
+  Cardio: ["Treadmill", "Bike (Stationary)", "Rowing Machine", "Stair Climber", "Ski Erg", "Incline Walk"]
 };
+
+function isCardioExercise(exerciseName) {
+  const meta = exerciseLibrary?.[exerciseName] || {};
+  return (meta.type === "cardio") || (meta.category === "Cardio");
+}
 // -------------------------
 // Expanded exercise catalogue (auto-generated from your master list)
 // -------------------------
@@ -1301,9 +1410,55 @@ function getTotalPlannedWorkoutsForSeries(seriesName) {
   return WEEKS_IN_SERIES * days;
 }
 
+// -------------------------
+// Custom programme week independence (Weeks 1–6)
+// -------------------------
+// Custom programmes propagate their Week 1 template forward by default.
+// Once a user edits a later week, that week becomes independent via a
+// per-week template snapshot stored in workout state. Completed weeks are
+// snapshotted when a day is marked completed so they are never mutated by
+// later programme definition changes.
+
+function getCustomWeekOverride(state, weekNumber) {
+  try {
+    const wKey = String(weekNumber);
+    const o = state?.customWeekOverrides?.[wKey];
+    return Array.isArray(o) ? o : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function ensureCustomWeekOverride(seriesName, weekNumber) {
+  const series = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
+  const st = getWorkoutState(series);
+  if (!st.customWeekOverrides || typeof st.customWeekOverrides !== "object") st.customWeekOverrides = {};
+  const wKey = String(weekNumber);
+  if (!Array.isArray(st.customWeekOverrides[wKey])) {
+    // Snapshot from the *current* base template definition for this series.
+    const base = getProgramWeekTemplateForSeries(series);
+    st.customWeekOverrides[wKey] = deepClone(base);
+    saveWorkoutState(st, series);
+  }
+  return st.customWeekOverrides[wKey];
+}
+
 function getProgramForWeek(weekNumber, seriesName) {
-  // TrackMate uses a 6-week run; custom programmes repeat the Week 1 template each week.
-  const template = getProgramWeekTemplateForSeries(seriesName);
+  // TrackMate uses a 6-week run.
+  // - Built-in programme: the template repeats unchanged.
+  // - Custom programmes: Week 1 propagates forward by default, but once a week is edited,
+  //   that specific week becomes independent via a stored snapshot.
+  const series = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
+  const template = getProgramWeekTemplateForSeries(series);
+
+  if (series === DEFAULT_SERIES_NAME) return deepClone(template);
+
+  // Custom: if we have a per-week override, use it.
+  const st = getWorkoutState(series);
+  const o = getCustomWeekOverride(st, weekNumber);
+  if (o) return deepClone(o);
+
+  // Default: no override -> Week 1 template propagates forward.
   return deepClone(template);
 }
 
@@ -1341,11 +1496,85 @@ function saveWorkoutState(state, seriesName) {
   writeJSON(key, state);
 }
 
+// -------------------------
+// Exercise-name override persistence (critical for edit sync)
+// -------------------------
+// Programme templates are deep-cloned on render.
+// If a user edits an exercise name inside a workout, we must persist that
+// change in state; otherwise it will appear to revert and will not remain
+// consistent across screens (e.g., builder/programme views).
+
+function setExerciseNameOverride(seriesName, week, dayIndex, exIndex, newName) {
+  try {
+    const series = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
+    const st = getWorkoutState(series);
+    const ds = ensureDayState(st, week, dayIndex);
+    if (!ds.exerciseNameOverrides || typeof ds.exerciseNameOverrides !== "object") ds.exerciseNameOverrides = {};
+    ds.exerciseNameOverrides[String(exIndex)] = (newName || "").toString();
+    saveWorkoutState(st, series);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function getExerciseNameOverride(dayState, exIndex) {
+  try {
+    const o = dayState?.exerciseNameOverrides;
+    if (!o || typeof o !== "object") return "";
+    const v = o[String(exIndex)];
+    return v ? v.toString() : "";
+  } catch (_) {
+    return "";
+  }
+}
+
+// For custom programmes only: if an edit occurs in Week 1, mirror it into the
+// saved programme definition so the "sheet" (builder) reflects the update.
+// Later-week edits remain week-scoped and must not back-propagate into Week 1.
+function mirrorWeek1ExerciseNameToCustomDefinition(seriesName, dayIndex, exIndex, newName) {
+  try {
+    const series = (seriesName || "").toString().trim();
+    if (!series || series === DEFAULT_SERIES_NAME) return false;
+
+    const program = loadCustomProgramForSeries(series);
+    if (!program || !program.days) return false;
+
+    const dayKey = String(dayIndex + 1); // builder uses 1–7
+    const arr = Array.isArray(program.days?.[dayKey]) ? program.days[dayKey] : [];
+    if (!(exIndex >= 0 && exIndex < arr.length)) return false;
+    arr[exIndex].name = (newName || "").toString();
+    program.days[dayKey] = arr;
+
+    // Persist programme definition (offline-safe localStorage)
+    writeJSON(customProgramStorageKeyForSeries(series), program);
+
+    // If the user currently has the same programme open in the builder draft, sync it too.
+    const draft = getCustomProgramDraft();
+    if (draft && draft.name && canonicalSeriesName(draft.name) === canonicalSeriesName(series)) {
+      const dArr = Array.isArray(draft.days?.[dayKey]) ? draft.days[dayKey] : [];
+      if (exIndex >= 0 && exIndex < dArr.length) {
+        dArr[exIndex].name = (newName || "").toString();
+        draft.days[dayKey] = dArr;
+        writeCustomProgramDraft(draft);
+      }
+    }
+
+    // Notify any open screens to re-render.
+    document.dispatchEvent(new CustomEvent("trackmate:programDefinitionUpdated", { detail: { series } }));
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 function ensureDayState(state, week, dayIndex) {
   const wKey = String(week);
   const dKey = String(dayIndex);
   if (!state.weeks[wKey]) state.weeks[wKey] = {};
-  if (!state.weeks[wKey][dKey]) state.weeks[wKey][dKey] = { completed: false, exercises: {} };
+  if (!state.weeks[wKey][dKey]) state.weeks[wKey][dKey] = { completed: false, exercises: {}, extraExercises: [] };
+  // Back-compat for older saves
+  if (!Array.isArray(state.weeks[wKey][dKey].extraExercises)) state.weeks[wKey][dKey].extraExercises = [];
   return state.weeks[wKey][dKey];
 }
 
@@ -1701,8 +1930,26 @@ function renderCustomBuilderForCurrentDay() {
     editBtn.textContent = "Edit";
     editBtn.addEventListener("click", () => openCustomExercisePicker({ mode: "replace", dayKey, index: exIndex }));
 
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "icon-btn";
+    delBtn.setAttribute("aria-label", "Delete exercise");
+    delBtn.innerHTML = getTrashIconSVG();
+    delBtn.addEventListener("click", () => {
+      const ok = window.confirm("Are you sure you want to delete this exercise? This will remove it from this day only.");
+      if (!ok) return;
+      const d = ensureCustomDraft();
+      const arr = Array.isArray(d.days?.[dayKey]) ? d.days[dayKey] : [];
+      if (!arr[exIndex]) return;
+      arr.splice(exIndex, 1);
+      d.days[dayKey] = arr;
+      writeCustomProgramDraft(d);
+      renderCustomBuilderForCurrentDay();
+    });
+
     links.appendChild(infoBtn);
     links.appendChild(editBtn);
+    links.appendChild(delBtn);
     linksRow.appendChild(links);
 
     topRow.appendChild(equipmentRow);
@@ -3175,7 +3422,94 @@ const seriesSorted = seriesNames
 
   const summaryVolumeEl = document.getElementById("summary-volume");
   const summaryRepsEl = document.getElementById("summary-reps");
+  const summaryCaloriesEl = document.getElementById("summary-calories");
   const summaryProgressEl = document.getElementById("summary-progress");
+
+  // -------------------------
+  // Calorie estimate helpers
+  // -------------------------
+  // Constraint: do not require the user to enter bodyweight.
+  // If we have a saved value, we use it; otherwise we use a conservative default.
+  function getEstimatedBodyWeightKg() {
+    try {
+      const profile = readJSON(STORAGE_KEYS.profile, null);
+      if (!profile || typeof profile !== "object") return 75;
+
+      // Support a few possible fields without requiring schema changes.
+      const raw = profile.weightKg ?? profile.weight_kg ?? profile.weight ?? null;
+      const n = raw === null ? NaN : parseFloat(raw);
+      if (!Number.isFinite(n) || n <= 0) return 75;
+
+      // If the stored value is likely pounds, convert.
+      // We treat values > 200 as lbs unless an explicit unit is provided.
+      const unit = (profile.weightUnit || profile.units || "").toString().toLowerCase();
+      if (unit.includes("lb") || (!unit && n > 200)) return lbToKg(n);
+      return n;
+    } catch (_) {
+      return 75;
+    }
+  }
+
+  function normaliseIntensityToMET(intensityRaw) {
+    const s = (intensityRaw || "").toString().trim().toLowerCase();
+    if (!s) return 6; // default "moderate"
+
+    // Numeric scales: 1–10 or similar.
+    const n = parseFloat(s);
+    if (Number.isFinite(n)) {
+      // 1–3 low, 4–6 moderate, 7–8 hard, 9–10 very hard
+      if (n <= 3) return 4;
+      if (n <= 6) return 6;
+      if (n <= 8) return 8;
+      return 10;
+    }
+
+    if (s.includes("easy") || s.includes("low") || s.includes("zone 1") || s.includes("zone1")) return 4;
+    if (s.includes("moderate") || s.includes("medium") || s.includes("steady") || s.includes("zone 2") || s.includes("zone2")) return 6;
+    if (s.includes("hard") || s.includes("high") || s.includes("vigorous") || s.includes("zone 3") || s.includes("zone3")) return 8;
+    if (s.includes("sprint") || s.includes("max") || s.includes("all out") || s.includes("zone 4") || s.includes("zone4") || s.includes("zone 5") || s.includes("zone5")) return 10;
+    return 6;
+  }
+
+  function estimateCardioCaloriesForSet(exerciseName, minutes, inclineRaw, intensityRaw) {
+    const t = parseFloat(minutes);
+    if (!Number.isFinite(t) || t <= 0) return 0;
+
+    const baseMET = (() => {
+      const n = (exerciseName || "").toString().toLowerCase();
+      if (n.includes("tread") || n.includes("incline")) return 6;
+      if (n.includes("bike") || n.includes("cycle")) return 5.5;
+      if (n.includes("row")) return 6;
+      if (n.includes("stair") || n.includes("climber")) return 7;
+      if (n.includes("ski")) return 6.5;
+      return 6;
+    })();
+
+    let met = baseMET;
+    met += (normaliseIntensityToMET(intensityRaw) - 6) * 0.7; // intensity influences MET, tempered
+
+    const inc = parseFloat((inclineRaw || "").toString().replace(/[^0-9.\-]/g, ""));
+    if (Number.isFinite(inc) && inc > 0) {
+      // gentle incline/elevation adjustment (clamped)
+      met += Math.min(3, inc * 0.2);
+    }
+
+    met = Math.max(2.5, Math.min(14, met));
+
+    const bw = getEstimatedBodyWeightKg();
+    // Standard MET formula: kcal/min = MET * 3.5 * kg / 200
+    const kcal = (met * 3.5 * bw / 200) * t;
+    return Number.isFinite(kcal) ? kcal : 0;
+  }
+
+  function estimateResistanceCalories(totalVolumeKg, totalReps) {
+    // Heuristic: volume correlates with time-under-tension and effort.
+    // Tuned to stay conservative and avoid unrealistic spikes.
+    const v = Math.max(0, parseFloat(totalVolumeKg) || 0);
+    const r = Math.max(0, parseFloat(totalReps) || 0);
+    const kcal = (v * 0.007) + (r * 0.2);
+    return Number.isFinite(kcal) ? kcal : 0;
+  }
 
   // Set editor overlay
   const setEditOverlay = document.getElementById("set-edit-overlay");
@@ -3188,6 +3522,51 @@ const seriesSorted = seriesNames
   let currentEditWeightPill = null;
   let currentEditRepsPill = null;
   let currentEditContext = null;
+
+  // iOS-only: prevent Safari auto-scrolling/jumping when the keyboard opens inside the set editor.
+  // This is a UI/UX mitigation only and should not affect Android.
+  const TM_IS_IOS = (() => {
+    try {
+      const ua = navigator.userAgent || "";
+      const isAppleMobile = /iPad|iPhone|iPod/.test(ua);
+      // iPadOS 13+ reports itself as Mac; detect touch-capable Mac as iPad.
+      const isTouchMac = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+      return isAppleMobile || isTouchMac;
+    } catch (_) {
+      return false;
+    }
+  })();
+
+  let tmIosScrollLockY = 0;
+  let tmIosScrollLocked = false;
+
+  function tmIosLockBodyScroll() {
+    if (!TM_IS_IOS || tmIosScrollLocked) return;
+    tmIosScrollLockY = window.scrollY || 0;
+    tmIosScrollLocked = true;
+
+    // Freeze the page behind the overlay. This prevents iOS Safari from jumping the document
+    // when the keyboard opens/focus changes inside the modal.
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${tmIosScrollLockY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
+  }
+
+  function tmIosUnlockBodyScroll() {
+    if (!TM_IS_IOS || !tmIosScrollLocked) return;
+    tmIosScrollLocked = false;
+
+    // Restore body scroll position exactly.
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.left = "";
+    document.body.style.right = "";
+    document.body.style.width = "";
+
+    window.scrollTo(0, tmIosScrollLockY || 0);
+  }
 
   function openSetEditor(exerciseName, weightPill, repsPill, context) {
     if (isCurrentDayCompleted()) {
@@ -3210,6 +3589,9 @@ const seriesSorted = seriesNames
     setEditWeight.value = (weightPill.dataset.valueDisplay || weightPill.dataset.value || "");
     setEditReps.value = repsPill.dataset.value || "";
 
+    // iOS only: lock body scroll to prevent anchor-jump when the keyboard opens.
+    tmIosLockBodyScroll();
+
     setEditOverlay.classList.add("set-edit-overlay--active");
   }
 
@@ -3218,6 +3600,9 @@ const seriesSorted = seriesNames
     currentEditRepsPill = null;
     currentEditContext = null;
     setEditOverlay.classList.remove("set-edit-overlay--active");
+
+    // iOS only: restore body scroll position.
+    tmIosUnlockBodyScroll();
   }
 
   setEditCancel?.addEventListener("click", closeSetEditor);
@@ -3261,9 +3646,33 @@ const seriesSorted = seriesNames
   const editSuggested = document.getElementById("exercise-edit-suggested");
   const editCategoryRow = document.getElementById("exercise-edit-category-row");
   const editCategoryList = document.getElementById("exercise-edit-category-list");
+  const editCancel = document.getElementById("exercise-edit-cancel");
   const editClose = document.getElementById("exercise-edit-close");
 
   let editContext = null; // { dayRef, exRef, titleEl, exIndex }
+
+  function cancelExerciseEdit() {
+    // If the user tapped the Sklar "+" button but decides not to add anything,
+    // remove the placeholder extra exercise rather than persisting "New Exercise".
+    try {
+      const activeSeries = getActiveSeriesName();
+      const isSklar = activeSeries === DEFAULT_SERIES_NAME;
+      const ex = editContext?.exRef;
+      if (isSklar && ex && ex.__isExtra && ex.__pendingExtra && ex.__extraId) {
+        const st = getWorkoutState();
+        const dayState = ensureDayState(st, currentWeek, currentDayIndex);
+        const extras = Array.isArray(dayState.extraExercises) ? dayState.extraExercises : [];
+        dayState.extraExercises = extras.filter((e) => e?.__extraId !== ex.__extraId);
+        // Clean up any set logs accidentally created for this index
+        const exKey = String(editContext?.exIndex ?? "");
+        if (dayState.exercises && exKey in dayState.exercises) delete dayState.exercises[exKey];
+        saveWorkoutState(st);
+      }
+    } catch (_) {}
+
+    closeExerciseEdit();
+    renderWorkoutDay(currentDayIndex);
+  }
 
   function closeExerciseEdit() {
     editContext = null;
@@ -3271,13 +3680,122 @@ const seriesSorted = seriesNames
     if (editSetsRow) editSetsRow.innerHTML = "";
     editOverlay.classList.remove("set-edit-overlay--active");
   }
-  editClose?.addEventListener("click", closeExerciseEdit);
-  editOverlay?.addEventListener("click", (e) => { if (e.target === editOverlay) closeExerciseEdit(); });
+  editCancel?.addEventListener("click", cancelExerciseEdit);
+  editClose?.addEventListener("click", cancelExerciseEdit);
+  editOverlay?.addEventListener("click", (e) => { if (e.target === editOverlay) cancelExerciseEdit(); });
 
   function applyExerciseSwap(newName) {
     if (!editContext) return;
-    editContext.exRef.name = newName;
+
+    // Critical UX safeguard: changing an exercise must never silently delete user-entered data.
+    // Behaviour:
+    // 1) If there is no logged input for this slot, proceed with the swap.
+    // 2) If there is logged input, confirm the swap, then ask whether to delete or keep the data.
+    //    - Keep is the default (deletion requires explicit confirmation).
+    try {
+      const activeSeriesForPrompt = getActiveSeriesName();
+      const weekForPrompt = editContext.week ?? currentWeek;
+      const dayIdxForPrompt = editContext.dayIndex ?? currentDayIndex;
+      const exIdxForPrompt = editContext.exIndex;
+      const exKeyForPrompt = String(exIdxForPrompt);
+
+      const stForPrompt = getWorkoutState(activeSeriesForPrompt);
+      const dayStateForPrompt = ensureDayState(stForPrompt, weekForPrompt, dayIdxForPrompt);
+      const exStateForPrompt = dayStateForPrompt?.exercises?.[exKeyForPrompt];
+      const setsForPrompt = exStateForPrompt?.sets || {};
+
+      const hasAnyLoggedInput = Object.values(setsForPrompt).some((s) => {
+        if (!s || typeof s !== "object") return false;
+        return (
+          (s.w && String(s.w).trim() !== "") ||
+          (s.r && String(s.r).trim() !== "") ||
+          (s.t && String(s.t).trim() !== "") ||
+          (s.inc && String(s.inc).trim() !== "") ||
+          (s.inten && String(s.inten).trim() !== "")
+        );
+      });
+
+      if (hasAnyLoggedInput) {
+        const oldName = (editContext.exRef?.name || "this exercise").toString();
+        const proceed = confirm(`Change exercise from "${oldName}" to "${newName}"?\n\nThis slot already has logged inputs.`);
+        if (!proceed) return;
+
+        const deleteData = confirm(
+          `Do you want to delete the logged inputs for "${oldName}"?\n\nOK = Delete logged inputs\nCancel = Keep logged inputs (recommended)`
+        );
+
+        if (deleteData) {
+          // Delete only the entered set data for this exercise slot.
+          // This does not affect any saved workout logs elsewhere.
+          if (dayStateForPrompt.exercises && exKeyForPrompt in dayStateForPrompt.exercises) {
+            delete dayStateForPrompt.exercises[exKeyForPrompt];
+          }
+          saveWorkoutState(stForPrompt, activeSeriesForPrompt);
+        }
+      }
+    } catch (_) {
+      // If anything goes wrong in the safeguard flow, fall back to swapping without deleting.
+    }
+    // Persist exercise swaps.
+    // - Sklar: persist an exercise-name override per week/day/slot so edits stick offline
+    //   and remain consistent across views.
+    // - Custom: persist to the week-scoped override template (week independence feature).
+    try {
+      const activeSeries = getActiveSeriesName();
+      const isSklar = activeSeries === DEFAULT_SERIES_NAME;
+      if (!isSklar) {
+        const week = editContext.week ?? currentWeek;
+        const dayIdx = editContext.dayIndex ?? currentDayIndex;
+        const exIdx = editContext.exIndex;
+
+        const weekTpl = ensureCustomWeekOverride(activeSeries, week);
+        if (weekTpl?.[dayIdx]?.exercises?.[exIdx]) {
+          weekTpl[dayIdx].exercises[exIdx].name = newName;
+          // Keep local reference consistent so the overlay and re-render match.
+          editContext.exRef.name = newName;
+          const st = getWorkoutState(activeSeries);
+          if (!st.customWeekOverrides || typeof st.customWeekOverrides !== "object") st.customWeekOverrides = {};
+          st.customWeekOverrides[String(week)] = weekTpl;
+          saveWorkoutState(st, activeSeries);
+        } else {
+          editContext.exRef.name = newName;
+        }
+      } else {
+        editContext.exRef.name = newName;
+      }
+    } catch (_) {
+      editContext.exRef.name = newName;
+    }
+
+    // Always persist the exercise-name override for this slot (all series).
+    // This avoids "it changed but didn't stick" regressions due to template cloning.
+    try {
+      const series = getActiveSeriesName();
+      const week = editContext.week ?? currentWeek;
+      const dayIdx = editContext.dayIndex ?? currentDayIndex;
+      const exIdx = editContext.exIndex;
+      setExerciseNameOverride(series, week, dayIdx, exIdx, newName);
+
+      // If this is a custom programme edit in Week 1, also mirror the change into the
+      // saved programme definition so the builder "sheet" view stays in sync.
+      if (series !== DEFAULT_SERIES_NAME && Number(week) === 1) {
+        mirrorWeek1ExerciseNameToCustomDefinition(series, dayIdx, exIdx, newName);
+      }
+    } catch (_) {}
+    // If this was a pending extra exercise, it is now confirmed.
+    if (editContext.exRef.__pendingExtra) delete editContext.exRef.__pendingExtra;
     editContext.titleEl.textContent = newName;
+
+    // If this is an extra exercise added to the Sklar programme, persist the change.
+    try {
+      const activeSeries = getActiveSeriesName();
+      if (activeSeries === DEFAULT_SERIES_NAME && editContext.exRef && editContext.exRef.__isExtra) {
+        const st = getWorkoutState();
+        ensureDayState(st, currentWeek, currentDayIndex);
+        saveWorkoutState(st);
+      }
+    } catch (_) {}
+
     closeExerciseEdit();
     renderWorkoutDay(currentDayIndex);
   }
@@ -3322,7 +3840,7 @@ const seriesSorted = seriesNames
       alert("This workout is marked as completed. Tap 'Edit Completed Workout' to make changes.");
       return;
     }
-    editContext = { dayRef, exRef, titleEl, exIndex };
+    editContext = { dayRef, exRef, titleEl, exIndex, week: currentWeek, dayIndex: currentDayIndex };
 
     editCurrent.textContent = exRef.name;
     editSuggested.innerHTML = "";
@@ -3331,7 +3849,7 @@ const seriesSorted = seriesNames
 
     // Sets selector
     // - Sklar: stored in workout state per exercise instance
-    // - Custom programmes: stored on the programme definition (persisted), per day + exercise index
+    // - Custom programmes: stored per week snapshot so weeks become independent once edited
     if (editSetsWrap && editSetsRow) {
       const activeSeries = getActiveSeriesName();
       const isSklar = activeSeries === DEFAULT_SERIES_NAME;
@@ -3369,18 +3887,18 @@ const seriesSorted = seriesNames
             exState.setCount = n;
             saveWorkoutState(state);
           } else {
-            // Persist to the custom programme definition.
+            // Custom programmes: apply per-week snapshot so later-week edits do not mutate earlier weeks.
             const seriesName = getActiveSeriesName();
-            const program = loadCustomProgramForSeries(seriesName);
-            if (program) {
-              const dayKey = String(currentDayIndex + 1);
-              const arr = Array.isArray(program.days?.[dayKey]) ? program.days[dayKey] : [];
-              if (arr[exIndex]) {
-                arr[exIndex].setCount = n;
-                program.days[dayKey] = arr;
-                writeJSON(customProgramStorageKeyForSeries(seriesName), { name: program.name, days: program.days, updatedAt: Date.now() });
+            const weekTpl = ensureCustomWeekOverride(seriesName, currentWeek);
+            try {
+              if (weekTpl?.[currentDayIndex]?.exercises?.[exIndex]) {
+                weekTpl[currentDayIndex].exercises[exIndex].setCount = n;
+                const st = getWorkoutState(seriesName);
+                if (!st.customWeekOverrides || typeof st.customWeekOverrides !== "object") st.customWeekOverrides = {};
+                st.customWeekOverrides[String(currentWeek)] = weekTpl;
+                saveWorkoutState(st, seriesName);
               }
-            }
+            } catch (_) {}
           }
 
           closeExerciseEdit();
@@ -3441,10 +3959,18 @@ const seriesSorted = seriesNames
   // Compute expected total sets for the current day.
   // Sklar defaults to 4, but can be overridden per exercise via Exercise Edit.
   function expectedTotalSetsForDay(day) {
-    const exercises = day?.exercises || [];
-    if (!exercises.length) return 0;
-
+    // For Sklar, include any extra exercises the user has added for this specific day.
     const activeSeries = getActiveSeriesName();
+    let exercises = day?.exercises || [];
+    if (activeSeries === DEFAULT_SERIES_NAME) {
+      try {
+        const st = getWorkoutState();
+        const dayState = ensureDayState(st, currentWeek, currentDayIndex);
+        const extras = Array.isArray(dayState.extraExercises) ? dayState.extraExercises : [];
+        exercises = exercises.concat(extras);
+      } catch (_) {}
+    }
+    if (!exercises.length) return 0;
     if (activeSeries === DEFAULT_SERIES_NAME) {
       const state = getWorkoutState();
       ensureDayState(state, currentWeek, currentDayIndex);
@@ -3472,21 +3998,51 @@ const seriesSorted = seriesNames
     const state = getWorkoutState();
     const dayState = ensureDayState(state, currentWeek, currentDayIndex);
 
+    // Build an index->exercise map so we can treat cardio sets differently.
+    let exercisesForIndex = [];
+    try {
+      const activeSeries = getActiveSeriesName();
+      if (activeSeries === DEFAULT_SERIES_NAME) {
+        const removed = Array.isArray(dayState.removedBaseIndices) ? dayState.removedBaseIndices : [];
+        const base = (day?.exercises || []).map((ex, idx) => (removed.includes(idx) ? null : ex));
+        const extras = Array.isArray(dayState.extraExercises) ? dayState.extraExercises : [];
+        exercisesForIndex = base.concat(extras).filter(Boolean);
+      } else {
+        exercisesForIndex = Array.isArray(day?.exercises) ? day.exercises.slice() : [];
+      }
+    } catch (_) {
+      exercisesForIndex = Array.isArray(day?.exercises) ? day.exercises.slice() : [];
+    }
+
     let totalVolume = 0;
     let totalReps = 0;
+    let totalCardioKcal = 0;
     let completedSets = 0;
 
     const exEntries = dayState.exercises || {};
     Object.keys(exEntries).forEach((exKey) => {
+      const exIndex = parseInt(exKey, 10);
+      const exName = (Number.isFinite(exIndex) && exercisesForIndex[exIndex]) ? (exercisesForIndex[exIndex].name || "") : "";
+      const cardio = isCardioExercise(exName);
       const sets = exEntries[exKey]?.sets || {};
       Object.keys(sets).forEach((sKey) => {
-        const wVal = parseFloat(sets[sKey]?.w);
-        const rVal = parseFloat(sets[sKey]?.r);
-        if (Number.isFinite(wVal) && wVal >= 0 && Number.isFinite(rVal) && rVal > 0) {
-          // Count as completed only if reps provided and weight provided (weight can be 0 for core)
-          completedSets += 1;
-          totalVolume += wVal * rVal;
-          totalReps += rVal;
+        const s = sets[sKey] || {};
+        if (cardio) {
+          const tVal = parseFloat(s.t);
+          const inten = (s.inten || "").toString().trim();
+          const inc = s.inc;
+          if (Number.isFinite(tVal) && tVal > 0 && inten) {
+            completedSets += 1;
+            totalCardioKcal += estimateCardioCaloriesForSet(exName, tVal, inc, inten);
+          }
+        } else {
+          const wVal = parseFloat(s.w);
+          const rVal = parseFloat(s.r);
+          if (Number.isFinite(wVal) && wVal >= 0 && Number.isFinite(rVal) && rVal > 0) {
+            completedSets += 1;
+            totalVolume += wVal * rVal;
+            totalReps += rVal;
+          }
         }
       });
     });
@@ -3495,6 +4051,9 @@ const seriesSorted = seriesNames
         const unit = getWeightUnitLabel(getActiveUnits());
     summaryVolumeEl.textContent = totalVolume > 0 ? `${totalVolume.toFixed(0)} ${unit}` : `0 ${unit}`;
     summaryRepsEl.textContent = totalReps > 0 ? String(totalReps) : "0";
+    const resistanceKcal = estimateResistanceCalories(totalVolume, totalReps);
+    const kcal = resistanceKcal + totalCardioKcal;
+    if (summaryCaloriesEl) summaryCaloriesEl.textContent = kcal > 0 ? `${Math.round(kcal)}` : "0";
     summaryProgressEl.textContent = `${completedSets}/${expected}`;
   }
 
@@ -3514,9 +4073,13 @@ const seriesSorted = seriesNames
     const wKg = wDisplay ? toKgFromDisplayWeight(wDisplay, units) : "";
     const w = wDisplay;
     const r = rRaw || rSuggestion || "";
-    // Update pills text (NO parentheses)
+    // Keep DOM state in sync so other UI actions (e.g., equipment switching)
+    // do not appear to reset entered values.
+    // - dataset.value stores the persisted weight in kg.
+    // - dataset.valueDisplay is only used to prefill the editor with what the user typed.
     currentEditWeightPill.dataset.valueDisplay = w;
     currentEditWeightPill.dataset.valueKg = wKg;
+    currentEditWeightPill.dataset.value = wKg || "";
     currentEditRepsPill.dataset.value = r;
 
     if (w) {
@@ -3549,8 +4112,118 @@ const seriesSorted = seriesNames
     setState.r = r;
     saveWorkoutState(state);
 
+    // UI-only: visually mark an exercise card as completed once all sets are logged.
+    try {
+      const card = currentEditWeightPill?.closest?.(".exercise-card");
+      if (card) {
+        const setCount = card.querySelectorAll(".set-cell").length;
+        updateExerciseCardCompletion(card, state, week, dayIndex, exIndex, setCount, false);
+      }
+    } catch (_) {}
+
     closeSetEditor();
 
+    const day = getProgramForWeek(currentWeek)[currentDayIndex];
+    updateWorkoutSummary(day);
+  });
+
+  // -------------------------
+  // Cardio set editor (time + incline + intensity)
+  // -------------------------
+  const cardioEditOverlay = document.getElementById("cardio-edit-overlay");
+  const cardioEditExercise = document.getElementById("cardio-edit-exercise");
+  const cardioEditSetLabel = document.getElementById("cardio-edit-setlabel");
+  const cardioEditTime = document.getElementById("cardio-edit-time");
+  const cardioEditIncline = document.getElementById("cardio-edit-incline");
+  const cardioEditIntensity = document.getElementById("cardio-edit-intensity");
+  const cardioEditCancel = document.getElementById("cardio-edit-cancel");
+  const cardioEditSave = document.getElementById("cardio-edit-save");
+
+  let currentCardioPills = null; // { timePill, inclinePill, intensityPill }
+  let currentCardioContext = null; // { week, dayIndex, exIndex, setIndex }
+
+  function openCardioEditor(exerciseName, timePill, inclinePill, intensityPill, context) {
+    if (!cardioEditOverlay) return;
+    currentCardioPills = { timePill, inclinePill, intensityPill };
+    currentCardioContext = context || null;
+
+    // Title
+    if (cardioEditExercise) cardioEditExercise.textContent = exerciseName || "";
+    if (cardioEditSetLabel) cardioEditSetLabel.textContent = (context && Number.isFinite(context.setIndex)) ? `Set ${context.setIndex + 1}` : "";
+
+    // Prefill from saved state (preferred) then fall back to pill datasets.
+    const state = getWorkoutState();
+    const setState = (context && context.week != null)
+      ? getSetState(state, context.week, context.dayIndex, context.exIndex, context.setIndex)
+      : {};
+
+    const t = (setState?.t ?? timePill?.dataset?.value ?? "").toString();
+    const inc = (setState?.inc ?? inclinePill?.dataset?.value ?? "").toString();
+    const inten = (setState?.inten ?? intensityPill?.dataset?.value ?? "").toString();
+
+    if (cardioEditTime) cardioEditTime.value = t;
+    if (cardioEditIncline) cardioEditIncline.value = inc;
+    if (cardioEditIntensity) cardioEditIntensity.value = inten;
+
+    cardioEditOverlay.classList.add("set-edit-overlay--active");
+    cardioEditOverlay.setAttribute("aria-hidden", "false");
+    setTimeout(() => { try { cardioEditTime?.focus(); } catch (_) {} }, 40);
+  }
+
+  function closeCardioEditor() {
+    currentCardioPills = null;
+    currentCardioContext = null;
+    cardioEditOverlay?.classList.remove("set-edit-overlay--active");
+    cardioEditOverlay?.setAttribute("aria-hidden", "true");
+  }
+
+  cardioEditCancel?.addEventListener("click", closeCardioEditor);
+  cardioEditOverlay?.addEventListener("click", (e) => { if (e.target === cardioEditOverlay) closeCardioEditor(); });
+
+  cardioEditSave?.addEventListener("click", () => {
+    if (!currentCardioPills || !currentCardioContext) { closeCardioEditor(); return; }
+
+    const tRaw = (cardioEditTime?.value || "").trim();
+    const incRaw = (cardioEditIncline?.value || "").trim();
+    const intenRaw = (cardioEditIntensity?.value || "").trim();
+
+    // Update pill datasets + text
+    const { timePill, inclinePill, intensityPill } = currentCardioPills;
+    timePill.dataset.value = tRaw;
+    inclinePill.dataset.value = incRaw;
+    intensityPill.dataset.value = intenRaw;
+
+    timePill.textContent = tRaw ? `${tRaw} min` : "time";
+    inclinePill.textContent = incRaw ? `incline ${incRaw}` : "incline";
+    intensityPill.textContent = intenRaw ? intenRaw : "intensity";
+
+    timePill.classList.toggle("input-pill--suggested", !tRaw);
+    inclinePill.classList.toggle("input-pill--suggested", !incRaw);
+    intensityPill.classList.toggle("input-pill--suggested", !intenRaw);
+
+    // Persist
+    const state = getWorkoutState();
+    const { week, dayIndex, exIndex, setIndex } = currentCardioContext;
+    const setState = getSetState(state, week, dayIndex, exIndex, setIndex);
+    setState.t = tRaw;
+    setState.inc = incRaw;
+    setState.inten = intenRaw;
+    // Ensure resistance keys do not accidentally mark completion for cardio
+    if ("w" in setState) delete setState.w;
+    if ("r" in setState) delete setState.r;
+    saveWorkoutState(state);
+
+    // UI-only completion styling
+    try {
+      const card = timePill?.closest?.(".exercise-card");
+      if (card) {
+        const setCount = card.querySelectorAll(".set-cell").length;
+        const exName = card.querySelector(".exercise-title")?.textContent || "";
+        updateExerciseCardCompletion(card, state, week, dayIndex, exIndex, setCount, isCardioExercise(exName));
+      }
+    } catch (_) {}
+
+    closeCardioEditor();
     const day = getProgramForWeek(currentWeek)[currentDayIndex];
     updateWorkoutSummary(day);
   });
@@ -3613,7 +4286,8 @@ const seriesSorted = seriesNames
     const weightPills = card.querySelectorAll(".set-weight-pill");
     const repsPills = card.querySelectorAll(".set-reps-pill");
 
-    for (let setIndex = 0; setIndex < 4; setIndex++) {
+	    const maxSets = Math.min(weightPills.length, repsPills.length);
+	    for (let setIndex = 0; setIndex < maxSets; setIndex++) {
       const wPill = weightPills[setIndex];
       const rPill = repsPills[setIndex];
       if (!wPill || !rPill) continue;
@@ -3653,21 +4327,67 @@ const seriesSorted = seriesNames
             wPill.dataset.suggestion = toDisplayWeightFromKg(suggestionW, units2);
       rPill.dataset.suggestion = suggestionR;
 
-      if (!hasUserW) {
-        if (suggestionW !== "") {
-          wPill.textContent = formatWeightPill(String(suggestionW ?? ""), equipCode);
-          wPill.classList.add("input-pill--suggested");
+	      if (hasUserW) {
+	        // User has entered a weight: keep it visible and reformat for the newly-selected equipment.
+	        wPill.textContent = formatWeightPill(wPill.dataset.value || "", equipCode);
+	        wPill.classList.remove("input-pill--suggested");
+	      } else {
+	        // No user weight: show suggestion / placeholder.
+	        if (suggestionW !== "") {
+	          wPill.textContent = formatWeightPill(String(suggestionW ?? ""), equipCode);
+	          wPill.classList.add("input-pill--suggested");
+	        } else {
+	          wPill.textContent = getWeightUnitLabel(getActiveUnits());
+	          wPill.classList.remove("input-pill--suggested");
+	        }
+	      }
+
+	      if (hasUserR) {
+	        // User has entered reps: keep them visible.
+	        rPill.textContent = `${rPill.dataset.value} reps`;
+	        rPill.classList.remove("input-pill--suggested");
+	      } else {
+	        rPill.textContent = `${suggestionR} reps`;
+	        rPill.classList.add("input-pill--suggested");
+	      }
+    }
+  }
+
+  // -------------------------
+  // UI-only completion styling
+  // -------------------------
+  function isExerciseCompleteForUI(state, week, dayIndex, exIndex, setCount, isCardio) {
+    try {
+      const dayState = ensureDayState(state, week, dayIndex);
+      const exKey = String(exIndex);
+      const sets = dayState?.exercises?.[exKey]?.sets || {};
+
+      // An exercise is considered "complete" for styling purposes only if:
+      // - Resistance: every set has both a weight (kg) value and a reps value.
+      // - Cardio: every set has a time value and an intensity value.
+      for (let i = 0; i < setCount; i++) {
+        const s = sets[String(i)] || {};
+        if (isCardio) {
+          const tVal = parseFloat(s.t);
+          const inten = (s.inten || "").toString().trim();
+          if (!Number.isFinite(tVal) || tVal <= 0) return false;
+          if (!inten) return false;
         } else {
-          wPill.textContent = getWeightUnitLabel(getActiveUnits());
-          wPill.classList.remove("input-pill--suggested");
+          const wVal = parseFloat(s.w);
+          const rVal = parseFloat(s.r);
+          if (!Number.isFinite(wVal) || wVal < 0) return false;
+          if (!Number.isFinite(rVal) || rVal <= 0) return false;
         }
       }
-
-      if (!hasUserR) {
-        rPill.textContent = `${suggestionR} reps`;
-        rPill.classList.add("input-pill--suggested");
-      }
+      return setCount > 0;
+    } catch (_) {
+      return false;
     }
+  }
+
+  function updateExerciseCardCompletion(card, state, week, dayIndex, exIndex, setCount, isCardio) {
+    const done = isExerciseCompleteForUI(state, week, dayIndex, exIndex, setCount, !!isCardio);
+    card.classList.toggle("exercise-card--completed", !!done);
   }
 
   // Render workout day
@@ -3707,7 +4427,7 @@ const seriesSorted = seriesNames
 
     // Ensure state structure exists
     const state = getWorkoutState();
-    ensureDayState(state, currentWeek, dayIndex);
+    const dayState = ensureDayState(state, currentWeek, dayIndex);
     saveWorkoutState(state);
 
     // Profile weight in kg
@@ -3718,7 +4438,28 @@ const seriesSorted = seriesNames
 
     workoutExerciseList.innerHTML = "";
 
-    day.exercises.forEach((ex, exIndex) => {
+    // Sklar only: allow users to add extra exercises to a prescribed day (stored per week/day).
+    const isSklarProgramme = (activeSeries === DEFAULT_SERIES_NAME);
+    // Back-compat: older saves will not have this field.
+    if (!Array.isArray(dayState.removedBaseIndices)) dayState.removedBaseIndices = [];
+    const removedBaseIndices = dayState.removedBaseIndices;
+    const extraExercises = isSklarProgramme && Array.isArray(dayState.extraExercises) ? dayState.extraExercises : [];
+    // Mark extras for persistence hooks in the edit overlay.
+    extraExercises.forEach((ex) => { if (ex && typeof ex === "object") ex.__isExtra = true; });
+    const baseExercises = (day.exercises || []);
+    const baseCount = baseExercises.length;
+    // Keep indices stable for saved set data by inserting nulls for removed base exercises.
+    const renderExercises = baseExercises.map((ex, idx) => (removedBaseIndices.includes(idx) ? null : ex)).concat(extraExercises);
+
+    renderExercises.forEach((ex, exIndex) => {
+      if (!ex) return;
+
+      // Apply any persisted exercise-name override for this slot.
+      // This is critical for offline-safe persistence and cross-view consistency.
+      try {
+        const overrideName = getExerciseNameOverride(dayState, exIndex);
+        if (overrideName) ex.name = overrideName;
+      } catch (_) {}
       const card = document.createElement("div");
       card.className = "exercise-card";
 
@@ -3763,8 +4504,46 @@ const seriesSorted = seriesNames
       editBtn.textContent = "Edit";
       editBtn.addEventListener("click", () => openExerciseEdit(day, ex, title, exIndex));
 
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "icon-btn";
+      delBtn.setAttribute("aria-label", "Delete exercise");
+      delBtn.innerHTML = getTrashIconSVG();
+      delBtn.addEventListener("click", () => {
+        // Keep behaviour consistent with other edits: do not mutate a completed workout unless the user is editing it.
+        if (isCurrentDayCompleted()) {
+          alert("This workout is completed. Tap ‘Edit Completed Workout’ to make changes.");
+          return;
+        }
+        const ok = window.confirm("Are you sure you want to delete this exercise? This will remove it from this week’s day only.");
+        if (!ok) return;
+
+        const st = getWorkoutState();
+        const ds = ensureDayState(st, currentWeek, dayIndex);
+        if (!Array.isArray(ds.removedBaseIndices)) ds.removedBaseIndices = [];
+
+        if (exIndex < baseCount) {
+          // Base programme exercise: mark it as removed for this week/day without shifting indices.
+          if (!ds.removedBaseIndices.includes(exIndex)) ds.removedBaseIndices.push(exIndex);
+          // Optional cleanup of set data for this slot (safe to leave, but helps keep state tidy).
+          try { if (ds.exercises && ds.exercises[String(exIndex)]) delete ds.exercises[String(exIndex)]; } catch (_) {}
+        } else {
+          // Extra exercise added via '+' (Sklar-only)
+          const extraIdx = exIndex - baseCount;
+          if (Array.isArray(ds.extraExercises) && ds.extraExercises[extraIdx]) {
+            ds.extraExercises.splice(extraIdx, 1);
+          }
+          // Clean up any set data for this extra slot.
+          try { if (ds.exercises && ds.exercises[String(exIndex)]) delete ds.exercises[String(exIndex)]; } catch (_) {}
+        }
+
+        saveWorkoutState(st);
+        renderWorkoutDay(dayIndex);
+      });
+
       links.appendChild(infoBtn);
       links.appendChild(editBtn);
+      links.appendChild(delBtn);
       linksRow.appendChild(links);
 
       topRow.appendChild(equipmentRow);
@@ -3834,6 +4613,8 @@ const baseSuggestion = oneRMBase || (() => {
         ? (Number.isFinite(parseInt(exState.setCount, 10)) ? Math.min(10, Math.max(1, parseInt(exState.setCount, 10))) : 4)
         : (Number.isFinite(parseInt(ex.setCount, 10)) ? Math.min(10, Math.max(1, parseInt(ex.setCount, 10))) : 4);
 
+      const isCardio = isCardioExercise(ex.name);
+
       for (let setIndex = 0; setIndex < setCount; setIndex++) {
         const cell = document.createElement("div");
         cell.className = "set-cell";
@@ -3845,58 +4626,115 @@ const baseSuggestion = oneRMBase || (() => {
         const fields = document.createElement("div");
         fields.className = "set-fields";
 
-        const weightPill = document.createElement("button");
-        weightPill.type = "button";
-        weightPill.className = "input-pill input-pill--small set-weight-pill";
-
-        const repsPill = document.createElement("button");
-        repsPill.type = "button";
-        repsPill.className = "input-pill input-pill--small set-reps-pill";
-
         // Load saved state
         const st = getWorkoutState();
         const saved = getSetState(st, currentWeek, dayIndex, exIndex, setIndex);
 
-        const suggestionW = progressedSuggestion(setIndex) || (isCoreOrBW(ex.name) ? "00" : "");
-        const suggestionR = String(targetReps);
+        if (isCardio) {
+          const timePill = document.createElement("button");
+          timePill.type = "button";
+          timePill.className = "input-pill input-pill--small set-time-pill";
 
-        weightPill.dataset.suggestion = suggestionW;
-        repsPill.dataset.suggestion = suggestionR;
+          const inclinePill = document.createElement("button");
+          inclinePill.type = "button";
+          inclinePill.className = "input-pill input-pill--small set-incline-pill";
 
-        weightPill.dataset.value = saved.w || "";
-        repsPill.dataset.value = saved.r || "";
+          const intensityPill = document.createElement("button");
+          intensityPill.type = "button";
+          intensityPill.className = "input-pill input-pill--small set-intensity-pill";
 
-        // Render weight pill (NO parentheses)
-        if (saved.w !== "") {
-          weightPill.textContent = formatWeightPill(saved.w, exState?.equipment || defaultEquip);
-          weightPill.classList.remove("input-pill--suggested");
-        } else if (suggestionW !== "") {
-          weightPill.textContent = formatWeightPill(suggestionW, exState?.equipment || defaultEquip);
-          weightPill.classList.add("input-pill--suggested");
+          timePill.dataset.value = saved.t || "";
+          inclinePill.dataset.value = saved.inc || "";
+          intensityPill.dataset.value = saved.inten || "";
+
+          timePill.textContent = saved.t ? `${saved.t} min` : "time";
+          inclinePill.textContent = saved.inc ? `incline ${saved.inc}` : "incline";
+          intensityPill.textContent = saved.inten ? `${saved.inten}` : "intensity";
+
+          timePill.classList.toggle("input-pill--suggested", !saved.t);
+          inclinePill.classList.toggle("input-pill--suggested", !saved.inc);
+          intensityPill.classList.toggle("input-pill--suggested", !saved.inten);
+
+          const context = { week: currentWeek, dayIndex, exIndex, setIndex };
+          const open = () => openCardioEditor(ex.name, timePill, inclinePill, intensityPill, context);
+          timePill.addEventListener("click", open);
+          inclinePill.addEventListener("click", open);
+          intensityPill.addEventListener("click", open);
+
+          fields.appendChild(timePill);
+          fields.appendChild(inclinePill);
+          fields.appendChild(intensityPill);
         } else {
-          weightPill.textContent = getWeightUnitLabel(getActiveUnits());
-          weightPill.classList.remove("input-pill--suggested");
+          const weightPill = document.createElement("button");
+          weightPill.type = "button";
+          weightPill.className = "input-pill input-pill--small set-weight-pill";
+
+          const repsPill = document.createElement("button");
+          repsPill.type = "button";
+          repsPill.className = "input-pill input-pill--small set-reps-pill";
+
+          const suggestionW = progressedSuggestion(setIndex) || (isCoreOrBW(ex.name) ? "00" : "");
+          const suggestionR = String(targetReps);
+
+          weightPill.dataset.suggestion = suggestionW;
+          repsPill.dataset.suggestion = suggestionR;
+
+          weightPill.dataset.value = saved.w || "";
+          repsPill.dataset.value = saved.r || "";
+
+          // Render weight pill (NO parentheses)
+          if (saved.w !== "") {
+            weightPill.textContent = formatWeightPill(saved.w, exState?.equipment || defaultEquip);
+            weightPill.classList.remove("input-pill--suggested");
+          } else if (suggestionW !== "") {
+            weightPill.textContent = formatWeightPill(suggestionW, exState?.equipment || defaultEquip);
+            weightPill.classList.add("input-pill--suggested");
+          } else {
+            weightPill.textContent = getWeightUnitLabel(getActiveUnits());
+            weightPill.classList.remove("input-pill--suggested");
+          }
+
+          // Render reps pill
+          if (saved.r !== "") {
+            repsPill.textContent = `${saved.r} reps`;
+            repsPill.classList.remove("input-pill--suggested");
+          } else if (suggestionR) {
+            repsPill.textContent = `${suggestionR} reps`;
+            repsPill.classList.add("input-pill--suggested");
+          } else {
+            repsPill.textContent = "reps";
+            repsPill.classList.remove("input-pill--suggested");
+          }
+
+	          // Build context at click-time so equipment changes do not desync the editor.
+	          const getEquipNow = () => {
+	            try {
+	              const stNow = getWorkoutState();
+	              const exStNow = getExerciseState(stNow, currentWeek, dayIndex, exIndex);
+	              return exStNow?.equipment || defaultEquip;
+	            } catch (_) {
+	              return defaultEquip;
+	            }
+	          };
+
+	          weightPill.addEventListener("click", () => openSetEditor(ex.name, weightPill, repsPill, {
+	            week: currentWeek,
+	            dayIndex,
+	            exIndex,
+	            setIndex,
+	            equipmentCode: getEquipNow()
+	          }));
+	          repsPill.addEventListener("click", () => openSetEditor(ex.name, weightPill, repsPill, {
+	            week: currentWeek,
+	            dayIndex,
+	            exIndex,
+	            setIndex,
+	            equipmentCode: getEquipNow()
+	          }));
+
+          fields.appendChild(weightPill);
+          fields.appendChild(repsPill);
         }
-
-        // Render reps pill
-        if (saved.r !== "") {
-          repsPill.textContent = `${saved.r} reps`;
-          repsPill.classList.remove("input-pill--suggested");
-        } else if (suggestionR) {
-          repsPill.textContent = `${suggestionR} reps`;
-          repsPill.classList.add("input-pill--suggested");
-        } else {
-          repsPill.textContent = "reps";
-          repsPill.classList.remove("input-pill--suggested");
-        }
-
-        const context = { week: currentWeek, dayIndex, exIndex, setIndex, equipmentCode: exState?.equipment || defaultEquip };
-
-        weightPill.addEventListener("click", () => openSetEditor(ex.name, weightPill, repsPill, context));
-        repsPill.addEventListener("click", () => openSetEditor(ex.name, weightPill, repsPill, context));
-
-        fields.appendChild(weightPill);
-        fields.appendChild(repsPill);
 
         cell.appendChild(label);
         cell.appendChild(fields);
@@ -3904,8 +4742,58 @@ const baseSuggestion = oneRMBase || (() => {
       }
 
       card.appendChild(setsGrid);
+
+      // UI-only: visually distinguish completed exercises (all sets logged).
+      try {
+        updateExerciseCardCompletion(card, state, currentWeek, dayIndex, exIndex, setCount, isCardio);
+      } catch (_) {}
+
       workoutExerciseList.appendChild(card);
     });
+
+    // Sklar only: minimal '+' button at the bottom to add an extra exercise for tracking.
+    if (isSklarProgramme) {
+      const addBtn = document.createElement("button");
+      addBtn.type = "button";
+      addBtn.className = "add-exercise-btn";
+      addBtn.textContent = "+ add exercise";
+      addBtn.setAttribute("aria-label", "Add exercise");
+
+      // Keep it non-invasive: no adding if the day is currently marked as completed.
+      addBtn.addEventListener("click", () => {
+        if (isCurrentDayCompleted()) {
+          alert("This workout is marked as completed. Tap 'Edit Completed Workout' to make changes.");
+          return;
+        }
+
+        const st = getWorkoutState();
+        const ds = ensureDayState(st, currentWeek, currentDayIndex);
+        if (!Array.isArray(ds.extraExercises)) ds.extraExercises = [];
+
+        const newEx = {
+          name: "New Exercise",
+          prescription: "4 x 8",
+          notes: "",
+          __isExtra: true,
+          __extraId: `extra_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+          __pendingExtra: true
+        };
+        ds.extraExercises.push(newEx);
+        saveWorkoutState(st);
+
+        // Re-render then jump straight into the existing Exercise Edit overlay for quick selection.
+        renderWorkoutDay(currentDayIndex);
+        setTimeout(() => {
+          try {
+            const titles = document.querySelectorAll(".exercise-card .exercise-title");
+            const titleEl = titles[titles.length - 1];
+            if (titleEl) openExerciseEdit(day, newEx, titleEl, (day.exercises || []).length + ds.extraExercises.length - 1);
+          } catch (_) {}
+        }, 0);
+      });
+
+      workoutExerciseList.appendChild(addBtn);
+    }
 
     updateWorkoutSummary(day);
     syncWorkoutCompletionUI();
@@ -4031,6 +4919,10 @@ workoutDaySelect?.addEventListener("change", () => {
       alert("Please enter at least one lift to save your 1 Rep Max values.");
       return;
     }
+
+    // Notify the app so any derived suggestions can refresh without wiping logged data.
+    // This keeps existing history untouched while recalculating future (and current unlogged) suggestions.
+    try { document.dispatchEvent(new CustomEvent("trackmate:oneRMUpdated")); } catch (_) {}
     enterWorkoutFromEntryPoint();
   });
 
@@ -4048,6 +4940,19 @@ workoutDaySelect?.addEventListener("change", () => {
     if (!dayState.completed) {
       dayState.completed = true;
       dayState.completedAt = Date.now();
+
+      // Custom programme safety: snapshot the week template the moment a day is marked complete.
+      // This prevents later edits or programme definition changes from mutating completed workouts.
+      try {
+        const series = getActiveSeriesName();
+        if (series !== DEFAULT_SERIES_NAME) {
+          if (!state.customWeekOverrides || typeof state.customWeekOverrides !== "object") state.customWeekOverrides = {};
+          const wKey = String(currentWeek);
+          if (!Array.isArray(state.customWeekOverrides[wKey])) {
+            state.customWeekOverrides[wKey] = deepClone(getProgramWeekTemplateForSeries(series));
+          }
+        }
+      } catch (_) {}
       saveWorkoutState(state);
       // Write a dedicated history entry (supports Reuse without losing Past Workouts)
       appendHistoryLog({
