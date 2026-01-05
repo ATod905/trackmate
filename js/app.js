@@ -4,6 +4,11 @@
 // -------------------------
 // Screen navigation helpers
 // -------------------------
+// IMPORTANT: durationTicker must be defined before showScreen can run.
+// In some load paths, showScreen can be invoked during initialisation before
+// later declarations execute. Using 'var' avoids the temporal dead zone.
+var durationTicker = null;
+
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("screen--active"));
   const target = document.getElementById(id);
@@ -1808,23 +1813,137 @@ document.addEventListener("DOMContentLoaded", () => {
     writeJSON(STORAGE_KEYS.lastViewed, { week: w, dayIndex: d, ts: Date.now() });
   }
 
-  function isWorkoutCompletedFor(week, dayIndex) {
-    const state = getWorkoutState();
-    const wKey = String(week);
-    const dKey = String(dayIndex);
-    return !!state?.weeks?.[wKey]?.[dKey]?.completed;
+  function getCompletedWorkoutKeySetForSeries(seriesName) {
+  // Ensure the history log is hydrated for this series (legacy completion flags -> history migration).
+  hydrateHistoryLogFromStateIfMissing(seriesName || getActiveSeriesName());
+    // Authoritative source of truth for "completed" is the History Log (My Past Workouts).
+    // We consider a workout completed if an entry exists for (series + week + dayIndex).
+    const name = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
+    // Compare series using canonicalised forms to avoid mismatches across versions
+    // (e.g., registry naming, punctuation, or minor spacing differences).
+    const targetCanon = canonicalSeriesName(name || DEFAULT_SERIES_NAME);
+
+    // TrackMate legacy reality check:
+    // Some older builds stored completion under slightly different series labels (or none at all),
+    // while the UI still correctly shows green cards. To avoid Week 1 / Day 1 resets, Sklar
+    // continuation must be resilient to series label drift.
+
+    // 1) Prefer the dedicated history log when present.
+    // 2) If the active series is the built-in Sklar series, treat *any* history entry as a completion
+    //    signal (series label mismatch should never block Continue).
+    // 3) If history is empty, fall back to scanning *all* workoutState stores for completed flags.
+
+    const set = new Set();
+
+    const canonDefault = canonicalSeriesName(DEFAULT_SERIES_NAME);
+    const isDefaultSeries = (targetCanon === canonDefault);
+
+    // First: history log (authoritative when present)
+    // Note: Some legacy builds stored day indices as 1..N (instead of 0..N-1).
+    // If we detect that pattern (no zeros present, but 1-based values exist), we
+    // treat both representations as completed to avoid Week 1 / Day 1 resets.
+    const log = getHistoryLog();
+    if (Array.isArray(log) && log.length) {
+      const tmp = [];
+      let hasZero = false;
+      let hasOneBased = false;
+
+      for (const e of log) {
+        if (!e) continue;
+        const week = Number(e.week);
+        const dayIndex = Number(e.dayIndex);
+        if (!Number.isFinite(week) || !Number.isFinite(dayIndex)) continue;
+
+        if (!isDefaultSeries) {
+          const series = (e.series || DEFAULT_SERIES_NAME).toString().trim() || DEFAULT_SERIES_NAME;
+          const entryCanon = canonicalSeriesName(series || DEFAULT_SERIES_NAME);
+          if (entryCanon !== targetCanon) continue;
+        }
+
+        if (dayIndex === 0) hasZero = true;
+        if (dayIndex >= 1 && dayIndex <= 14) hasOneBased = true;
+        tmp.push({ week, dayIndex });
+      }
+
+      const assumeOneBased = (!hasZero && hasOneBased);
+      for (const t of tmp) {
+        set.add(`${t.week}::${t.dayIndex}`);
+        if (assumeOneBased && t.dayIndex >= 1) {
+          set.add(`${t.week}::${t.dayIndex - 1}`);
+        }
+      }
+      return set;
+    }
+
+    // Second: derived entries (legacy fallback) – scan across all state keys, not just active.
+    // This prevents Continue breaking when completion data was saved under an older key/schema.
+    const stateKeys = [];
+    try {
+      // Series-scoped keys
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith("trackmateWorkoutState::")) stateKeys.push(k);
+      }
+      // Legacy unscoped key
+      if (localStorage.getItem(STORAGE_KEYS.workoutState)) stateKeys.push(STORAGE_KEYS.workoutState);
+    } catch (_) {}
+
+    // Detect 0-based vs 1-based day indexing across stored states.
+    let stateHasZero = false;
+    let stateHasOneBased = false;
+    for (const k of stateKeys) {
+      const st = readJSON(k, null);
+      const weeks = (st && typeof st === "object" && st.weeks && typeof st.weeks === "object") ? st.weeks : {};
+      Object.keys(weeks).forEach((wKey) => {
+        const days = weeks[wKey] || {};
+        if (Object.prototype.hasOwnProperty.call(days, "0")) stateHasZero = true;
+        if (Object.prototype.hasOwnProperty.call(days, "1")) stateHasOneBased = true;
+      });
+    }
+    const assumeOneBasedState = (!stateHasZero && stateHasOneBased);
+
+    for (const k of stateKeys) {
+      const st = readJSON(k, null);
+      const weeks = (st && typeof st === "object" && st.weeks && typeof st.weeks === "object") ? st.weeks : {};
+      Object.keys(weeks).forEach((wKey) => {
+        const days = weeks[wKey] || {};
+        Object.keys(days).forEach((dKey) => {
+          const dayState = days[dKey];
+          if (!dayState || !dayState.completed) return;
+          const week = parseInt(wKey, 10);
+          const dayIndex = parseInt(dKey, 10);
+          if (!Number.isFinite(week) || !Number.isFinite(dayIndex)) return;
+          set.add(`${week}::${dayIndex}`);
+          if (assumeOneBasedState && dayIndex >= 1) {
+            set.add(`${week}::${dayIndex - 1}`);
+          }
+        });
+      });
+    }
+
+    return set;
   }
 
-  function findNextIncompleteWorkout() {
+function isWorkoutCompletedFor(week, dayIndex, completedKeySet) {
+    // If a completedKeySet is provided, use it (deterministic + avoids repeated scans).
+    // Otherwise, build it from the authoritative history entries.
+    const set = completedKeySet || getCompletedWorkoutKeySetForSeries(getActiveSeriesName());
+    const w = Number(week);
+    const d = Number(dayIndex);
+    return set.has(`${w}::${d}`);
+  }
+
+function findNextIncompleteWorkout() {
     const weekOrder = [1, 2, 3, 4, 5, 6];
     const template = getProgramWeekTemplateForSeries(getActiveSeriesName());
     const dayIndices = (Array.isArray(template) ? template.map((_, idx) => idx) : [0,1,2,3,4]).filter((idx) => {
       const exs = Array.isArray(template?.[idx]?.exercises) ? template[idx].exercises : [];
       return exs.length > 0;
     });
+    const completedSet = getCompletedWorkoutKeySetForSeries(getActiveSeriesName());
     for (const w of weekOrder) {
       for (const d of dayIndices) {
-        if (!isWorkoutCompletedFor(w, d)) return { week: w, dayIndex: d };
+        if (!isWorkoutCompletedFor(w, d, completedSet)) return { week: w, dayIndex: d };
       }
     }
     return null;
@@ -1836,21 +1955,30 @@ document.addEventListener("DOMContentLoaded", () => {
       const exs = Array.isArray(template?.[idx]?.exercises) ? template[idx].exercises : [];
       return exs.length > 0;
     });
+    const completedSet = getCompletedWorkoutKeySetForSeries(getActiveSeriesName());
     for (const d of dayIndices) {
-      if (!isWorkoutCompletedFor(week, d)) return d;
+      if (!isWorkoutCompletedFor(week, d, completedSet)) return d;
     }
     return dayIndices.length ? dayIndices[0] : 0;
   }
 
 
   function chooseContinueTarget() {
+    // Continue behaviour is user-selectable in Settings.
+    // - "next": open the next incomplete workout (authoritative completion = History Log)
+    // - "resume": open the last viewed workout (with safe clamping)
     const mode = getContinueMode();
     if (mode === "resume") {
       const lv = getLastViewedWorkout();
       if (lv) return lv;
-      // Fall back if no last-viewed exists yet
+      // Fall through to next incomplete if no last-viewed exists yet.
     }
-    return findNextIncompleteWorkout() || { week: 1, dayIndex: 0 };
+
+    const next = findNextIncompleteWorkout();
+    if (next) return next;
+
+    // If everything is completed (or no template days exist), fall back gracefully.
+    return { week: 1, dayIndex: 0 };
   }
 
   function enterWorkoutFromEntryPoint() {
@@ -1858,6 +1986,18 @@ document.addEventListener("DOMContentLoaded", () => {
     // indicates (Week tab + Day dropdown). Some browsers can leave the previous
     // day's DOM rendered on first entry unless we force a post-navigation render.
     const navToken = ++__continueEntryToken;
+    // Deterministic debug breadcrumb for Continue logic (safe to leave in production).
+    try {
+      const active = getActiveSeriesName();
+      const completedSet = getCompletedWorkoutKeySetForSeries(active);
+      const next = (function(){ try { return findNextIncompleteWorkout(); } catch(_) { return null; } })();
+      console.info("[TrackMate] Continue->NextIncomplete", {
+        activeSeries: active,
+        completedCount: completedSet ? completedSet.size : 0,
+        nextTarget: next || null,
+      });
+    } catch (_) {}
+
     const target = chooseContinueTarget();
 
     currentWeek = target.week;
@@ -2829,6 +2969,53 @@ function getHistoryLog() {
   return deduped;
 }
 
+// Hydrate history log from per-day completion flags (legacy installs / migration safety).
+// This ensures "Continue to Workouts" can rely on the History Log as the single source of truth
+// even for users who have completion data saved only in series-scoped workoutState.
+function hydrateHistoryLogFromStateIfMissing(seriesName) {
+  try {
+    const series = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
+    const targetCanon = canonicalSeriesName(series);
+
+    const existing = getHistoryLog();
+    const hasAnyForSeries = existing.some((e) => canonicalSeriesName((e?.series || DEFAULT_SERIES_NAME).toString()) === targetCanon);
+    if (hasAnyForSeries) return;
+
+    // Scan series-scoped workout state for completed days.
+    const st = getWorkoutState(series);
+    const weeks = (st && typeof st === "object" && st.weeks && typeof st.weeks === "object") ? st.weeks : {};
+    const additions = [];
+    let earliest = 0;
+
+    Object.keys(weeks).forEach((wKey) => {
+      const days = weeks[wKey] || {};
+      Object.keys(days).forEach((dKey) => {
+        const dayState = days[dKey];
+        if (!dayState || !dayState.completed) return;
+
+        const week = parseInt(wKey, 10);
+        const dayIndex = parseInt(dKey, 10);
+        if (!Number.isFinite(week) || !Number.isFinite(dayIndex)) return;
+
+        const completedAt = Number(dayState.completedAt || dayState.endedAt || dayState.startedAt || 0) || Date.now();
+        if (!earliest || (completedAt && completedAt < earliest)) earliest = completedAt;
+
+        additions.push({ series, week, dayIndex, completedAt });
+      });
+    });
+
+    if (!additions.length) return;
+
+    // Merge into the existing log and persist (dedupeHistoryLog guards uniqueness).
+    writeHistoryLog(existing.concat(additions));
+
+    // Ensure registry metadata exists so the series is stable in My Past Workouts.
+    try { ensureSeriesRegistryEntry(series, earliest || Date.now()); } catch (_) {}
+  } catch (_) {
+    // no-op
+  }
+}
+
 function dedupeHistoryLog(log) {
   const arr = Array.isArray(log) ? log : [];
 
@@ -3473,7 +3660,8 @@ const seriesSorted = seriesNames
   const weekTabs = document.querySelectorAll(".week-tab");
   let currentWeek = 1;
   let currentDayIndex = 0;
-let durationTicker = null;
+// durationTicker is declared near the top of the file to ensure it exists
+// before any initial navigation calls.
 
   function setActiveWeekTab(week) {
     weekTabs.forEach((tab) => tab.classList.toggle("week-tab--active", parseInt(tab.dataset.week, 10) === week));
