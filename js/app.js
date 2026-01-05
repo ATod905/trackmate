@@ -2215,12 +2215,12 @@ function renderCustomBuilderForCurrentDay() {
     header.appendChild(title);
     card.appendChild(header);
 
-    if (ex.notes) {
-      const note = document.createElement("p");
-      note.className = "exercise-note";
-      note.textContent = `Note: ${ex.notes}`;
-      card.appendChild(note);
-    }
+    if (ex.notes && !isCardioExercise(ex.name)) {
+        const note = document.createElement("p");
+        note.className = "exercise-note";
+        note.textContent = `Note: ${ex.notes}`;
+        card.appendChild(note);
+      }
 
     const setsGrid = document.createElement("div");
     setsGrid.className = "sets-grid";
@@ -2237,7 +2237,11 @@ function renderCustomBuilderForCurrentDay() {
 
       const label = document.createElement("div");
       label.className = "set-label";
-      label.textContent = `Set ${setIndex + 1}:`;
+      label.textContent = isCardio ? "" : `Set ${setIndex + 1}:`;
+        if (isCardio) {
+          // Hide the label entirely for cardio; we treat it as one session, not multiple sets.
+          label.style.display = "none";
+        }
 
       const fields = document.createElement("div");
       fields.className = "set-fields";
@@ -4556,10 +4560,25 @@ const seriesSorted = seriesNames
   cardioEditCancel?.addEventListener("click", closeCardioEditor);
   cardioEditOverlay?.addEventListener("click", (e) => { if (e.target === cardioEditOverlay) closeCardioEditor(); });
 
-  cardioEditSave?.addEventListener("click", () => {
+  function parseCardioTimeToMinutes(raw){
+  if(!raw) return "";
+  const v=raw.replace(',', '.');
+  if(v.includes('.')){
+    const [h,m]=v.split('.');
+    const hh=parseInt(h,10)||0;
+    const mm=parseInt(m.padEnd(2,'0').slice(0,2),10)||0;
+    return hh*60+mm;
+  }
+  const n=parseInt(v,10);
+  return Number.isFinite(n)? n : "";
+}
+
+cardioEditSave?.addEventListener("click", () => {
     if (!currentCardioPills || !currentCardioContext) { closeCardioEditor(); return; }
 
-    const tRaw = (cardioEditTime?.value || "").trim();
+    const tInput = (cardioEditTime?.value || "").trim();
+    const tParsed = parseCardioTimeToMinutes(tInput);
+    const tRaw = tParsed === "" ? "" : String(tParsed);
     const incRaw = (cardioEditIncline?.value || "").trim();
     const intenRaw = (cardioEditIntensity?.value || "").trim();
 
@@ -4942,7 +4961,7 @@ const seriesSorted = seriesNames
       header.appendChild(title);
       card.appendChild(header);
 
-      if (ex.notes) {
+      if (ex.notes && !isCardioExercise(ex.name)) {
         const note = document.createElement("p");
         note.className = "exercise-note";
         note.textContent = `Note: ${ex.notes}`;
@@ -4998,11 +5017,15 @@ const baseSuggestion = oneRMBase || (() => {
       }
 
       const activeSeries = getActiveSeriesName();
-      const setCount = (activeSeries === DEFAULT_SERIES_NAME)
+      const computedSetCount = (activeSeries === DEFAULT_SERIES_NAME)
         ? (Number.isFinite(parseInt(exState.setCount, 10)) ? Math.min(10, Math.max(1, parseInt(exState.setCount, 10))) : 4)
         : (Number.isFinite(parseInt(ex.setCount, 10)) ? Math.min(10, Math.max(1, parseInt(ex.setCount, 10))) : 4);
 
       const isCardio = isCardioExercise(ex.name);
+
+      // Cardio should not be split across multiple sets.
+      // We render a single "session" row with Time / Incline / Intensity.
+      const setCount = isCardio ? 1 : computedSetCount;
 
       for (let setIndex = 0; setIndex < setCount; setIndex++) {
         const cell = document.createElement("div");
@@ -5010,7 +5033,11 @@ const baseSuggestion = oneRMBase || (() => {
 
         const label = document.createElement("div");
         label.className = "set-label";
-        label.textContent = `Set ${setIndex + 1}:`;
+        label.textContent = isCardio ? "" : `Set ${setIndex + 1}:`;
+        if (isCardio) {
+          label.style.display = "none";
+          cell.classList.add("set-cell--cardio");
+        }
 
         const fields = document.createElement("div");
         fields.className = "set-fields";
@@ -5125,7 +5152,7 @@ const baseSuggestion = oneRMBase || (() => {
           fields.appendChild(repsPill);
         }
 
-        cell.appendChild(label);
+        if (!isCardio) cell.appendChild(label);
         cell.appendChild(fields);
         setsGrid.appendChild(cell);
       }
