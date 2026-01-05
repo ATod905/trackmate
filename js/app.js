@@ -14,7 +14,23 @@ function showScreen(id) {
     try { syncWelcomeTitle(); } catch (_) {}
   }
 
-  // Screen-specific UI sync (keep logic minimal to avoid regressions)
+  
+  // v2.7.4: keep duration display live while on workout screen (no layout shift).
+  if (durationTicker) {
+    clearInterval(durationTicker);
+    durationTicker = null;
+  }
+  if (id === "screen-workout") {
+    // Update immediately, then tick periodically.
+    try { updateDurationFooterOnly(); } catch (_) {}
+    durationTicker = setInterval(() => {
+      const w = document.getElementById("screen-workout");
+      if (w && w.classList.contains("screen--active")) {
+        try { updateDurationFooterOnly(); } catch (_) {}
+      }
+    }, 15000);
+  }
+// Screen-specific UI sync (keep logic minimal to avoid regressions)
   if (id === "screen-workout") {
     try { syncWorkoutDaySelectOptionsForSeries(getActiveSeriesName()); } catch (_) {}
     try { syncWorkoutEditProgramButton(); } catch (_) {}
@@ -26,6 +42,10 @@ function showScreen(id) {
     try { syncProgramDraftUI(); renderCustomBuilderForCurrentDay(); } catch (_) {}
   }
 }
+
+// Token used to guarantee that "Continue to Workouts" renders the intended day.
+// If multiple navigations occur quickly, only the latest token may render.
+let __continueEntryToken = 0;
 
 // -------------------------
 // Cross-screen recalculation hooks
@@ -324,9 +344,18 @@ function deepClone(obj) {
 // -------------------------
 function getDisplayDayNumber(dayIndex) {
   // Display consecutive day numbers to avoid users thinking a day is missing.
-  // Internally, the Sklar series still uses 5 planned workout days.
-  const dayNumbers = [1, 2, 3, 4, 5];
-  return dayNumbers[dayIndex] ?? (dayIndex + 1);
+  // The built-in Sklar template includes a non-workout slot (a blank day) which
+  // means the underlying day indices are not strictly consecutive.
+  // We therefore map indices -> display numbers explicitly.
+  const sklarMap = {
+    0: 1,
+    1: 2,
+    2: 3,
+    4: 4,
+    5: 5,
+  };
+  if (sklarMap.hasOwnProperty(dayIndex)) return sklarMap[dayIndex];
+  return dayIndex + 1;
 }
 
 // -------------------------
@@ -1487,7 +1516,33 @@ function getWorkoutState(seriesName) {
   const series = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
   migrateLegacyWorkoutStateIfNeeded(series);
   const key = workoutStateStorageKeyForSeries(series);
-  return readJSON(key, { weeks: {} });
+  const st = readJSON(key, { weeks: {} });
+
+  // -------------------------
+  // Sklar: defensive cleanup of any out-of-range day indices.
+  // The built-in programme template uses consecutive day indices (0..4).
+  // If any legacy builds wrote an out-of-range day (e.g. index 5), clamp it safely.
+  if (series === DEFAULT_SERIES_NAME) {
+    try {
+      let changed = false;
+      if (st && typeof st === "object" && st.weeks && typeof st.weeks === "object") {
+        Object.keys(st.weeks).forEach((wKey) => {
+          const weekObj = st.weeks[wKey];
+          if (!weekObj || typeof weekObj !== "object") return;
+
+          if (weekObj["5"] != null) {
+            // Prefer preserving any existing Day 5 (index 4). If absent, move 5 -> 4.
+            if (weekObj["4"] == null) weekObj["4"] = weekObj["5"];
+            delete weekObj["5"];
+            changed = true;
+          }
+        });
+      }
+      if (changed) writeJSON(key, st);
+    } catch (_) {}
+  }
+
+return st;
 }
 
 function saveWorkoutState(state, seriesName) {
@@ -1572,9 +1627,14 @@ function ensureDayState(state, week, dayIndex) {
   const wKey = String(week);
   const dKey = String(dayIndex);
   if (!state.weeks[wKey]) state.weeks[wKey] = {};
-  if (!state.weeks[wKey][dKey]) state.weeks[wKey][dKey] = { completed: false, exercises: {}, extraExercises: [] };
+  if (!state.weeks[wKey][dKey]) state.weeks[wKey][dKey] = { completed: false, completedAt: null, startedAt: null, endedAt: null, durationSec: null, exercises: {}, extraExercises: [] };
   // Back-compat for older saves
-  if (!Array.isArray(state.weeks[wKey][dKey].extraExercises)) state.weeks[wKey][dKey].extraExercises = [];
+  const ds = state.weeks[wKey][dKey];
+  if (!Array.isArray(ds.extraExercises)) ds.extraExercises = [];
+  if (!("completedAt" in ds)) ds.completedAt = ds.completed ? (ds.completedAt ?? Date.now()) : null;
+  if (!("startedAt" in ds)) ds.startedAt = null;
+  if (!("endedAt" in ds)) ds.endedAt = null;
+  if (!("durationSec" in ds)) ds.durationSec = null;
   return state.weeks[wKey][dKey];
 }
 
@@ -1722,15 +1782,30 @@ document.addEventListener("DOMContentLoaded", () => {
     const lv = readJSON(STORAGE_KEYS.lastViewed, null);
     if (!lv) return null;
     const week = parseInt(lv.week, 10);
-    const dayIndex = parseInt(lv.dayIndex, 10);
+    let dayIndex = parseInt(lv.dayIndex, 10);
     if (!Number.isFinite(week) || !Number.isFinite(dayIndex)) return null;
     if (week < 1 || week > 6) return null;
-    if (dayIndex < 0 || dayIndex > 4) return null;
+
+    // Clamp dayIndex to the active series template length to avoid stale/invalid indices
+    // leaving the UI showing one day while rendering another.
+    const template = getProgramWeekTemplateForSeries(getActiveSeriesName());
+    const maxIdx = Array.isArray(template) && template.length ? (template.length - 1) : 0;
+    if (dayIndex < 0) dayIndex = 0;
+    if (dayIndex > maxIdx) dayIndex = maxIdx;
+
     return { week, dayIndex };
   }
 
   function setLastViewedWorkout(week, dayIndex) {
-    writeJSON(STORAGE_KEYS.lastViewed, { week, dayIndex, ts: Date.now() });
+    const w = parseInt(week, 10);
+    let d = parseInt(dayIndex, 10);
+    const template = getProgramWeekTemplateForSeries(getActiveSeriesName());
+    const maxIdx = Array.isArray(template) && template.length ? (template.length - 1) : 0;
+    if (!Number.isFinite(w)) return;
+    if (!Number.isFinite(d)) d = 0;
+    if (d < 0) d = 0;
+    if (d > maxIdx) d = maxIdx;
+    writeJSON(STORAGE_KEYS.lastViewed, { week: w, dayIndex: d, ts: Date.now() });
   }
 
   function isWorkoutCompletedFor(week, dayIndex) {
@@ -1755,6 +1830,19 @@ document.addEventListener("DOMContentLoaded", () => {
     return null;
   }
 
+  function findFirstIncompleteDayInWeek(week) {
+    const template = getProgramWeekTemplateForSeries(getActiveSeriesName());
+    const dayIndices = (Array.isArray(template) ? template.map((_, idx) => idx) : [0,1,2,3,4]).filter((idx) => {
+      const exs = Array.isArray(template?.[idx]?.exercises) ? template[idx].exercises : [];
+      return exs.length > 0;
+    });
+    for (const d of dayIndices) {
+      if (!isWorkoutCompletedFor(week, d)) return d;
+    }
+    return dayIndices.length ? dayIndices[0] : 0;
+  }
+
+
   function chooseContinueTarget() {
     const mode = getContinueMode();
     if (mode === "resume") {
@@ -1766,15 +1854,44 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function enterWorkoutFromEntryPoint() {
+    // v2.7.11: Continue-to-workouts must ALWAYS render the same day that the UI
+    // indicates (Week tab + Day dropdown). Some browsers can leave the previous
+    // day's DOM rendered on first entry unless we force a post-navigation render.
+    const navToken = ++__continueEntryToken;
     const target = chooseContinueTarget();
+
     currentWeek = target.week;
-    setActiveWeekTab(currentWeek);
-    // Ensure the day dropdown matches the chosen day
-    const sel = document.getElementById("workout-day-select");
-    if (sel) sel.value = String(target.dayIndex);
+    currentDayIndex = target.dayIndex;
+
     closeWorkoutMenu();
     showScreen("screen-workout");
-    renderWorkoutDay(target.dayIndex);
+
+    // Ensure selector options match the active series before setting the value.
+    try { syncWorkoutDaySelectOptionsForSeries(getActiveSeriesName()); } catch (_) {}
+
+    setActiveWeekTab(currentWeek);
+
+    const sel = document.getElementById("workout-day-select");
+    if (sel) sel.value = String(currentDayIndex);
+
+    // Force an authoritative render via the same pathway as a user day change.
+    // We run it immediately and again on the next frame + a short timeout to
+    // override any late initial renders that could otherwise leave stale cards.
+    const forceRender = () => {
+      if (navToken !== __continueEntryToken) return;
+      const s = document.getElementById("workout-day-select");
+      if (s) {
+        // Ensure the dropdown reflects the canonical currentDayIndex.
+        if (s.value !== String(currentDayIndex)) s.value = String(currentDayIndex);
+        try { s.dispatchEvent(new Event("change", { bubbles: true })); } catch (_) { renderWorkoutDay(currentDayIndex); }
+      } else {
+        renderWorkoutDay(currentDayIndex);
+      }
+    };
+
+    forceRender();
+    try { requestAnimationFrame(forceRender); } catch (_) {}
+    setTimeout(forceRender, 60);
   }
 
 function syncProgramDraftUI() {
@@ -1805,8 +1922,8 @@ function syncWorkoutDaySelectOptionsForSeries(seriesName) {
       { value: "0", label: "Day 1" },
       { value: "1", label: "Day 2" },
       { value: "2", label: "Day 3" },
-      { value: "4", label: "Day 4" }, // underlying Day 5
-      { value: "5", label: "Day 5" }, // underlying Day 6
+      { value: "3", label: "Day 4" },
+      { value: "4", label: "Day 5" },
     ];
     select.innerHTML = "";
     options.forEach((o) => {
@@ -3356,6 +3473,7 @@ const seriesSorted = seriesNames
   const weekTabs = document.querySelectorAll(".week-tab");
   let currentWeek = 1;
   let currentDayIndex = 0;
+let durationTicker = null;
 
   function setActiveWeekTab(week) {
     weekTabs.forEach((tab) => tab.classList.toggle("week-tab--active", parseInt(tab.dataset.week, 10) === week));
@@ -3367,6 +3485,15 @@ const seriesSorted = seriesNames
       if (!Number.isNaN(w)) {
         currentWeek = w;
         setActiveWeekTab(w);
+
+        // If the user has chosen "Next incomplete" behaviour, jump to the first incomplete
+        // day in the selected week (prevents returning to already-completed days).
+        if (getContinueMode() === "next") {
+          currentDayIndex = findFirstIncompleteDayInWeek(w);
+          const sel = document.getElementById("workout-day-select");
+          if (sel) sel.value = String(currentDayIndex);
+        }
+
         renderWorkoutDay(currentDayIndex);
       }
     });
@@ -3424,6 +3551,7 @@ const seriesSorted = seriesNames
   const summaryRepsEl = document.getElementById("summary-reps");
   const summaryCaloriesEl = document.getElementById("summary-calories");
   const summaryProgressEl = document.getElementById("summary-progress");
+  const summaryDurationEl = document.getElementById("summary-duration");
 
   // -------------------------
   // Calorie estimate helpers
@@ -3511,13 +3639,70 @@ const seriesSorted = seriesNames
     return Number.isFinite(kcal) ? kcal : 0;
   }
 
-  // Set editor overlay
+
+
+  // -------------------------
+  // Workout duration helpers
+  // -------------------------
+  function ensureWorkoutStarted() {
+    const state = getWorkoutState();
+    const ds = ensureDayState(state, currentWeek, currentDayIndex);
+    if (ds.completed) return; // do not re-start completed workouts
+    if (!ds.startedAt) {
+      ds.startedAt = Date.now();
+      saveWorkoutState(state);
+    }
+  }
+
+  function formatDurationFromSeconds(totalSec) {
+    const s = Math.max(0, Math.floor(Number(totalSec) || 0));
+    const hrs = Math.floor(s / 3600);
+    const mins = Math.floor((s % 3600) / 60);
+    if (hrs > 0) return `${hrs}h ${String(mins).padStart(2, "0")}m`;
+    return `${mins}m`;
+  }
+
+  function updateDurationFooterOnly() {
+    if (!summaryDurationEl) return;
+    const state = getWorkoutState();
+    const ds = ensureDayState(state, currentWeek, currentDayIndex);
+
+    // Prefer stored duration once completed; otherwise show live elapsed time since start.
+    if (ds.durationSec !== null && ds.durationSec !== undefined) {
+      summaryDurationEl.textContent = formatDurationFromSeconds(ds.durationSec);
+      return;
+    }
+    if (ds.startedAt) {
+      const liveSec = (Date.now() - Number(ds.startedAt)) / 1000;
+      summaryDurationEl.textContent = formatDurationFromSeconds(liveSec);
+      return;
+    }
+    summaryDurationEl.textContent = "—";
+  }
+
+// Set editor overlay
   const setEditOverlay = document.getElementById("set-edit-overlay");
   const setEditExercise = document.getElementById("set-edit-exercise");
   const setEditWeight = document.getElementById("set-edit-weight");
   const setEditReps = document.getElementById("set-edit-reps");
   const setEditCancel = document.getElementById("set-edit-cancel");
   const setEditSave = document.getElementById("set-edit-save");
+
+  // Start workout timer on first meaningful input (reps/weight edit).
+  // This is deliberately lightweight and does not alter set completion logic.
+  [setEditWeight, setEditReps].forEach((el) => {
+    if (!el) return;
+    el.addEventListener("input", () => {
+      ensureWorkoutStarted();
+    });
+    el.addEventListener("change", () => {
+      ensureWorkoutStarted();
+    });
+    el.addEventListener("focus", () => {
+      ensureWorkoutStarted();
+    });
+  });
+
 
   let currentEditWeightPill = null;
   let currentEditRepsPill = null;
@@ -4055,11 +4240,14 @@ const seriesSorted = seriesNames
     const kcal = resistanceKcal + totalCardioKcal;
     if (summaryCaloriesEl) summaryCaloriesEl.textContent = kcal > 0 ? `${Math.round(kcal)}` : "0";
     summaryProgressEl.textContent = `${completedSets}/${expected}`;
+    updateDurationFooterOnly();
   }
 
   // Save set edits
   setEditSave?.addEventListener("click", () => {
     if (!currentEditContext) { closeSetEditor(); return; }
+
+    try { ensureWorkoutStarted(); } catch (_) {}
 
     const wRaw = (setEditWeight.value || "").trim();
     const rRaw = (setEditReps.value || "").trim();
@@ -4393,10 +4581,23 @@ const seriesSorted = seriesNames
   // Render workout day
   function renderWorkoutDay(dayIndex) {
     const program = getProgramForWeek(currentWeek);
-    const day = program[dayIndex];
-    if (!day) return;
+    let idx = parseInt(dayIndex, 10);
+    if (!Number.isFinite(idx)) idx = 0;
 
-    currentDayIndex = dayIndex;
+    let day = program[idx];
+    if (!day) {
+      // Safety fallback: do not leave stale cards rendered while the UI shows a different day.
+      idx = 0;
+      day = program[idx];
+      if (!day) return;
+      const sel = document.getElementById("workout-day-select");
+      if (sel) sel.value = String(idx);
+    } else {
+      const sel = document.getElementById("workout-day-select");
+      if (sel && sel.value !== String(idx)) sel.value = String(idx);
+    }
+
+    currentDayIndex = idx;
     
     setLastViewedWorkout(currentWeek, currentDayIndex);
 
@@ -4940,6 +5141,10 @@ workoutDaySelect?.addEventListener("change", () => {
     if (!dayState.completed) {
       dayState.completed = true;
       dayState.completedAt = Date.now();
+      // Workout duration (start on first reps/weight input; end on completion)
+      if (!dayState.startedAt) dayState.startedAt = dayState.completedAt;
+      dayState.endedAt = dayState.completedAt;
+      dayState.durationSec = Math.max(0, Math.floor((dayState.endedAt - dayState.startedAt) / 1000));
 
       // Custom programme safety: snapshot the week template the moment a day is marked complete.
       // This prevents later edits or programme definition changes from mutating completed workouts.
@@ -4959,12 +5164,16 @@ workoutDaySelect?.addEventListener("change", () => {
         series: getActiveSeriesName(),
         week: currentWeek,
         dayIndex: currentDayIndex,
-        completedAt: dayState.completedAt
+        completedAt: dayState.completedAt,
+        durationSec: dayState.durationSec
       });
-      alert(`Saved. Week ${currentWeek}, Day ${dayNumber} marked complete.`);
+      const durTxt = dayState.durationSec !== null ? formatDurationFromSeconds(dayState.durationSec) : "";
+      alert(`Saved. Week ${currentWeek}, Day ${dayNumber} marked complete.${durTxt ? " Time: " + durTxt : ""}`);
     } else {
       dayState.completed = false;
       dayState.completedAt = null;
+      dayState.endedAt = null;
+      dayState.durationSec = null;
       saveWorkoutState(state);
       // Remove any saved history entry for this day (prevents duplicates when re-completing).
       removeHistoryLogEntry(getActiveSeriesName(), currentWeek, currentDayIndex);
