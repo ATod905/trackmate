@@ -1001,6 +1001,17 @@ body {
   align-items: center;
 }
 
+/* Cardio input layout: Time wider, Incline/Intensity narrower */
+.set-fields .set-time-pill {
+  flex: 2.2;
+  min-width: 0;
+}
+.set-fields .set-incline-pill,
+.set-fields .set-intensity-pill {
+  flex: 1;
+  min-width: 0;
+}
+
 /* Pill-style buttons for kg / reps */
 
 .input-pill {
@@ -1461,6 +1472,47 @@ body {
   color: #ff6b6b;
   font: inherit;
   cursor: pointer;
+
+
+/* Settings: Continue mode dropdown stacked (label above select) */
+.settings-item.settings-stack{
+  padding: 12px 12px;
+}
+
+.settings-stack-label{
+  display:block;
+  width:100%;
+  font-size: 15px;
+  margin-bottom: 10px;
+}
+
+/* Make the dropdown match the width and general sizing of the Reset All Data button */
+.settings-stack-select{
+  display:block;
+  width:100%;
+  text-align:left;
+  padding: 14px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.04);
+  color: var(--tm-text, #fff);
+  font: inherit;
+  font-size: 15px;
+  appearance: none;
+}
+
+/* Keep the native dropdown arrow while aligning it nicely */
+.settings-stack-select{
+  background-image:
+    linear-gradient(45deg, transparent 50%, rgba(255,255,255,0.65) 50%),
+    linear-gradient(135deg, rgba(255,255,255,0.65) 50%, transparent 50%);
+  background-position:
+    calc(100% - 20px) calc(50% - 2px),
+    calc(100% - 14px) calc(50% - 2px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 40px;
+}
 }
 
 /* Destructive action: Reset Day */
@@ -1721,14 +1773,20 @@ body.tm-menu-open .home-hamburger{
 .add-exercise-btn {
   display: block;
   width: 100%;
-  margin: 12px 0 0;
+  /* Small visual separation from the workout summary bar below */
+  margin: 12px 0 8px;
   padding: 10px 0;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--tm-teal);
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.04);
-  color: rgba(0, 0, 0, 0.55);
+  /* Light teal fill with dark teal border + text */
+  background: rgba(31, 154, 160, 0.14);
+  color: var(--tm-teal);
   font-size: 15px; /* smaller text/icon while preserving tappable padding */
   line-height: 1;
+}
+
+.add-exercise-btn:hover {
+  background: rgba(31, 154, 160, 0.18);
 }
 
 .add-exercise-btn:active {
@@ -1837,4 +1895,30 @@ body.tm-menu-open .home-hamburger{
   .workout-summary-item {
     font-size: 12px;
   }
+}
+
+/* Cardio pills equal width */
+.set-fields { display:flex; gap:6px; }
+.set-fields .set-time-pill,
+.set-fields .set-incline-pill,
+.set-fields .set-intensity-pill {
+  flex:1 1 0;
+  text-align:center;
+}
+
+/* Cardio: make the 3 pills span the full card width and never wrap */
+.set-cell--cardio .set-fields {
+  width: 100%;
+  flex-wrap: nowrap;
+}
+.set-cell--cardio .set-time-pill,
+.set-cell--cardio .set-incline-pill,
+.set-cell--cardio .set-intensity-pill {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Cardio set row should span the full card width (override 2-column sets grid) */
+.set-cell--cardio {
+  grid-column: 1 / -1;
 }
