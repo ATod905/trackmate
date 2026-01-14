@@ -941,8 +941,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   margin-left: 2px;
   border-radius: 6px;
@@ -950,8 +950,8 @@ body {
 }
 
 .exercise-header-links .icon-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   stroke: currentColor;
 }
 
@@ -984,6 +984,11 @@ body {
   margin-top: 4px;
 }
 
+/* Treadmill-only cards render a single cardio row and should span full card width */
+.sets-grid--treadmill {
+  grid-template-columns: 1fr;
+}
+
 .set-cell {
   display: flex;
   flex-direction: column;
@@ -1001,16 +1006,24 @@ body {
   align-items: center;
 }
 
-/* Cardio input layout: Time wider, Incline/Intensity narrower */
-.set-fields .set-time-pill {
-  flex: 2.2;
-  min-width: 0;
+/* Treadmill-only cardio layout: 3 equal columns, full-width pills */
+.set-fields--treadmill {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
 }
-.set-fields .set-incline-pill,
-.set-fields .set-intensity-pill {
-  flex: 1;
-  min-width: 0;
+
+.set-fields--treadmill .input-pill {
+  width: 100%;
 }
+
+.input-pill--treadmill {
+  padding: 10px 12px;
+  font-size: 14px;
+  border-radius: 14px;
+}
+
 
 /* Pill-style buttons for kg / reps */
 
@@ -1321,6 +1334,15 @@ body {
   border-color: var(--tm-teal);
 }
 
+/* Subcategory headings inside exercise pickers */
+.tm-subheading {
+  margin: 6px 2px 2px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #7a808a;
+}
+
 .exercise-edit-category-row {
   display: flex;
   flex-wrap: wrap;
@@ -1395,8 +1417,26 @@ body {
 .settings-list{
   display:flex;
   flex-direction:column;
-  gap:10px;
-  margin-top: 14px;
+  gap:6px;
+  margin-top: 10px;
+}
+
+.settings-label{
+  margin-top: 6px;
+  margin-bottom: 0;
+  /* Align label text with settings item text */
+  padding: 0 14px;
+  font-size: 16px;
+  color: var(--tm-text, #fff);
+  opacity: 0.95;
+}
+
+.settings-item.settings-select{
+  text-align:left;
+  width:100%;
+  /* Ensure a clear medium-grey border on the dropdown across browsers */
+  border-color: rgba(160,160,160,0.95);
+  border-width: 2px;
 }
 
 .settings-item{
@@ -1420,100 +1460,12 @@ body {
 }
 
 
-/* Settings: Reset Week dropdown row */
-
-/* Settings: make Reset Week row more compact (match button styling) */
-.settings-item.settings-row{
-  padding: 10px 12px; /* narrower vertically */
-  font-size: 15px;
-}
-
-.settings-row-label{
-  font-size: 15px;
-}
-
-.settings-row-select{
-  padding: 8px 10px;
-  font-size: 15px;
-}
-
-.settings-row-button{
-  padding: 8px 10px;
-  font-size: 15px;
-}
-
-.settings-row{
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
-
-.settings-row-label{
-  flex: 1 1 auto;
-  color: inherit;
-}
-
-.settings-row-select{
-  flex: 0 0 auto;
-  padding: 10px 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.18);
-  background: rgba(0,0,0,0.18);
-  color: var(--tm-text, #fff);
-  font: inherit;
-}
-
-.settings-row-button{
-  flex: 0 0 auto;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,107,107,0.35);
-  background: rgba(255,107,107,0.08);
-  color: #ff6b6b;
-  font: inherit;
-  cursor: pointer;
-
-
-/* Settings: Continue mode dropdown stacked (label above select) */
-.settings-item.settings-stack{
-  padding: 12px 12px;
-}
-
-.settings-stack-label{
-  display:block;
-  width:100%;
-  font-size: 15px;
-  margin-bottom: 10px;
-}
-
-/* Make the dropdown match the width and general sizing of the Reset All Data button */
-.settings-stack-select{
-  display:block;
-  width:100%;
-  text-align:left;
-  padding: 14px 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(255,255,255,0.04);
-  color: var(--tm-text, #fff);
-  font: inherit;
-  font-size: 15px;
-  appearance: none;
-}
-
-/* Keep the native dropdown arrow while aligning it nicely */
-.settings-stack-select{
-  background-image:
-    linear-gradient(45deg, transparent 50%, rgba(255,255,255,0.65) 50%),
-    linear-gradient(135deg, rgba(255,255,255,0.65) 50%, transparent 50%);
-  background-position:
-    calc(100% - 20px) calc(50% - 2px),
-    calc(100% - 14px) calc(50% - 2px);
-  background-size: 6px 6px, 6px 6px;
-  background-repeat: no-repeat;
-  padding-right: 40px;
-}
-}
+/* Settings: legacy row styles removed from layout (kept for safety if referenced elsewhere) */
+.settings-item.settings-row{ padding: 10px 12px; font-size: 15px; }
+.settings-row{ display:flex; align-items:center; gap:10px; }
+.settings-row-label{ flex: 1 1 auto; color: inherit; font-size: 15px; }
+.settings-row-select{ flex: 0 0 auto; padding: 10px 10px; font-size: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.18); background: rgba(0,0,0,0.18); color: var(--tm-text, #fff); font: inherit; }
+.settings-row-button{ flex: 0 0 auto; padding: 10px 12px; font-size: 15px; border-radius: 12px; border: 1px solid rgba(255,107,107,0.35); background: rgba(255,107,107,0.08); color: #ff6b6b; font: inherit; cursor: pointer; }
 
 /* Destructive action: Reset Day */
 .workout-day-header .btn-text {
@@ -1773,24 +1725,28 @@ body.tm-menu-open .home-hamburger{
 .add-exercise-btn {
   display: block;
   width: 100%;
-  /* Small visual separation from the workout summary bar below */
-  margin: 12px 0 8px;
+  margin: 12px 0 12px;
   padding: 10px 0;
   border: 1px solid var(--tm-teal);
   border-radius: 12px;
-  /* Light teal fill with dark teal border + text */
-  background: rgba(31, 154, 160, 0.14);
+  background: rgba(31, 154, 160, 0.12);
   color: var(--tm-teal);
   font-size: 15px; /* smaller text/icon while preserving tappable padding */
   line-height: 1;
 }
 
-.add-exercise-btn:hover {
-  background: rgba(31, 154, 160, 0.18);
+.add-exercise-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(31, 154, 160, 0.18);
 }
 
 .add-exercise-btn:active {
   transform: scale(0.99);
+}
+
+.add-exercise-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(31, 154, 160, 0.18);
 }
 
 /* Custom builder: match Equipment Key styling used elsewhere */
@@ -1895,30 +1851,4 @@ body.tm-menu-open .home-hamburger{
   .workout-summary-item {
     font-size: 12px;
   }
-}
-
-/* Cardio pills equal width */
-.set-fields { display:flex; gap:6px; }
-.set-fields .set-time-pill,
-.set-fields .set-incline-pill,
-.set-fields .set-intensity-pill {
-  flex:1 1 0;
-  text-align:center;
-}
-
-/* Cardio: make the 3 pills span the full card width and never wrap */
-.set-cell--cardio .set-fields {
-  width: 100%;
-  flex-wrap: nowrap;
-}
-.set-cell--cardio .set-time-pill,
-.set-cell--cardio .set-incline-pill,
-.set-cell--cardio .set-intensity-pill {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-/* Cardio set row should span the full card width (override 2-column sets grid) */
-.set-cell--cardio {
-  grid-column: 1 / -1;
 }
