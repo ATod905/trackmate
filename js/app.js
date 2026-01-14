@@ -1465,9 +1465,16 @@ function buildCustomWeekTemplateFromDraft(draft, weekNumber) {
     const legacyKey = String(i);
     let exs = [];
     if (wk === 1) {
-      exs = Array.isArray(days[legacyKey]) ? days[legacyKey]
-        : (Array.isArray(days[weekKey]) ? days[weekKey]
-          : (week1ShiftedToWeek2 && Array.isArray(days[`2-${i}`]) ? days[`2-${i}`] : []));
+      // Prefer legacy keys *only when they contain data*. Empty legacy arrays can exist due to
+      // normalisation, and must not block fallback to composite keys or shifted Week 2 data.
+      const legacyArr = Array.isArray(days[legacyKey]) ? days[legacyKey] : null;
+      const weekArr = Array.isArray(days[weekKey]) ? days[weekKey] : null;
+      const shiftedArr = week1ShiftedToWeek2 && Array.isArray(days[`2-${i}`]) ? days[`2-${i}`] : null;
+
+      exs = (legacyArr && legacyArr.length) ? legacyArr
+        : (weekArr && weekArr.length) ? weekArr
+          : (shiftedArr && shiftedArr.length) ? shiftedArr
+            : [];
     } else {
       exs = Array.isArray(days[weekKey]) ? days[weekKey]
         : (Array.isArray(days[legacyKey]) ? days[legacyKey] : []);
@@ -2325,21 +2332,10 @@ function getCustomBuilderSelectedDay() {
   return Number.isNaN(v) ? 1 : Math.min(7, Math.max(1, v));
 }
 
-// Backwards-compatible alias used in some builds.
-function getCustomBuilderSelectedDayNumber() {
-  return getCustomBuilderSelectedDay();
-}
-
 function getCustomBuilderSelectedWeek() {
   const sel = document.getElementById("custom-week-select");
   const v = parseInt(sel?.value || "1", 10);
   return Number.isNaN(v) ? 1 : Math.min(6, Math.max(1, v));
-}
-
-// Backwards-compatible alias used in some builds.
-// Keep this as a tiny shim to avoid breaking Save Program & Use It.
-function getCustomBuilderSelectedWeekNumber() {
-  return getCustomBuilderSelectedWeek();
 }
 
 // Day-key strategy (backwards compatible):
@@ -2981,14 +2977,11 @@ function saveCustomProgrammeAndUse() {
 	try {
 	  const st = getWorkoutState();
 	  st.customWeekOverrides = st.customWeekOverrides || {};
-	  const wk = getCustomBuilderSelectedWeekNumber();
-	  const dayIdx = Math.max(0, Math.min(6, getCustomBuilderSelectedDayNumber() - 1));
-	  st.customWeekOverrides[String(wk)] = buildCustomWeekTemplateFromDraft(def, wk);
+	  const wk = getCustomBuilderSelectedWeek();
+	  st.customWeekOverrides[wk] = buildCustomWeekTemplateFromDraft(def, wk);
 	  st.lastViewedWeek = wk;
-	  st.lastViewedDay = dayIdx;
+	  st.lastViewedDay = Math.max(0, Math.min(6, getCustomBuilderSelectedDay() - 1));
 	  saveWorkoutState(st);
-	  // Ensure the workout screen opens on the week/day the user just saved.
-	  try { setLastViewedWorkout(wk, dayIdx); } catch (_) {}
 	} catch (_) {}
 
   // Only reset progress when this is a brand-new programme.
@@ -4633,6 +4626,16 @@ const seriesSorted = seriesNames
       return;
     }
     editContext = { dayRef, exRef, titleEl, exIndex, week: currentWeek, dayIndex: currentDayIndex };
+
+    // Modal title: this overlay is used for both adding a new (via '+ add exercise')
+    // and editing an existing exercise (via the edit icon on the card).
+    // Only show "Add An Exercise" during the add flow (pending extra).
+    try {
+      const modalTitle = document.querySelector("#exercise-edit-overlay .set-edit-title");
+      if (modalTitle) {
+        modalTitle.textContent = exRef?.__pendingExtra ? "Add An Exercise" : "Edit Exercise";
+      }
+    } catch (_) {}
 
     editCurrent.textContent = exRef.name;
     editSuggested.innerHTML = "";
