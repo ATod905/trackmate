@@ -50,7 +50,7 @@
                 </button>
             </div>
 
-			<p class="welcome-version">Version 3.0.4</p>
+			<p class="welcome-version">Version 4.0.25</p>
         </main>
 
         <!-- PROFILE SCREEN - PAGE 2 -->
@@ -296,24 +296,37 @@
                             <option value="7">Day 7</option>
                         </select>
 
-                        <button type="button"
-                                id="btn-custom-add-exercise"
-                                class="btn btn-outline-teal btn-pill"
-                                style="white-space: nowrap;">
-                            + Add Exercise
-                        </button>
+                        <select id="custom-week-select" class="select select--pill" aria-label="Select week">
+                            <option value="1">Week 1</option>
+                            <option value="2">Week 2</option>
+                            <option value="3">Week 3</option>
+                            <option value="4">Week 4</option>
+                            <option value="5">Week 5</option>
+                            <option value="6">Week 6</option>
+                        </select>
                     </div>
                 </div>
 
-                <select id="custom-equipment-key" class="select" aria-label="Equipment Key" style="margin-top: 12px;">
-                    <option value="" selected>Equipment Key</option>
-                    <option value="ALL">All equipment</option>
-                    <option value="DB">DB — Dumbbells</option>
-                    <option value="BB">BB — Barbell</option>
-                    <option value="KB">KB — Kettlebell</option>
-                    <option value="BW">BW — Bodyweight</option>
-                    <option value="MC">MC — Machine/Cable</option>
-                </select>
+                <div class="tm-disclosure-group" style="margin-top: 12px;">
+                    <button type="button" class="tm-disclosure-toggle" data-disclosure="custom-builder-equip" aria-expanded="false">
+                        Equipment Key
+                        <span class="tm-chev">▾</span>
+                    </button>
+                    <div class="tm-disclosure-content" data-disclosure-content="custom-builder-equip" hidden>
+                        DB = Dumbbells<br />
+                        BB = Barbell<br />
+                        KB = Kettlebell<br />
+                        BW = Bodyweight<br />
+                        MC = Machine/Cable
+                    </div>
+                </div>
+
+                <button type="button"
+                        id="btn-custom-add-exercise"
+                        class="btn btn-outline-teal btn-full add-exercise-btn"
+                        style="margin-top: 12px;">
+                    + Add Exercise
+                </button>
 
                 <p class="tm-error" id="custom-builder-error" hidden></p>
 
@@ -359,6 +372,7 @@
                     <button type="button" class="exercise-edit-category-pill" data-custom-cat="Legs">Legs</button>
                     <button type="button" class="exercise-edit-category-pill" data-custom-cat="Arms">Arms</button>
                     <button type="button" class="exercise-edit-category-pill" data-custom-cat="Core">Core</button>
+                    <button type="button" class="exercise-edit-category-pill" data-custom-cat="Cardio">Cardio</button>
                 </div>
 
                 <div id="custom-ex-picker-list" style="margin-top:10px; overflow:auto; max-height: 52vh;"></div>
@@ -775,13 +789,11 @@
                 <button type="button" class="settings-item" data-settings-action="edit-profile">Edit Profile</button>
                 <button type="button" class="settings-item" data-settings-action="edit-program">Edit Program</button>
                 <button type="button" class="settings-item" data-settings-action="units">Units (kg / lb)</button>
-                <div class="settings-item settings-stack">
-                    <label class="settings-stack-label" for="settings-continue-mode">Continue to Workouts opens</label>
-                    <select id="settings-continue-mode" class="settings-stack-select" aria-label="Choose continue behaviour">
-                        <option value="next">Next incomplete workout</option>
-                        <option value="resume">Resume last viewed</option>
-                    </select>
-                </div>
+                <div class="settings-label">Continue to Workouts opens</div>
+                <select id="settings-continue-mode" class="settings-item settings-select" aria-label="Choose continue behaviour">
+                    <option value="next">Next incomplete workout</option>
+                    <option value="resume">Resume last viewed</option>
+                </select>
                 <button type="button" class="settings-item settings-item--danger" data-settings-action="reset-all">Reset All Data</button>
             </div>
         </main>
