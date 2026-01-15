@@ -998,6 +998,48 @@ body {
 .set-label {
   font-size: 13px;
   color: var(--tm-text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Per-set Superset indicator (SSet) */
+.sset-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  /* Dark grey label to improve readability while staying subtle */
+  color: #666;
+  user-select: none;
+}
+
+.sset-checkbox {
+  width: 16px;
+  height: 16px;
+  /* Custom checkbox to control border colour consistently */
+  appearance: none;
+  -webkit-appearance: none;
+  border: 2px solid #666;
+  border-radius: 3px;
+  background: transparent;
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+}
+
+.sset-checkbox:checked {
+  background: var(--tm-teal);
+}
+
+.sset-checkbox:checked::after {
+  content: "";
+  width: 8px;
+  height: 5px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(-45deg);
+  margin-top: -1px;
 }
 
 .set-fields {
@@ -1851,4 +1893,140 @@ body.tm-menu-open .home-hamburger{
   .workout-summary-item {
     font-size: 12px;
   }
+}
+
+/* Edit 4.1.5: SSet cosmetic tweaks */
+.sset-label{font-size:0.75em;color:#666;}
+.sset-toggle{gap:4px;}
+.sset-toggle input[type='checkbox']{margin:0; padding:0;}
+
+
+/* Edit 4.1.6: right-align SSet toggle in set header */
+.set-header,
+.set-row-header{
+  display:flex;
+  align-items:center;
+}
+.set-header .sset-toggle,
+.set-row-header .sset-toggle{
+  margin-left:auto;
+}
+
+
+/* Edit 4.1.7: SSet colour refinement */
+.sset-label{
+  color:#0f6f6a; /* dark teal */
+}
+.sset-toggle input[type='checkbox']{
+  border:1px solid #0f6f6a; /* thin dark teal */
+}
+
+
+/* Edit 4.1.8: subtle SSet offset + light teal */
+.sset-label{
+  color:#4fb3ad; /* light teal */
+  margin-left:0.5rem; /* subtle right shift (~4 spaces) */
+}
+.sset-toggle input[type='checkbox']{
+  border:1px solid #4fb3ad; /* light teal */
+}
+
+/* Edit 4.1.9: extra SSet right-shift */
+.sset-label{
+  margin-left:1rem; /* approx. 8 spaces total */
+}
+
+
+/* Edit 4.1.13: Cardio modal inputs match standard (white input, grey text) */
+#cardio-edit-overlay .set-edit-input{
+  background:#ffffff;
+  color:#4b5563; /* muted grey text */
+  border:1px solid rgba(122, 134, 147, 0.45);
+}
+#cardio-edit-overlay .set-edit-input::placeholder{
+  color: rgba(75, 85, 99, 0.65);
+}
+
+
+/* Edit: 4.1.15 — Compact search input in Create Your Workout/Program (Add an exercise modal) */
+#custom-ex-picker #custom-ex-picker-search{
+  font-size: 0.7rem;
+  padding: 6px 10px;
+  line-height: 1.2;
+  height: 36px;
+}
+
+
+/* Edit: 4.1.16 — Exercise picker headings: SEARCH + BROWSE styling + teal subheadings */
+#custom-ex-picker .field-label,
+#custom-ex-picker .exercise-edit-category-title{
+  color:#1f8f8a;
+  font-weight:700;
+  text-transform:uppercase;
+  font-size:0.95rem;
+  letter-spacing:0.02em;
+}
+
+/* List subcategory headings (e.g., PRESSING, LATERAL / MEDIAL DELTS) */
+#custom-ex-picker .tm-subheading{
+  color:#1f8f8a;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:0.02em;
+}
+
+
+/* Edit: 4.1.17 — Add Exercise modal subheadings (all contexts)
+   Applies to: Sklar programs, Custom workouts, Custom programs */
+
+#custom-ex-picker .exercise-group-title,
+#custom-ex-picker .exercise-edit-group-title,
+#custom-ex-picker .exercise-subheading,
+#custom-ex-picker .exercise-category-subheading {
+  color: #1f8f8a;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Fallback: any heading-style divs used as section labels */
+#custom-ex-picker div[class*="heading"],
+#custom-ex-picker div[class*="subheading"] {
+  color: #1f8f8a;
+  font-weight: 700;
+}
+
+
+/* Edit: 4.1.18 — Ensure all exercise-picker subheadings (tm-subheading) are bold + teal in every context */
+.tm-subheading{
+  color:#1f8f8a;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:0.02em;
+}
+
+
+/* Edit: 4.1.19 — Add SEARCH to workout Add Exercise modal (Custom + Sklar) */
+#exercise-edit-overlay .exercise-edit-search-label{
+  color:#1f8f8a;
+  font-weight:700;
+  text-transform:uppercase;
+  font-size:0.95rem;
+  letter-spacing:0.02em;
+  margin: 14px 0 6px 0;
+}
+#exercise-edit-overlay .exercise-edit-search{
+  width:100%;
+  border:1px solid #1f8f8a;
+  border-radius:16px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+
+/* Edit: 4.1.20 — Workout Add Exercise modal: remove Suggested Alternatives section + thin search border */
+#exercise-edit-overlay #exercise-edit-suggested{
+  display:none;
 }
