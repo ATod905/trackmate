@@ -226,7 +226,7 @@ function getTrashIconSVG() {
 }
 
 function getInfoIconSVG() {
-  // Circled “i” icon (stroke uses currentColor) — matches trash icon visual weight.
+  // Circled "i" icon (stroke uses currentColor) - matches trash icon visual weight.
   return `
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
       <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
@@ -236,7 +236,7 @@ function getInfoIconSVG() {
 }
 
 function getPencilIconSVG() {
-  // Pencil icon (stroke uses currentColor) — matches trash icon visual weight.
+  // Pencil icon (stroke uses currentColor) - matches trash icon visual weight.
   return `
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
       <path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -256,8 +256,8 @@ function normaliseCustomProgramDraft(raw) {
   const days = (raw.days && typeof raw.days === "object") ? raw.days : {};
   const updatedAt = Number(raw.updatedAt || raw.updatedAt || Date.now());
 
-  // Ensure days 1–7 exist as arrays.
-  // NOTE: We also preserve week-aware override keys in the format "<week>-<day>" (weeks 2–6),
+  // Ensure days 1-7 exist as arrays.
+  // NOTE: We also preserve week-aware override keys in the format "<week>-<day>" (weeks 2-6),
   // which are used by the 6-week custom programme builder.
   const nextDays = {};
   for (let d = 1; d <= 7; d++) {
@@ -277,7 +277,7 @@ function normaliseCustomProgramDraft(raw) {
       .filter((x) => x.name.trim().length > 0);
   }
 
-  // Preserve week overrides (Weeks 2–6). These keys are ignored by legacy views but are
+  // Preserve week overrides (Weeks 2-6). These keys are ignored by legacy views but are
   // required for week-specific custom programme edits.
   Object.keys(days).forEach((k) => {
     if (nextDays[k]) return; // already handled ("1".."7")
@@ -324,7 +324,7 @@ function setCustomProgramDraft(name) {
   return writeCustomProgramDraft(existing);
 }
 
-// Start a brand-new programme draft (blank Days 1–7).
+// Start a brand-new programme draft (blank Days 1-7).
 // This is used when the user enters a new programme name and presses "Start Building".
 // It intentionally discards any prior draft content to avoid unexpected carryover.
 function startNewCustomProgramDraft(name) {
@@ -571,7 +571,7 @@ function isCardioExercise(exerciseName) {
 // -------------------------
 const TM_RAW_EXERCISES = `
 Cardio
-Cardio – Machines
+Cardio - Machines
 Treadmill Walk
 Treadmill Jog
 Treadmill Run
@@ -586,11 +586,11 @@ Air Bike / Assault Bike
 Rowing Machine
 Ski Erg
 Arm Erg / Upper Body Erg
-Cardio – Conditioning & Functional
+Cardio - Conditioning & Functional
 Sled Push
 Sled Pull
 Prowler Push
-Farmer’s Carry
+Farmer's Carry
 Suitcase Carry
 Overhead Carry
 Yoke Carry
@@ -604,44 +604,44 @@ Shuttle Runs
 Hill Sprints
 
 Chest
-Chest – Pressing (Generic)
+Chest - Pressing (Generic)
 Flat Press
 Incline Press
 Decline Press
-Chest – Barbell
+Chest - Barbell
 Barbell Bench Press
 Incline Barbell Bench Press
 Decline Barbell Bench Press
-Floor Press – Barbell
+Floor Press - Barbell
 Spoto Press
 Guillotine Press
 Close-Grip Bench Press (Chest Bias)
-Chest – Dumbbell
+Chest - Dumbbell
 Dumbbell Bench Press
 Incline Dumbbell Bench Press
 Decline Dumbbell Bench Press
-Floor Press – Dumbbell
+Floor Press - Dumbbell
 Single-Arm Dumbbell Bench Press
 Neutral-Grip Dumbbell Bench Press
-Chest – Machine & Smith
+Chest - Machine & Smith
 Chest Press Machine
 Incline Chest Press Machine
 Pec Deck / Chest Fly Machine
 Smith Machine Bench Press
 Smith Machine Incline Bench Press
 Smith Machine Decline Bench Press
-Chest – Cable
+Chest - Cable
 Cable Chest Press
 Single-Arm Cable Chest Press
 Cable Chest Fly (High to Low)
 Cable Chest Fly (Low to High)
 Single-Arm Cable Chest Fly
-Chest – Fly & Isolation
+Chest - Fly & Isolation
 Dumbbell Fly
 Incline Dumbbell Fly
 Decline Dumbbell Fly
 Ring Fly
-Chest – Bodyweight & Bands
+Chest - Bodyweight & Bands
 Push-Up
 Incline Push-Up
 Decline Push-Up
@@ -655,7 +655,7 @@ Resistance Band Chest Fly
 Resistance Band Incline Chest Press
 
 Back
-Back – Deadlift Variations
+Back - Deadlift Variations
 Conventional Deadlift
 Romanian Deadlift
 Stiff-Leg Deadlift
@@ -665,16 +665,16 @@ Deficit Deadlift
 Rack Pull
 Good Morning
 Jefferson Curl
-Back – Vertical Pull
+Back - Vertical Pull
 Pull-Up
 Chin-Up
 Assisted Pull-Up
 Neutral-Grip Pull-Up
-Lat Pulldown – Wide Grip
-Lat Pulldown – Close Grip
+Lat Pulldown - Wide Grip
+Lat Pulldown - Close Grip
 Neutral-Grip Lat Pulldown
 Single-Arm Lat Pulldown
-Back – Horizontal Pull
+Back - Horizontal Pull
 Bent-Over Barbell Row
 Pendlay Row
 Seal Row
@@ -686,24 +686,24 @@ T-Bar Row
 Machine Row
 Seated Cable Row
 Single-Arm Cable Row
-Back – Bodyweight Rows
+Back - Bodyweight Rows
 Inverted Row
 Inverted Row (Feet Elevated)
 Australian Row
 Ring Row
-Back – Accessories & Upper Back
+Back - Accessories & Upper Back
 Straight-Arm Pulldown
 Face Pull
 Resistance Band Lat Pulldown
 Resistance Band Row
 Resistance Band Face Pull
 Resistance Band Straight-Arm Pulldown
-Back – Posterior Chain / Spinal
+Back - Posterior Chain / Spinal
 Back Extension / Hyperextension
 Reverse Hyperextension
 
 Shoulders
-Shoulders – Pressing
+Shoulders - Pressing
 Overhead Press
 Overhead Barbell Press
 Push Press
@@ -716,21 +716,21 @@ Neutral-Grip Shoulder Press
 Seated Shoulder Press Machine
 Smith Machine Shoulder Press
 Resistance Band Shoulder Press
-Shoulders – Lateral / Medial Delts
+Shoulders - Lateral / Medial Delts
 Lateral Raise
 Dumbbell Lateral Raise
 Cable Lateral Raise
 Lean-Away Cable Lateral Raise
 Resistance Band Lateral Raise
 Isometric Lateral Raise Hold
-Shoulders – Front Delts
-Front Raise – Dumbbell
-Front Raise – Plate
+Shoulders - Front Delts
+Front Raise - Dumbbell
+Front Raise - Plate
 Resistance Band Front Raise
 Plate Raise
-Shoulders – Rear Delts & Scapular
-Rear Delt Fly – Dumbbell
-Rear Delt Fly – Machine
+Shoulders - Rear Delts & Scapular
+Rear Delt Fly - Dumbbell
+Rear Delt Fly - Machine
 Cable Rear Delt Fly
 Resistance Band Rear Delt Fly
 Face Pull
@@ -740,12 +740,12 @@ I-Raise
 T-Raise
 IYT Raises
 Scaption Raise
-Shoulders – Bodyweight
+Shoulders - Bodyweight
 Handstand Push-Up
 Pike Push-Up
 
 Legs
-Legs – Squat Patterns
+Legs - Squat Patterns
 Back Squat
 Front Squat
 Pause Squat
@@ -756,7 +756,7 @@ Zercher Squat
 Smith Machine Squat
 Belt Squat
 Hack Squat
-Legs – Press & Unilateral
+Legs - Press & Unilateral
 Leg Press
 Single-Leg Press
 Bulgarian Split Squat
@@ -766,26 +766,26 @@ Reverse Lunge
 Curtsy Lunge
 Step-Up
 Cossack Squat
-Legs – Hip Hinge / Glutes
+Legs - Hip Hinge / Glutes
 Single-Leg Romanian Deadlift
 Hip Thrust
 Barbell Hip Thrust
 Glute Bridge
 Cable Pull-Through
-Legs – Hamstrings
+Legs - Hamstrings
 Nordic Hamstring Curl
 Seated Leg Curl
 Lying Leg Curl
 Standing Leg Curl
-Legs – Quadriceps
+Legs - Quadriceps
 Leg Extension
-Legs – Calves & Lower Leg
+Legs - Calves & Lower Leg
 Standing Calf Raise
 Seated Calf Raise
 Donkey Calf Raise
 Standing Single-Leg Calf Raise
 Tibialis Raise
-Legs – Abductors & Adductors
+Legs - Abductors & Adductors
 Hip Abduction Machine
 Hip Adduction Machine
 Cable Hip Abduction
@@ -793,7 +793,7 @@ Cable Hip Adduction
 Resistance Band Lateral Walk
 Resistance Band Monster Walk
 Resistance Band Glute Kickback
-Legs – Conditioning
+Legs - Conditioning
 Sled Push
 Sled Pull
 Resistance Band Squat
@@ -831,15 +831,15 @@ Chin-Up (Biceps Focus)
 Triceps
 Close-Grip Bench Press
 Neutral-Grip Close-Grip Bench Press
-Skull Crushers – Barbell
-Skull Crushers – EZ-Bar
-Skull Crushers – Dumbbell
+Skull Crushers - Barbell
+Skull Crushers - EZ-Bar
+Skull Crushers - Dumbbell
 Floor Skull Crushers
 JM Press
 Overhead Dumbbell Tricep Extension
 Single-Arm Overhead Dumbbell Extension
-Cable Tricep Pushdown – Rope
-Cable Tricep Pushdown – Bar
+Cable Tricep Pushdown - Rope
+Cable Tricep Pushdown - Bar
 Single-Arm Cable Extension
 Overhead Cable Tricep Extension
 Cable Kickback
@@ -860,7 +860,7 @@ EZ-Bar Curl + Skull Crushers (Superset)
 Cable Curl + Rope Pushdown (Superset)
 
 Core
-Core – Stability & Anti-Movement
+Core - Stability & Anti-Movement
 Plank
 Weighted Plank
 Side Plank
@@ -871,10 +871,10 @@ Dead Bug
 Bird Dog
 Pallof Press
 Resistance Band Pallof Press
-Core – Flexion & Raises
+Core - Flexion & Raises
 Hanging Leg Raise
 Hanging Knee Raise
-Captain’s Chair Leg Raise
+Captain's Chair Leg Raise
 Toes-to-Bar
 Lying Leg Raise
 Reverse Crunch
@@ -883,17 +883,17 @@ Cable Crunch
 Resistance Band Crunch
 Sit-Up (Weighted or Bodyweight)
 V-Up
-Core – Advanced
+Core - Advanced
 Dragon Flag
 L-Sit Hold
 Ab Wheel Rollout
 Swiss Ball Rollout
-Core – Rotation & Conditioning
+Core - Rotation & Conditioning
 Russian Twist
 Bicycle Crunch
 Mountain Climbers
 Stability Ball Crunch
-Woodchopper – Cable
+Woodchopper - Cable
 Resistance Band Woodchopper
 
 `;
@@ -909,8 +909,8 @@ function tmParseRawExerciseList(rawText){
 
   function isSubheading(line, currentHeader){
     if (!currentHeader) return false;
-    // Common pattern in your master list: "Category – Subheading"
-    const prefix = `${currentHeader} – `;
+    // Common pattern in your master list: "Category - Subheading"
+    const prefix = `${currentHeader} - `;
     if (line.startsWith(prefix)) return true;
 
     // Arms uses Biceps / Triceps / Arm Supersets headings.
@@ -922,7 +922,7 @@ function tmParseRawExerciseList(rawText){
 
   function normaliseSubheading(line, currentHeader){
     if (!line) return "";
-    const prefix = `${currentHeader} – `;
+    const prefix = `${currentHeader} - `;
     if (line.startsWith(prefix)) return line.slice(prefix.length).trim();
     return line.trim();
   }
@@ -1141,7 +1141,7 @@ function toKgFromDisplayWeight(displayVal, units) {
 function getWeightIncrementInUserUnits(equipmentCode, units) {
   const incKg = getIncrementForEquipment(equipmentCode);
   if ((units || getActiveUnits()) === "imperial") {
-    // 2.5 kg ≈ 5 lb; 1 kg ≈ 2.2 lb (use 2.5 lb for DB/KB to feel natural)
+    // 2.5 kg ~ 5 lb; 1 kg ~ 2.2 lb (use 2.5 lb for DB/KB to feel natural)
     const code = (equipmentCode || "MC").toUpperCase();
     if (code === "BB" || code === "MC") return 5;
     if (code === "DB" || code === "KB") return 2.5;
@@ -1224,13 +1224,13 @@ function calcWorkingWeightKg(oneRMKg, targetReps, equipmentCode) {
 function getTargetRepsFromPrescription(prescription) {
   const p = (prescription || "").replace(/\s+/g, " ").trim();
   // Prefer range, then explicit x, then any number
-  const range = p.match(/(\d{1,2})\s*[–-]\s*(\d{1,2})/);
+  const range = p.match(/(\d{1,2})\s*-\s*(\d{1,2})/);
   if (range) {
     const a = parseInt(range[1], 10);
     const b = parseInt(range[2], 10);
     if (Number.isFinite(a) && Number.isFinite(b)) return Math.round((a + b) / 2);
   }
-  const single = p.match(/[x×]\s*(\d{1,2})\b/);
+  const single = p.match(/x\s*(\d{1,2})\b/);
   if (single) return parseInt(single[1], 10);
 
   const any = p.match(/\b(\d{1,2})\b/);
@@ -1347,13 +1347,13 @@ const programWeek1 = [
     theme: "PULL",
     goal: "Back thickness, rear delts, biceps, core control",
     exercises: [
-      { name: "Wide-Grip Pull-Ups or Lat Pulldown", prescription: "4 × 6–8", notes: "Weighted if possible" },
-      { name: "Bent-Over Barbell Rows", prescription: "4 × 8" },
-      { name: "One-Arm DB Rows or Machine Row (Superset)", prescription: "3 × 12", notes: "Superset variation" },
-      { name: "Straight-Arm Rope Pulldown", prescription: "3 × 15", notes: "Time under tension" },
-      { name: "Rear Delt Cable Fly (Face Pull Style)", prescription: "3 × 15–20" },
-      { name: "DB Hammer Curl + EZ-Bar Curl (Superset)", prescription: "3 × 12 each" },
-      { name: "Side Plank Reach-Throughs", prescription: "3 × 10/side", notes: "Core" }
+      { name: "Wide-Grip Pull-Ups or Lat Pulldown", prescription: "4 x 6-8", notes: "Weighted if possible" },
+      { name: "Bent-Over Barbell Rows", prescription: "4 x 8" },
+      { name: "One-Arm DB Rows or Machine Row (Superset)", prescription: "3 x 12", notes: "Superset variation" },
+      { name: "Straight-Arm Rope Pulldown", prescription: "3 x 15", notes: "Time under tension" },
+      { name: "Rear Delt Cable Fly (Face Pull Style)", prescription: "3 x 15-20" },
+      { name: "DB Hammer Curl + EZ-Bar Curl (Superset)", prescription: "3 x 12 each" },
+      { name: "Side Plank Reach-Throughs", prescription: "3 x 10/side", notes: "Core" }
     ]
   },
   {
@@ -1361,13 +1361,13 @@ const programWeek1 = [
     theme: "LOWER",
     goal: "Hamstring, glute, and lower back hypertrophy",
     exercises: [
-      { name: "Leg Press", prescription: "4 × 10" },
-      { name: "Romanian Deadlift (BB or DB)", prescription: "4 × 10" },
-      { name: "Glute Bridges or Hip Thrusts (Weighted)", prescription: "3 × 12" },
-      { name: "Walking Lunges (DB)", prescription: "3 × 16 steps" },
-      { name: "Seated Leg Curl or Nordic Curl", prescription: "3 × 12" },
-      { name: "Reverse Hyperextension or Back Extensions", prescription: "3 × 15" },
-      { name: "Ab Rollouts or Hanging Leg Raises", prescription: "3 × 10–12", notes: "Core" }
+      { name: "Leg Press", prescription: "4 x 10" },
+      { name: "Romanian Deadlift (BB or DB)", prescription: "4 x 10" },
+      { name: "Glute Bridges or Hip Thrusts (Weighted)", prescription: "3 x 12" },
+      { name: "Walking Lunges (DB)", prescription: "3 x 16 steps" },
+      { name: "Seated Leg Curl or Nordic Curl", prescription: "3 x 12" },
+      { name: "Reverse Hyperextension or Back Extensions", prescription: "3 x 15" },
+      { name: "Ab Rollouts or Hanging Leg Raises", prescription: "3 x 10-12", notes: "Core" }
     ]
   },
   {
@@ -1375,13 +1375,13 @@ const programWeek1 = [
     theme: "PUSH",
     goal: "Chest, shoulder, and triceps strength & hypertrophy",
     exercises: [
-      { name: "Incline Barbell or Dumbbell Press", prescription: "4 × 8–10" },
-      { name: "Cable Fly (High to Low)", prescription: "3 × 15" },
-      { name: "Seated DB Shoulder Press or Military Press", prescription: "4 × 10" },
-      { name: "Side-Angle DB Lateral Raise", prescription: "3 × 15" },
-      { name: "Overhead Triceps Extensions (Rope or DB)", prescription: "3 × 12" },
-      { name: "Front DB Raise or Barbell Raise", prescription: "2 × 15" },
-      { name: "Russian Twists (Weighted)", prescription: "3 × 20", notes: "10/side, core" }
+      { name: "Incline Barbell or Dumbbell Press", prescription: "4 x 8-10" },
+      { name: "Cable Fly (High to Low)", prescription: "3 x 15" },
+      { name: "Seated DB Shoulder Press or Military Press", prescription: "4 x 10" },
+      { name: "Side-Angle DB Lateral Raise", prescription: "3 x 15" },
+      { name: "Overhead Triceps Extensions (Rope or DB)", prescription: "3 x 12" },
+      { name: "Front DB Raise or Barbell Raise", prescription: "2 x 15" },
+      { name: "Russian Twists (Weighted)", prescription: "3 x 20", notes: "10/side, core" }
     ]
   },
   {
@@ -1389,12 +1389,12 @@ const programWeek1 = [
     theme: "LOWER",
     goal: "Quad hypertrophy and single-leg strength",
     exercises: [
-      { name: "Front Squats (BB or Goblet)", prescription: "4 × 8" },
-      { name: "Leg Press (Wide Stance)", prescription: "3 × 12" },
-      { name: "Step-Ups or Bulgarian Split Squats (DB)", prescription: "3 × 10/leg" },
-      { name: "Leg Extensions (Slow Tempo)", prescription: "3 × 15" },
-      { name: "Thigh Abduction + Adduction (Superset)", prescription: "3 × 20 each" },
-      { name: "Cable Woodchoppers or Weighted Decline Sit-Ups", prescription: "3 × 12", notes: "Core" }
+      { name: "Front Squats (BB or Goblet)", prescription: "4 x 8" },
+      { name: "Leg Press (Wide Stance)", prescription: "3 x 12" },
+      { name: "Step-Ups or Bulgarian Split Squats (DB)", prescription: "3 x 10/leg" },
+      { name: "Leg Extensions (Slow Tempo)", prescription: "3 x 15" },
+      { name: "Thigh Abduction + Adduction (Superset)", prescription: "3 x 20 each" },
+      { name: "Cable Woodchoppers or Weighted Decline Sit-Ups", prescription: "3 x 12", notes: "Core" }
     ]
   },
   {
@@ -1402,12 +1402,12 @@ const programWeek1 = [
     theme: "PUMP",
     goal: "Isolation, blood flow, arm-pump day",
     exercises: [
-      { name: "Chest Press (Machine)", prescription: "3 × 12" },
-      { name: "DB Arnold Press + Lateral Raise (Superset)", prescription: "3 × 12 each" },
-      { name: "Bicep Spider Curls + Rope Hammer Curls (Superset)", prescription: "3 × 12 each" },
-      { name: "Triceps Rope Pushdowns + Dips (Superset)", prescription: "3 × 12 each" },
-      { name: "Incline Chest Fly (DB)", prescription: "3 × 15" },
-      { name: "Rear Delt Bent-Over Flys", prescription: "3 × 15–20" },
+      { name: "Chest Press (Machine)", prescription: "3 x 12" },
+      { name: "DB Arnold Press + Lateral Raise (Superset)", prescription: "3 x 12 each" },
+      { name: "Bicep Spider Curls + Rope Hammer Curls (Superset)", prescription: "3 x 12 each" },
+      { name: "Triceps Rope Pushdowns + Dips (Superset)", prescription: "3 x 12 each" },
+      { name: "Incline Chest Fly (DB)", prescription: "3 x 15" },
+      { name: "Rear Delt Bent-Over Flys", prescription: "3 x 15-20" },
       { name: "Knee Raises + In-and-Out Crunches", prescription: "2 rounds", notes: "Core circuit" }
     ]
   }
@@ -1425,7 +1425,7 @@ function buildCustomWeekTemplateFromDraft(draft, weekNumber) {
   // Back-compat (critical): some builds accidentally saved Week 1 day data
   // into Week 2 composite keys ("2-<day>") instead of legacy keys ("1".."7").
   // Symptom: Week 1 appears empty, while Week 2 shows the Week 1 exercises.
-  // We only activate this fallback when *all* legacy Day 1–7 arrays are empty
+  // We only activate this fallback when *all* legacy Day 1-7 arrays are empty
   // and at least one Week 2 composite key contains data.
   let week1ShiftedToWeek2 = false;
   if (wk === 1) {
@@ -1456,7 +1456,7 @@ function buildCustomWeekTemplateFromDraft(draft, weekNumber) {
   for (let i = 1; i <= 7; i++) {
     // Backwards compatible:
     // - Week 1 should prefer legacy keys "1".."7".
-    // - Weeks 2–6 use composite keys "<week>-<day>" and fall back to Week 1 when not present.
+    // - Weeks 2-6 use composite keys "<week>-<day>" and fall back to Week 1 when not present.
     //
     // Important: some older builds accidentally wrote empty arrays to Week 1 composite keys
     // like "1-2", which would incorrectly shadow the real legacy "2" data. To prevent Week 1
@@ -1509,7 +1509,7 @@ function loadCustomProgramForSeries(seriesName) {
 
 
 // Open a stored custom programme in the builder for editing.
-// dayNumber is 1–7.
+// dayNumber is 1-7.
 function openProgrammeInBuilder(seriesName, dayNumber) {
   const name = (seriesName || "").toString().trim();
   if (!name) return;
@@ -1668,7 +1668,7 @@ function getTotalPlannedWorkoutsForSeries(seriesName) {
 }
 
 // -------------------------
-// Custom programme week independence (Weeks 1–6)
+// Custom programme week independence (Weeks 1-6)
 // -------------------------
 // Custom programmes propagate their Week 1 template forward by default.
 // Once a user edits a later week, that week becomes independent via a
@@ -1826,7 +1826,7 @@ function mirrorWeek1ExerciseNameToCustomDefinition(seriesName, dayIndex, exIndex
     const program = loadCustomProgramForSeries(series);
     if (!program || !program.days) return false;
 
-    const dayKey = String(dayIndex + 1); // builder uses 1–7
+    const dayKey = String(dayIndex + 1); // builder uses 1-7
     const arr = Array.isArray(program.days?.[dayKey]) ? program.days[dayKey] : [];
     if (!(exIndex >= 0 && exIndex < arr.length)) return false;
     arr[exIndex].name = (newName || "").toString();
@@ -1874,7 +1874,13 @@ function getSetState(state, week, dayIndex, exIndex, setIndex) {
   const exKey = String(exIndex);
   const sKey = String(setIndex);
   if (!dayState.exercises[exKey]) dayState.exercises[exKey] = { sets: {}, equipment: null };
-  if (!dayState.exercises[exKey].sets[sKey]) dayState.exercises[exKey].sets[sKey] = { w: "", r: "" };
+  if (!dayState.exercises[exKey].sets[sKey]) dayState.exercises[exKey].sets[sKey] = { w: "", r: "", ss: false };
+
+  // Back-compat: older saves won't have an SSet flag.
+  if (typeof dayState.exercises[exKey].sets[sKey].ss !== "boolean") {
+    dayState.exercises[exKey].sets[sKey].ss = false;
+  }
+
   return dayState.exercises[exKey].sets[sKey];
 }
 
@@ -2101,7 +2107,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return set;
     }
 
-    // Second: derived entries (legacy fallback) – scan across all state keys, not just active.
+    // Second: derived entries (legacy fallback) - scan across all state keys, not just active.
     // This prevents Continue breaking when completion data was saved under an older key/schema.
     const stateKeys = [];
     try {
@@ -2268,7 +2274,7 @@ function syncProgramDraftUI() {
   // The draft name is still preserved for the builder title and saved programme logic.
   if (input) { input.value = ""; input.setAttribute("value",""); requestAnimationFrame(() => { try { input.value=""; } catch(_){} }); }
   const label = document.getElementById("custom-builder-program-title");
-  if (label) label.textContent = draft?.name || "—";
+  if (label) label.textContent = draft?.name || "-";
   const err = document.getElementById("create-program-error");
   if (err) err.hidden = true;
 }
@@ -2282,7 +2288,7 @@ function syncWorkoutDaySelectOptionsForSeries(seriesName) {
   const name = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
   const current = select.value;
 
-  // Sklar: keep underlying day indices, but show user-friendly Day 1–5 labels (no "missing" day).
+  // Sklar: keep underlying day indices, but show user-friendly Day 1-5 labels (no "missing" day).
   if (name === DEFAULT_SERIES_NAME) {
     const options = [
       { value: "0", label: "Day 1" },
@@ -2304,7 +2310,7 @@ function syncWorkoutDaySelectOptionsForSeries(seriesName) {
     return;
   }
 
-  // Custom programmes: Days 1–7
+  // Custom programmes: Days 1-7
   select.innerHTML = "";
   for (let i = 0; i < 7; i++) {
     const opt = document.createElement("option");
@@ -2340,7 +2346,7 @@ function getCustomBuilderSelectedWeek() {
 
 // Day-key strategy (backwards compatible):
 // - Week 1 uses legacy keys "1".."7".
-// - Weeks 2–6 use composite keys "<week>-<day>".
+// - Weeks 2-6 use composite keys "<week>-<day>".
 function getCustomBuilderSelectedDayKey() {
   const day = getCustomBuilderSelectedDay();
   const week = getCustomBuilderSelectedWeek();
@@ -2369,7 +2375,7 @@ function getCustomDraftExercisesForDayKey(draft, dayKey) {
   const direct = Array.isArray(days[k]) ? days[k] : null;
   if (direct) return direct;
 
-  // Inherit Week 1 definition when viewing Weeks 2–6 and no override exists yet.
+  // Inherit Week 1 definition when viewing Weeks 2-6 and no override exists yet.
   const parsed = parseCustomBuilderDayKey(k);
   if (parsed.week > 1) {
     const inheritKey = String(parsed.day);
@@ -2395,7 +2401,7 @@ function showCustomBuilderError(message) {
 function renderCustomBuilderForCurrentDay() {
   const draft = ensureCustomDraft();
   const titleEl = document.getElementById("custom-builder-program-title");
-  if (titleEl) titleEl.textContent = draft.name || "—";
+  if (titleEl) titleEl.textContent = draft.name || "-";
 
   const list = document.getElementById("custom-builder-list");
   if (!list) return;
@@ -2408,7 +2414,7 @@ function renderCustomBuilderForCurrentDay() {
     const empty = document.createElement("p");
     empty.className = "choice-text";
     empty.style.margin = "6px 0 0 0";
-    empty.textContent = "No exercises yet. Tap “+ Add Exercise” to start building this day.";
+    empty.textContent = 'No exercises yet. Tap "+ Add Exercise" to start building this day.';
     list.appendChild(empty);
     showCustomBuilderError("");
     return;
@@ -2815,7 +2821,33 @@ function openCustomExercisePicker(context) {
 
   function renderList(q) {
     const query = (q || "").toString().trim();
-    const items = buildFilteredNames(q);
+    let items = buildFilteredNames(q);
+
+    // Create Your Workout/Program: sort exercise names A–Z *within* each subheading
+    // (preserve the existing subheading order).
+    if (!query && items.length) {
+      const order = [];
+      const groups = new Map();
+      items.forEach((name) => {
+        const meta = exerciseLibrary?.[name] || {};
+        const sub = (meta.subcategory || "").toString().trim();
+        const key = sub; // empty string = no subheading
+        if (!groups.has(key)) {
+          groups.set(key, []);
+          order.push(key);
+        }
+        groups.get(key).push(name);
+      });
+
+      const collator = new Intl.Collator(undefined, { sensitivity: "base" });
+      const flattened = [];
+      order.forEach((k) => {
+        const arr = groups.get(k) || [];
+        arr.sort((a, b) => collator.compare(a, b));
+        flattened.push(...arr);
+      });
+      items = flattened;
+    }
     listEl.innerHTML = "";
     if (!items.length) {
       const p = document.createElement("p");
@@ -2850,7 +2882,7 @@ function openCustomExercisePicker(context) {
         const dayKey = overlay.dataset.dayKey;
         // Week-aware builder keys:
         // - Week 1 uses legacy day keys "1".."7".
-        // - Weeks 2–6 use "<week>-<day>" and inherit Week 1 until the first edit.
+        // - Weeks 2-6 use "<week>-<day>" and inherit Week 1 until the first edit.
         const parsedKey = parseCustomBuilderDayKey(dayKey);
         const inheritKey = parsedKey.week > 1 ? String(parsedKey.day) : "";
         let arr = Array.isArray(d.days?.[dayKey]) ? d.days[dayKey] : null;
@@ -2869,7 +2901,7 @@ function openCustomExercisePicker(context) {
         const chosenAddSetCount = Number.isFinite(overlayAddSets) ? Math.min(8, Math.max(1, overlayAddSets)) : fallbackSetCount;
         const newExBase = {
           name,
-          prescription: "4 × 8",
+          prescription: "4 x 8",
           notes: "",
           equipment: meta.equipment || "MC"
         };
@@ -3038,7 +3070,7 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
   document.getElementById("btn-program-sklar")?.addEventListener("click", () => {
     setActiveSeriesName(DEFAULT_SERIES_NAME);
     // From Select a Program, users expect to enter the programme immediately.
-    // Route directly to Week 1 • Day 1 of the Sklar series.
+    // Route directly to Week 1  |  Day 1 of the Sklar series.
     try { syncWorkoutDaySelectOptionsForSeries(DEFAULT_SERIES_NAME); } catch (_) {}
     currentWeek = 1;
     currentDayIndex = 0;
@@ -3061,7 +3093,7 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
       return;
     }
     if (err) err.hidden = true;
-    // Starting a new programme must begin from a blank slate (Days 1–7 empty).
+    // Starting a new programme must begin from a blank slate (Days 1-7 empty).
     // This prevents previously added draft exercises from appearing in a new programme.
     startNewCustomProgramDraft(name);
     syncProgramDraftUI();
@@ -3143,7 +3175,7 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
     const h = parseFloat(heightInput.value);
     const w = parseFloat(weightInput.value);
     const bmi = calculateBMI(w, h, units);
-    bmiDisplay.textContent = (bmi && Number.isFinite(bmi)) ? bmi.toFixed(1) : "—";
+    bmiDisplay.textContent = (bmi && Number.isFinite(bmi)) ? bmi.toFixed(1) : "-";
   }
 
 
@@ -3151,7 +3183,7 @@ function updateHeightPreview() {
   if (!heightPreview) return;
   const units = unitsHidden.value || "metric";
   const hRaw = parseFloat(heightInput.value);
-  if (!Number.isFinite(hRaw) || hRaw <= 0) { heightPreview.textContent = "—"; return; }
+  if (!Number.isFinite(hRaw) || hRaw <= 0) { heightPreview.textContent = "-"; return; }
 
   // Always provide ft/in preview; also include the converted metric/imperial value for confidence.
   if (units === "imperial") {
@@ -3160,14 +3192,14 @@ function updateHeightPreview() {
     const cm = inches * 2.54;
     const ft = Math.floor(inches / 12);
     const inchRem = inches - (ft * 12);
-    heightPreview.textContent = `≈ ${cm.toFixed(1)} cm • ${ft}'${inchRem.toFixed(1)}"`;
+    heightPreview.textContent = `~ ${cm.toFixed(1)} cm  |  ${ft}'${inchRem.toFixed(1)}"`;
   } else {
     // input is cm
     const cm = hRaw;
     const inches = cm / 2.54;
     const ft = Math.floor(inches / 12);
     const inchRem = inches - (ft * 12);
-    heightPreview.textContent = `≈ ${ft}'${inchRem.toFixed(1)}" • ${inches.toFixed(1)} in`;
+    heightPreview.textContent = `~ ${ft}'${inchRem.toFixed(1)}"  |  ${inches.toFixed(1)} in`;
   }
 }
 
@@ -3263,7 +3295,7 @@ function updateHeightPreview() {
       height: parseFloat(heightInput.value) || null,
       weight: parseFloat(weightInput.value) || null,
       age: ageInput.value ? parseInt(ageInput.value, 10) : null,
-      bmi: (bmiDisplay.textContent && bmiDisplay.textContent !== "—") ? parseFloat(bmiDisplay.textContent) : null
+      bmi: (bmiDisplay.textContent && bmiDisplay.textContent !== "-") ? parseFloat(bmiDisplay.textContent) : null
     };
     writeJSON(STORAGE_KEYS.profile, profile);
     showScreen("screen-start-choice");
@@ -3313,22 +3345,22 @@ function buildHistoryEntries() {
 }
 
 function formatCompletedDate(ts) {
-  if (!ts) return "Completed: —";
+  if (!ts) return "Completed: -";
   try {
     const d = new Date(ts);
     return `Completed: ${d.toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "numeric" })}`;
   } catch (e) {
-    return "Completed: —";
+    return "Completed: -";
   }
 }
 
 function formatShortDate(ts) {
-  if (!ts) return "—";
+  if (!ts) return "-";
   try {
     const d = new Date(ts);
     return d.toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "numeric" });
   } catch {
-    return "—";
+    return "-";
   }
 }
 
@@ -4010,7 +4042,7 @@ const seriesSorted = seriesNames
       const title = document.createElement("div");
       title.className = "history-title";
       const displayDay = getDisplayDayNumber(e.dayIndex);
-      title.textContent = `Week ${e.week} • Day ${displayDay}`;
+      title.textContent = `Week ${e.week}  |  Day ${displayDay}`;
 
       const meta = document.createElement("div");
       meta.className = "history-meta";
@@ -4138,7 +4170,7 @@ const seriesSorted = seriesNames
 
   const summaryVolumeEl = document.getElementById("summary-volume");
   const summaryRepsEl = document.getElementById("summary-reps");
-  const summaryCaloriesEl = document.getElementById("summary-calories");
+  const summarySupersetsEl = document.getElementById("summary-supersets");
   const summaryProgressEl = document.getElementById("summary-progress");
   const summaryDurationEl = document.getElementById("summary-duration");
 
@@ -4171,10 +4203,10 @@ const seriesSorted = seriesNames
     const s = (intensityRaw || "").toString().trim().toLowerCase();
     if (!s) return 6; // default "moderate"
 
-    // Numeric scales: 1–10 or similar.
+    // Numeric scales: 1-10 or similar.
     const n = parseFloat(s);
     if (Number.isFinite(n)) {
-      // 1–3 low, 4–6 moderate, 7–8 hard, 9–10 very hard
+      // 1-3 low, 4-6 moderate, 7-8 hard, 9-10 very hard
       if (n <= 3) return 4;
       if (n <= 6) return 6;
       if (n <= 8) return 8;
@@ -4268,7 +4300,7 @@ const seriesSorted = seriesNames
       summaryDurationEl.textContent = formatDurationFromSeconds(liveSec);
       return;
     }
-    summaryDurationEl.textContent = "—";
+    summaryDurationEl.textContent = "-";
   }
 
 // Set editor overlay
@@ -4402,7 +4434,7 @@ const seriesSorted = seriesNames
     const category = meta.category || findCategoryForExercise(exercise.name);
     const equip = meta.equipment ? `Equipment: ${meta.equipment}` : "";
     const catLine = category ? `Category: ${category}` : "";
-    const fallbackLines = [catLine, equip].filter(Boolean).join(" • ");
+    const fallbackLines = [catLine, equip].filter(Boolean).join("  |  ");
     const fallback = fallbackLines ? `${fallbackLines}.` : "";
     infoDesc.textContent = info.description || exercise.notes || fallback || "No additional description is available yet.";
     infoOverlay.classList.add("set-edit-overlay--active");
@@ -4421,8 +4453,55 @@ const seriesSorted = seriesNames
   const editCategoryList = document.getElementById("exercise-edit-category-list");
   const editCancel = document.getElementById("exercise-edit-cancel");
   const editClose = document.getElementById("exercise-edit-close");
+  const editSearch = document.getElementById("exercise-edit-search");
 
-  let editContext = null; // { dayRef, exRef, titleEl, exIndex }
+  
+  if (editSearch) {
+    editSearch.addEventListener("input", () => {
+      renderSearchList(editSearch.value);
+    });
+  }
+
+let editContext = null; // { dayRef, exRef, titleEl, exIndex }
+
+	// Build a complete per-category exercise list from the master catalogue.
+	// This guarantees that the Sklar + Custom workout “+ add exercise” and “edit/replace”
+	// pickers have the exact same exercise coverage as Create Your Workout/Program.
+	function tmGetAllExerciseNamesForCategory(categoryName) {
+		const cat = String(categoryName || "").trim();
+		const out = [];
+		const seen = new Set();
+
+		// Prefer the master catalogue (derived from TM_RAW_EXERCISES)
+		try {
+			if (Array.isArray(TM_EXERCISE_CATALOG)) {
+				for (const e of TM_EXERCISE_CATALOG) {
+					const c = tmMapBodyPartToCategory(e.bodyPart);
+					if (c === cat && e && e.name && !seen.has(e.name)) {
+						seen.add(e.name);
+						out.push(e.name);
+					}
+				}
+			}
+		} catch (err) {
+			// no-op: fall back to exerciseCategories
+		}
+
+		// Then add any legacy/extra entries that may exist in exerciseCategories
+		try {
+			const legacy = (exerciseCategories && exerciseCategories[cat]) ? exerciseCategories[cat] : [];
+			for (const name of legacy) {
+				if (name && !seen.has(name)) {
+					seen.add(name);
+					out.push(name);
+				}
+			}
+		} catch (err) {
+			// ignore
+		}
+
+		return out;
+	}
 
   function cancelExerciseEdit() {
     // If the user tapped the Sklar "+" button but decides not to add anything,
@@ -4575,36 +4654,62 @@ const seriesSorted = seriesNames
 
   function renderCategoryList(categoryName) {
     editCategoryList.innerHTML = "";
-    const list = exerciseCategories[categoryName] || [];
+
+    // Reset search UI
+    if (editSearch) {
+      editSearch.value = "";
+    }
+
+	    const list = tmGetAllExerciseNamesForCategory(categoryName);
     if (!list.length) {
       const p = document.createElement("p");
       p.className = "exercise-edit-empty";
-      p.textContent = "No exercises defined for this category yet.";
+      p.textContent = "No exercises found.";
       editCategoryList.appendChild(p);
       return;
     }
-    let lastSub = null;
+
+    // Group by subcategory while preserving first-seen order
+    const order = [];
+    const groups = {};
     list.forEach((name) => {
-      const metaForHeading = exerciseLibrary?.[name] || {};
-      const sub = (metaForHeading.subcategory || "").toString().trim();
-      if (sub && sub !== lastSub) {
+      const meta = exerciseLibrary?.[name] || {};
+      const sub = (meta.subcategory || "").toString().trim();
+      if (!(sub in groups)) {
+        groups[sub] = [];
+        order.push(sub);
+      }
+      groups[sub].push(name);
+    });
+
+    // Sort within each subheading (case-insensitive)
+    order.forEach((sub) => {
+      groups[sub].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+    });
+
+    // Render
+    order.forEach((sub) => {
+      if (sub) {
         const h = document.createElement("div");
         h.className = "tm-subheading";
         h.textContent = sub;
         editCategoryList.appendChild(h);
-        lastSub = sub;
       }
-      if (!sub) lastSub = null;
 
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "exercise-edit-option";
-      btn.textContent = name;
-      btn.addEventListener("click", () => applyExerciseSwap(name));
-      editCategoryList.appendChild(btn);
+      groups[sub].forEach((name) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "exercise-edit-option";
+        btn.textContent = name;
+        btn.addEventListener("click", () => applyExerciseSwap(name));
+        editCategoryList.appendChild(btn);
+      });
     });
   }
-  function findCategoryForExercise(exerciseName) {
+
+
+
+function findCategoryForExercise(exerciseName) {
     const meta = exerciseLibrary[exerciseName];
     if (meta?.category) return meta.category;
 
@@ -4704,7 +4809,22 @@ const seriesSorted = seriesNames
           closeExerciseEdit();
           renderWorkoutDay(currentDayIndex);
           const day = getProgramForWeek(currentWeek)[currentDayIndex];
-          updateWorkoutSummary(day);
+          
+// Edit 4.1.10: Superset counting
+function countSupersets(workout){
+  let count = 0;
+  if(!workout || !workout.exercises) return 0;
+  workout.exercises.forEach(ex => {
+    if(ex.sets){
+      ex.sets.forEach(s => {
+        if(s.ss === true) count++;
+      });
+    }
+  });
+  return count;
+}
+
+updateWorkoutSummary(day);
         });
         editSetsRow.appendChild(pill);
       }
@@ -4730,7 +4850,15 @@ const seriesSorted = seriesNames
       editSuggested.appendChild(p);
     }
 
-    Object.keys(exerciseCategories).forEach((catName) => {
+    (function(){
+      const preferredOrder = ["Arms","Back","Chest","Legs","Shoulders","Core","Cardio"];
+      const keys = Object.keys(exerciseCategories);
+      const ordered = [
+        ...preferredOrder.filter(k => keys.includes(k)),
+        ...keys.filter(k => !preferredOrder.includes(k))
+      ];
+      ordered.forEach((catName) => {
+
       const pill = document.createElement("button");
       pill.type = "button";
       pill.className = "exercise-edit-category-pill";
@@ -4741,7 +4869,8 @@ const seriesSorted = seriesNames
         renderCategoryList(catName);
       });
       editCategoryRow.appendChild(pill);
-    });
+      });
+    })();
 
     if (categoryName) {
       const pills = editCategoryRow.querySelectorAll(".exercise-edit-category-pill");
@@ -4794,7 +4923,7 @@ const seriesSorted = seriesNames
     }, 0);
   }
 
-  function updateWorkoutSummary(day) {
+function updateWorkoutSummary(day) {
     const state = getWorkoutState();
     const dayState = ensureDayState(state, currentWeek, currentDayIndex);
 
@@ -4817,6 +4946,7 @@ const seriesSorted = seriesNames
     let totalVolume = 0;
     let totalReps = 0;
     let totalCardioKcal = 0;
+    let totalSupersets = 0;
     let completedSets = 0;
 
     const exEntries = dayState.exercises || {};
@@ -4827,6 +4957,7 @@ const seriesSorted = seriesNames
       const sets = exEntries[exKey]?.sets || {};
       Object.keys(sets).forEach((sKey) => {
         const s = sets[sKey] || {};
+        if (s && s.ss === true) totalSupersets += 1;
         if (cardio) {
           const tVal = parseFloat(s.t);
           const inten = (s.inten || "").toString().trim();
@@ -4851,9 +4982,7 @@ const seriesSorted = seriesNames
         const unit = getWeightUnitLabel(getActiveUnits());
     summaryVolumeEl.textContent = totalVolume > 0 ? `${totalVolume.toFixed(0)} ${unit}` : `0 ${unit}`;
     summaryRepsEl.textContent = totalReps > 0 ? String(totalReps) : "0";
-    const resistanceKcal = estimateResistanceCalories(totalVolume, totalReps);
-    const kcal = resistanceKcal + totalCardioKcal;
-    if (summaryCaloriesEl) summaryCaloriesEl.textContent = kcal > 0 ? `${Math.round(kcal)}` : "0";
+    if (summarySupersetsEl) summarySupersetsEl.textContent = totalSupersets > 0 ? String(totalSupersets) : "0";
     summaryProgressEl.textContent = `${completedSets}/${expected}`;
     updateDurationFooterOnly();
   }
@@ -4927,7 +5056,22 @@ const seriesSorted = seriesNames
     closeSetEditor();
 
     const day = getProgramForWeek(currentWeek)[currentDayIndex];
-    updateWorkoutSummary(day);
+    
+// Edit 4.1.10: Superset counting
+function countSupersets(workout){
+  let count = 0;
+  if(!workout || !workout.exercises) return 0;
+  workout.exercises.forEach(ex => {
+    if(ex.sets){
+      ex.sets.forEach(s => {
+        if(s.ss === true) count++;
+      });
+    }
+  });
+  return count;
+}
+
+updateWorkoutSummary(day);
   });
 
   // -------------------------
@@ -5039,7 +5183,22 @@ const seriesSorted = seriesNames
 
     closeCardioEditor();
     const day = getProgramForWeek(currentWeek)[currentDayIndex];
-    updateWorkoutSummary(day);
+    
+// Edit 4.1.10: Superset counting
+function countSupersets(workout){
+  let count = 0;
+  if(!workout || !workout.exercises) return 0;
+  workout.exercises.forEach(ex => {
+    if(ex.sets){
+      ex.sets.forEach(s => {
+        if(s.ss === true) count++;
+      });
+    }
+  });
+  return count;
+}
+
+updateWorkoutSummary(day);
   });
 
   // Equipment select enabled + highlighted default
@@ -5346,10 +5505,10 @@ const seriesSorted = seriesNames
       delBtn.addEventListener("click", () => {
         // Keep behaviour consistent with other edits: do not mutate a completed workout unless the user is editing it.
         if (isCurrentDayCompleted()) {
-          alert("This workout is completed. Tap ‘Edit Completed Workout’ to make changes.");
+          alert("This workout is completed. Tap 'Edit Completed Workout' to make changes.");
           return;
         }
-        const ok = window.confirm("Are you sure you want to delete this exercise? This will remove it from this week’s day only.");
+        const ok = window.confirm("Are you sure you want to delete this exercise? This will remove it from this week's day only.");
         if (!ok) return;
 
         const st = getWorkoutState();
@@ -5471,7 +5630,11 @@ const baseSuggestion = oneRMBase || (() => {
         if (!isTreadmillCardio) {
           label = document.createElement("div");
           label.className = "set-label";
-          label.textContent = `Set ${setIndex + 1}:`;
+          // Set label row (with optional per-set Superset indicator)
+          const labelText = document.createElement("span");
+          labelText.className = "set-label-text";
+          labelText.textContent = `Set ${setIndex + 1}:`;
+          label.appendChild(labelText);
         }
 
         const fields = document.createElement("div");
@@ -5532,6 +5695,51 @@ const baseSuggestion = oneRMBase || (() => {
           const repsPill = document.createElement("button");
           repsPill.type = "button";
           repsPill.className = "input-pill input-pill--small set-reps-pill";
+
+          // Superset indicator (per set) - purely a marker, no effect on tracking.
+          if (label) {
+            const ssetWrap = document.createElement("label");
+            ssetWrap.className = "sset-toggle";
+
+            const ssetCb = document.createElement("input");
+            ssetCb.type = "checkbox";
+            ssetCb.className = "sset-checkbox";
+            ssetCb.checked = !!saved.ss;
+
+            const ssetTxt = document.createElement("span");
+            ssetTxt.className = "sset-label";
+            ssetTxt.textContent = "SSet";
+
+            // Requested UI order: label then checkbox ("SSet ☐")
+            ssetWrap.appendChild(ssetTxt);
+            ssetWrap.appendChild(ssetCb);
+            label.appendChild(ssetWrap);
+
+            ssetCb.addEventListener("change", () => {
+              // Respect completed-workout lock (user can unlock via 'Edit Completed Workout').
+              if (isCurrentDayCompleted()) {
+                ssetCb.checked = !!saved.ss;
+                alert("This workout is marked as completed. Tap 'Edit Completed Workout' to make changes.");
+                return;
+              }
+
+              try { ensureWorkoutStarted(); } catch (_) {}
+
+              const state = getWorkoutState();
+              const setState = getSetState(state, currentWeek, dayIndex, exIndex, setIndex);
+              setState.ss = !!ssetCb.checked;
+              saveWorkoutState(state);
+
+              // Live-update footer supersets metric immediately.
+              try {
+                const d = getProgramForWeek(currentWeek)[currentDayIndex];
+                updateWorkoutSummary(d);
+              } catch (_) {}
+
+              // Keep local reference in sync for any subsequent UI guards.
+              saved.ss = !!ssetCb.checked;
+            });
+          }
 
           const suggestionW = progressedSuggestion(setIndex) || (isCoreOrBW(ex.name) ? "00" : "");
           const suggestionR = String(targetReps);
@@ -5656,7 +5864,22 @@ const baseSuggestion = oneRMBase || (() => {
       workoutExerciseList.appendChild(addBtn);
     }
 
-    updateWorkoutSummary(day);
+    
+// Edit 4.1.10: Superset counting
+function countSupersets(workout){
+  let count = 0;
+  if(!workout || !workout.exercises) return 0;
+  workout.exercises.forEach(ex => {
+    if(ex.sets){
+      ex.sets.forEach(s => {
+        if(s.ss === true) count++;
+      });
+    }
+  });
+  return count;
+}
+
+updateWorkoutSummary(day);
     syncWorkoutCompletionUI();
   }
 
@@ -5718,10 +5941,10 @@ workoutDaySelect?.addEventListener("change", () => {
       const units = getActiveUnits();
       const wNum = parseFloat(w.value);
       const rNum = parseFloat(r.value);
-      if (!Number.isFinite(wNum) || wNum <= 0 || !Number.isFinite(rNum) || rNum <= 0) { out.textContent = "—"; return; }
+      if (!Number.isFinite(wNum) || wNum <= 0 || !Number.isFinite(rNum) || rNum <= 0) { out.textContent = "-"; return; }
       const weightKg = (units === "imperial") ? lbToKg(wNum) : wNum;
       const estKg = estimateOneRM(weightKg, rNum);
-      if (!estKg) { out.textContent = "—"; return; }
+      if (!estKg) { out.textContent = "-"; return; }
       const estDisplay = (units === "imperial") ? kgToLb(estKg) : estKg;
       out.textContent = `${estDisplay.toFixed(1)} ${getWeightUnitLabel(units)}`;
     }
@@ -5768,7 +5991,7 @@ workoutDaySelect?.addEventListener("change", () => {
       const key = card.dataset.exercise;
       const out = card.querySelector(".one-rm-result-value");
       const units = getActiveUnits();
-      const val = out && out.textContent !== "—" ? parseFloat(String(out.textContent).replace(/[^0-9.\-]/g, "")) : null;
+      const val = out && out.textContent !== "-" ? parseFloat(String(out.textContent).replace(/[^0-9.\-]/g, "")) : null;
       const valKg = (val !== null && Number.isFinite(val)) ? ((units === "imperial") ? lbToKg(val) : val) : null;
       data[key] = (valKg !== null && Number.isFinite(valKg)) ? valKg : null;
       if (data[key] !== null) hasAny = true;
@@ -5841,7 +6064,22 @@ workoutDaySelect?.addEventListener("change", () => {
     }
 
     const day = getProgramForWeek(currentWeek)[currentDayIndex];
-    updateWorkoutSummary(day);
+    
+// Edit 4.1.10: Superset counting
+function countSupersets(workout){
+  let count = 0;
+  if(!workout || !workout.exercises) return 0;
+  workout.exercises.forEach(ex => {
+    if(ex.sets){
+      ex.sets.forEach(s => {
+        if(s.ss === true) count++;
+      });
+    }
+  });
+  return count;
+}
+
+updateWorkoutSummary(day);
     syncWorkoutCompletionUI();
   });
 
