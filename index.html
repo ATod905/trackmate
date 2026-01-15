@@ -50,7 +50,7 @@
                 </button>
             </div>
 
-			<p class="welcome-version">Version 4.0.26</p>
+			<p class="welcome-version">Version 4.1.27</p>
         </main>
 
         <!-- PROFILE SCREEN - PAGE 2 -->
@@ -360,17 +360,17 @@
                 </div>
 
                 <label class="field" style="margin-top:10px;">
-                    <span class="field-label">Search</span>
+                    <span class="field-label" style="color:#7a8693;">SEARCH</span>
                     <input type="text" id="custom-ex-picker-search" placeholder="Type to search…" autocomplete="off" />
                 </label>
 
-                <div class="exercise-edit-category-title" style="margin-top: 12px;">BROWSE BY CATEGORY</div>
+                <div class="exercise-edit-category-title" style="margin-top: 12px; color:#7a8693;">BROWSE BY CATEGORY</div>
                 <div id="custom-ex-picker-category-row" class="exercise-edit-category-row" style="margin-top: 8px;">
+                    <button type="button" class="exercise-edit-category-pill" data-custom-cat="Arms">Arms</button>
                     <button type="button" class="exercise-edit-category-pill" data-custom-cat="Back">Back</button>
                     <button type="button" class="exercise-edit-category-pill" data-custom-cat="Chest">Chest</button>
-                    <button type="button" class="exercise-edit-category-pill" data-custom-cat="Shoulders">Shoulders</button>
                     <button type="button" class="exercise-edit-category-pill" data-custom-cat="Legs">Legs</button>
-                    <button type="button" class="exercise-edit-category-pill" data-custom-cat="Arms">Arms</button>
+                    <button type="button" class="exercise-edit-category-pill" data-custom-cat="Shoulders">Shoulders</button>
                     <button type="button" class="exercise-edit-category-pill" data-custom-cat="Core">Core</button>
                     <button type="button" class="exercise-edit-category-pill" data-custom-cat="Cardio">Cardio</button>
                 </div>
@@ -705,11 +705,11 @@
                     </div>
                     <div class="workout-summary-item">
 						<span class="summary-label">Vol.</span>
-                        <span class="summary-value" id="summary-volume">0 kg</span>
+                        <span class="summary-value" id="summary-volume">00 kg</span>
                     </div>
                     <div class="workout-summary-item">
-						<span class="summary-label">Cal.</span>
-                        <span class="summary-value" id="summary-calories">0</span>
+						<span class="summary-label">Supersets</span>
+                        <span class="summary-value" id="summary-supersets">0</span>
                     </div>
                     <div class="workout-summary-item">
                         <span class="summary-label">Duration</span>
@@ -893,8 +893,8 @@
       <p id="cardio-edit-setlabel" class="set-edit-setlabel"></p>
 
       <div class="set-edit-row">
-        <label for="cardio-edit-time" class="set-edit-label">Time (minutes)</label>
-        <input id="cardio-edit-time" class="set-edit-input" inputmode="decimal" placeholder="e.g. 20" />
+        <label for="cardio-edit-time" class="set-edit-label">Duration / Time (minutes)</label>
+        <input id="cardio-edit-time" class="set-edit-input" inputmode="decimal" placeholder="e.g. 30 min" />
       </div>
 
       <div class="set-edit-row">
@@ -904,7 +904,7 @@
 
       <div class="set-edit-row">
         <label for="cardio-edit-intensity" class="set-edit-label">Intensity</label>
-        <input id="cardio-edit-intensity" class="set-edit-input" placeholder="e.g. Level 6 / RPE 7" />
+        <input id="cardio-edit-intensity" class="set-edit-input" placeholder="e.g. Level 1-10" />
       </div>
 
       <div class="set-edit-actions">
@@ -946,8 +946,11 @@
         <div id="exercise-edit-sets-row" class="exercise-edit-sets-row" aria-label="Sets"></div>
       </div>
 
-      <!-- Suggested alternatives -->
-      <h3 class="exercise-edit-section-title">Suggested alternatives</h3>
+      <!-- Search (all categories) -->
+      <div class="exercise-edit-search-label">SEARCH</div>
+      <input id="exercise-edit-search" class="exercise-edit-search" type="search" placeholder="Type to search..." autocomplete="off" />
+
+      <!-- Suggested alternatives (hidden in UI, retained for JS bindings) -->
       <div id="exercise-edit-suggested" class="exercise-edit-list"></div>
 
       <!-- Category browsing -->
