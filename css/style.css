@@ -1292,6 +1292,11 @@ body {
   position: relative;
 }
 
+/* Slightly tighter padding for Workout Add Exercise modal */
+.set-edit-modal.set-edit-modal--exercise-edit{
+  padding: 16px 16px 14px;
+}
+
 .exercise-edit-cancel {
   position: absolute;
   top: 10px;
@@ -2008,21 +2013,43 @@ body.tm-menu-open .home-hamburger{
 
 /* Edit: 4.1.19 — Add SEARCH to workout Add Exercise modal (Custom + Sklar) */
 #exercise-edit-overlay .exercise-edit-search-label{
-  color:#1f8f8a;
-  font-weight:700;
-  text-transform:uppercase;
-  font-size:0.95rem;
-  letter-spacing:0.02em;
-  margin: 14px 0 6px 0;
+  /* Match the Create-Your-Workout picker label styling */
+  color: #7a8693 !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  margin: 10px 0 4px 0;
+}
+
+#exercise-edit-overlay .exercise-edit-section-title{
+  /* Override global teal headings for this modal */
+  color: #7a8693 !important;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Force the section title in this modal to match Create-Your-Workout picker */
+#exercise-edit-overlay .exercise-edit-section-title{
+  color: #7a8693 !important;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
 }
 #exercise-edit-overlay .exercise-edit-search{
-  width:100%;
-  border:1px solid #1f8f8a;
-  border-radius:16px;
-  padding: 10px 14px;
-  font-size: 0.9rem;
+  width: 100%;
+  border: 1px solid var(--tm-border);
+  border-radius: 999px;
+  height: 36px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  line-height: 1.2;
   outline: none;
   box-sizing: border-box;
+}
+#exercise-edit-overlay .exercise-edit-search:focus{
+  border-color: var(--tm-teal);
 }
 
 
