@@ -150,7 +150,8 @@ const STORAGE_KEYS = {
   lastViewed: "trackmateLastViewed",
   historyLog: "trackmateHistoryLog",
   seriesRegistry: "trackmateSeriesRegistry",
-  customProgramDraft: "trackmateCustomProgramDraft"
+  customProgramDraft: "trackmateCustomProgramDraft",
+  learnedStats: "trackmateLearnedStats"
 };
 
 // React to 1RM changes made in another tab/window.
@@ -982,8 +983,37 @@ function tmInferEquipmentCode(name){
   if (n.includes("kettlebell") || /\bkb\b/.test(n)) return "KB";
   if (n.includes("barbell") || n.includes("ez-bar") || n.includes("ez bar")) return "BB";
   if (n.includes("dumbbell") || /\bdb\b/.test(n)) return "DB";
-  if (n.includes("smith") || n.includes("machine") || n.includes("cable") || n.includes("pec deck") || n.includes("pulldown") || n.includes("leg press")) return "MC";
-  if (n.includes("band") || n.includes("banded") || n.includes("bodyweight") || n.includes("push-up") || n.includes("pull-up") || n.includes("chin-up") || n.includes("plank") || n.includes("carry") || n.includes("hollow") || n.includes("dead bug") || n.includes("bird dog")) return "BW";
+
+  // Common named DB movements that don't include the word "dumbbell".
+  // (Keeps onboarding-friendly defaults for beginners.)
+  if (n.includes("arnold press") || n === "arnold press" || n.includes("arnold")) return "DB";
+  if (n.includes("goblet") && !n.includes("barbell") && !n.includes("smith")) return "DB";
+
+  // Common BB movements that often omit the word "barbell".
+  // Prefer BB for the classic lift names unless explicitly machine/smith/DB/KB.
+  const isMachineLike = (
+    n.includes("smith") || n.includes("machine") || n.includes("pec deck") ||
+    n.includes("leg press") || n.includes("hack squat") || n.includes("belt squat")
+  );
+  if (!isMachineLike) {
+    if (n.includes("back squat") || n.includes("front squat") || (/\bsquat\b/.test(n) && !n.includes("split squat"))) return "BB";
+    if (n.includes("deadlift") || n.includes("romanian deadlift") || n.includes("rdl")) return "BB";
+    if (n.includes("bench press") || n.includes("overhead press") || n.includes("military press")) return "BB";
+  }
+  // Equipment key
+  // - CBL: Cable
+  // - MC : Machine (displayed as MCH)
+  // Cables first: avoids misclassifying rope pulldowns as "machine" due to the word "pulldown".
+  if (n.includes("cable") || n.includes("cbl") || n.includes("rope") || n.includes("face pull") || n.includes("face-pull")) return "CBL";
+  if (n.includes("smith") || n.includes("machine") || n.includes("pec deck") || n.includes("pulldown") || n.includes("leg press")) return "MC";
+  if (
+    n.includes("band") || n.includes("banded") || n.includes("bodyweight") ||
+    n.includes("push-up") || n.includes("pull-up") || n.includes("chin-up") ||
+    n.includes("plank") || n.includes("carry") || n.includes("hollow") ||
+    n.includes("dead bug") || n.includes("bird dog") ||
+    n.includes("leg raise") || n.includes("knee raise") || n.includes("toes-to-bar") ||
+    n.includes("lower back extension") || n.includes("back extension")
+  ) return "BW";
   return "MC";
 }
 
@@ -1161,7 +1191,7 @@ function getWeightIncrementInUserUnits(equipmentCode, units) {
   if ((units || getActiveUnits()) === "imperial") {
     // 2.5 kg ~ 5 lb; 1 kg ~ 2.2 lb (use 2.5 lb for DB/KB to feel natural)
     const code = (equipmentCode || "MC").toUpperCase();
-    if (code === "BB" || code === "MC") return 5;
+    if (code === "BB" || code === "MC" || code === "CBL") return 5;
     if (code === "DB" || code === "KB") return 2.5;
     return 0;
   }
@@ -1192,9 +1222,17 @@ function formatWeightPill(valueKgStrOrNum, equipmentCode) {
   const units = getActiveUnits();
   const unit = getWeightUnitLabel(units);
   const v = String(valueKgStrOrNum ?? "").trim();
-  if (!v) return unit;
+  // TrackMate display rule:
+  // - If there is no weight value or the weight resolves to 0, render a double-zero placeholder
+  //   (e.g., "00 kg") for visual consistency.
+  // - Otherwise render the formatted weight with unit.
+  if (!v) return `00 ${unit}`;
   const display = toDisplayWeightFromKg(v, units);
-  return display ? `${display} ${unit}` : unit;
+  if (!display) return `00 ${unit}`;
+  // Ensure 0 displays as 00 (defensive; toDisplayWeightFromKg should already exclude <=0)
+  const n = Number(display);
+  if (Number.isFinite(n) && n === 0) return `00 ${unit}`;
+  return `${display} ${unit}`;
 }
 
 
@@ -1235,7 +1273,7 @@ function calcWorkingWeightKg(oneRMKg, targetReps, equipmentCode) {
 
   const raw = oneRM * pct;
   const code = (equipmentCode || "").toUpperCase();
-  const increment = (code === "BB" || code === "MC") ? 2.5 : 1;
+  const increment = (code === "BB" || code === "MC" || code === "CBL") ? 2.5 : 1;
   return roundToIncrement(raw, increment);
 }
 
@@ -1257,12 +1295,208 @@ function getTargetRepsFromPrescription(prescription) {
   return null;
 }
 
-// Map key lifts to stored 1RM keys
+// -------------------------
+// Learned anchors (from logged sets) - v1
+// -------------------------
+// Goal: Use the user's own logged performance to inform suggested weights.
+// Implementation notes (regression-safe):
+// - Read-only on existing workout logs.
+// - Stores derived stats in localStorage under STORAGE_KEYS.learnedStats.
+// - Updated at most once per week (for the previous week), per user preference.
+// - Does NOT overwrite any user-entered values.
+
+function isSupersetExerciseName(exName) {
+  const raw = (exName || "").toString();
+  const n = raw.toLowerCase();
+  return n.includes("superset") || raw.includes("+");
+}
+
+function getLearnedStatsStore(seriesName) {
+  const data = readJSON(STORAGE_KEYS.learnedStats, null);
+  if (!data || typeof data !== "object") return null;
+  const canon = canonicalSeriesName(seriesName || getActiveSeriesName());
+  if (!data.seriesCanon || data.seriesCanon !== canon) return null;
+  return data;
+}
+
+function setLearnedStatsStore(seriesName, payload) {
+  const canon = canonicalSeriesName(seriesName || getActiveSeriesName());
+  const safe = (payload && typeof payload === "object") ? payload : {};
+  safe.seriesCanon = canon;
+  safe.ts = Date.now();
+  writeJSON(STORAGE_KEYS.learnedStats, safe);
+}
+
+function computeLearnedExerciseStatsForWeek(seriesName, weekNumber) {
+  const w = parseInt(weekNumber, 10);
+  if (!Number.isFinite(w) || w < 1) return null;
+
+  const state = getWorkoutState();
+  const program = getProgramForWeek(w);
+  if (!Array.isArray(program) || program.length === 0) return null;
+
+  // Collect e1RM samples per exercise name.
+  const samplesByName = {};
+
+  for (let dayIndex = 0; dayIndex < program.length; dayIndex++) {
+    const day = program[dayIndex];
+    if (!day || !Array.isArray(day.exercises)) continue;
+
+    const dayState = ensureDayState(state, w, dayIndex);
+
+    for (let exIndex = 0; exIndex < day.exercises.length; exIndex++) {
+      const ex = day.exercises[exIndex];
+      const exName = (ex && ex.name) ? String(ex.name) : "";
+      if (!exName) continue;
+      if (isCoreOrBW(exName)) continue;
+      if (isSupersetExerciseName(exName)) continue;
+      if (isCardioExercise(exName)) continue;
+
+      const exState = dayState?.exercises?.[String(exIndex)] || null;
+      const sets = exState?.sets || null;
+      if (!sets || typeof sets !== "object") continue;
+
+      Object.keys(sets).forEach((sKey) => {
+        const s = sets[sKey] || {};
+        const wKg = parseFloat(s.w);
+        const reps = parseInt(s.r, 10);
+        if (!Number.isFinite(wKg) || wKg <= 0) return;
+        if (!Number.isFinite(reps) || reps <= 0) return;
+
+        const e1rm = estimateOneRM(wKg, reps);
+        if (!Number.isFinite(e1rm) || e1rm <= 0) return;
+
+        if (!samplesByName[exName]) samplesByName[exName] = [];
+        samplesByName[exName].push({ e1rm, wKg, reps });
+      });
+    }
+  }
+
+  // Reduce to: average of best 2 sets (by e1RM) per exercise.
+  const learned = {};
+  Object.keys(samplesByName).forEach((name) => {
+    const arr = samplesByName[name] || [];
+    if (arr.length === 0) return;
+    arr.sort((a, b) => (b.e1rm - a.e1rm));
+    const top = arr.slice(0, 2);
+    if (top.length === 0) return;
+    const avgE1 = top.reduce((sum, x) => sum + x.e1rm, 0) / top.length;
+    if (!Number.isFinite(avgE1) || avgE1 <= 0) return;
+    learned[name] = {
+      e1rmKg: Math.round(avgE1 * 10) / 10,
+      sampleCount: arr.length,
+      best2Count: top.length
+    };
+  });
+
+  return {
+    computedForWeek: w,
+    exercises: learned
+  };
+}
+
+function ensureLearnedStatsForPreviousWeek(seriesName, currentWeekNumber) {
+  const week = parseInt(currentWeekNumber, 10);
+  if (!Number.isFinite(week) || week <= 1) return;
+
+  const prevWeek = week - 1;
+  const existing = getLearnedStatsStore(seriesName);
+  if (existing && existing.computedForWeek === prevWeek && existing.exercises) return;
+
+  const computed = computeLearnedExerciseStatsForWeek(seriesName, prevWeek);
+  if (!computed) return;
+  setLearnedStatsStore(seriesName, computed);
+}
+
+function getLearnedSuggestionForExercise(exName, targetReps, equipmentCode, seriesName, currentWeekNumber) {
+  // Defensive: this function must never be allowed to break workout rendering.
+  // If anything goes wrong, fail closed (no learned suggestion).
+  try {
+    if (!exName) return "";
+    if (isCoreOrBW(exName)) return "00";
+    if (isSupersetExerciseName(exName)) return "";
+    if (isCardioExercise(exName)) return "";
+
+    // Ensure we have stats for the prior week (once per week).
+    try { ensureLearnedStatsForPreviousWeek(seriesName, currentWeekNumber); } catch (_) {}
+
+    const store = getLearnedStatsStore(seriesName);
+    const ex = store?.exercises?.[String(exName)];
+    const e1rmKg = ex ? Number(ex.e1rmKg) : NaN;
+    if (!Number.isFinite(e1rmKg) || e1rmKg <= 0) return "";
+
+    const ww = calcWorkingWeightKg(e1rmKg, targetReps, equipmentCode);
+    if (!Number.isFinite(ww) || ww <= 0) return "";
+    return formatSuggestedWeightFromKg(ww, equipmentCode) || "";
+  } catch (_) {
+    return "";
+  }
+}
+
+// Map common exercises to stored 1RM keys.
+// This is intentionally conservative and name-driven; learned anchors will
+// quickly take over for users who log regularly.
 const oneRMKeyMap = {
-  "Bent-Over Barbell Rows": "row",
+  // Bench / chest press family
+  "Bench Press": "bench_press",
+  "Barbell Bench Press": "bench_press",
+  "Dumbbell Bench Press": "bench_press",
+  "Incline Bench Press": "bench_press",
+  "Incline Barbell Press": "bench_press",
+  "Incline Dumbbell Press": "bench_press",
   "Incline Barbell or Dumbbell Press": "bench_press",
+  "Machine Chest Press": "bench_press",
+  "Chest Press": "bench_press",
+  "Machine Chest Press (to failure)": "bench_press",
+  "Dips (Chest Variation)": "bench_press",
+
+  // Overhead / shoulder press family
+  "Overhead Press": "ohp",
+  "Standing Overhead Press": "ohp",
+  "Military Press": "ohp",
+  "Shoulder Press": "ohp",
+  "Seated Dumbbell Shoulder Press": "ohp",
+  "DB Shoulder Press": "ohp",
+  "Arnold Press": "ohp",
+  "Machine Shoulder Press": "ohp",
+
+  // Squat / leg press family
+  "Back Squat": "squat",
+  "Front Squat": "squat",
   "Front Squats (BB or Goblet)": "squat",
-  "Romanian Deadlift (BB or DB)": "deadlift"
+  "Goblet Squat": "squat",
+  "Leg Press": "squat",
+  "Hack Squat": "squat",
+  "Belt Squat": "squat",
+  "Walking Lunges (DB)": "squat",
+  "Walking Lunges": "squat",
+  "Bulgarian Split Squat": "squat",
+
+  // Deadlift / hinge family
+  "Deadlift": "deadlift",
+  "Romanian Deadlift": "deadlift",
+  "Romanian Deadlift (BB or DB)": "deadlift",
+  "Romanian Deadlift (DB)": "deadlift",
+  "RDL": "deadlift",
+  "Hip Thrusts (Weighted)": "deadlift",
+  "Glute Bridges or Hip Thrusts (Weighted)": "deadlift",
+  "Glute Bridge": "deadlift",
+  "Lower Back Extensions": "deadlift",
+  "Back Extensions": "deadlift",
+
+  // Row / pull family (use the Row 1RM as a conservative anchor)
+  "Barbell Row": "row",
+  "Bent-Over Barbell Rows": "row",
+  "Bent-Over Barbell Row": "row",
+  "Bent-Over Row": "row",
+  "One-Arm DB Rows": "row",
+  "One-Arm DB Row": "row",
+  "Machine Row": "row",
+  "Horizontal Row (Cable)": "row",
+  "Cable Row": "row",
+  "Lat Pulldowns": "row",
+  "Lat Pulldown": "row",
+  "Wide-Grip Pull-Ups or Lat Pulldown": "row"
 };
 
 function isCoreOrBW(exName) {
@@ -1280,57 +1514,100 @@ function isCoreOrBW(exName) {
 }
 
 // Conservative caps for isolation/cable
-function profileFallbackSuggestionKg(exName, profileWeightKg, equipmentCode) {
-  if (isCoreOrBW(exName)) return "00";
+function profileFallbackSuggestionKg(exName, profile, equipmentCode) {
+  // Profile-only baseline suggestions (conservative "average" numbers).
+  // Notes:
+  // - If no profile: return 0 (per spec).
+  // - Never suggest for core/BW.
+  // - Ignore supersets (fatigue + ambiguous load).
+  if (isCoreOrBW(exName)) return "0";
 
-  const n = (exName || "").toLowerCase();
-  const hasProfile = Number.isFinite(profileWeightKg) && profileWeightKg > 0;
+  const nameRaw = (exName || "").toString();
+  const n = nameRaw.toLowerCase();
+  if (n.includes("superset") || nameRaw.includes("+")) return "0";
 
-  let raw;
+  // Extract profile values (kg / cm / years). Missing profile -> 0.
+  const p = profile && typeof profile === "object" ? profile : null;
+  const weightKg = p
+    ? (p.units === "imperial" ? (Number(p.weight) * 0.453592) : Number(p.weight))
+    : NaN;
+  const heightCm = p ? Number(p.height) : NaN;
+  const ageYears = p ? Number(p.age) : NaN;
+  const sexRaw = p ? (p.sex ?? p.gender ?? p.biologicalSex ?? p.sexAtBirth) : null;
 
-  if (hasProfile) {
-    let factor = 0.45;
+  const hasProfile = Number.isFinite(weightKg) && weightKg > 0;
+  if (!hasProfile) return "0";
 
-    if (n.includes("squat") || n.includes("deadlift") || n.includes("leg press") || n.includes("hip thrust") || n.includes("glute bridge")) {
-      factor = 0.70;
-    } else if (n.includes("press") || n.includes("row") || n.includes("pulldown") || n.includes("pull-up")) {
-      factor = 0.50;
-    }
+  // Pattern factors represent a conservative "working set" baseline.
+  // These are intentionally non-athlete numbers.
+  let factor = 0.45; // default upper-body pulling-ish
 
-    if (n.includes("rear delt") || n.includes("lateral raise") || n.includes("front raise") || n.includes("fly") ||
-        n.includes("curl") || n.includes("triceps") || n.includes("extension") || n.includes("straight-arm")) {
-      factor = 0.20;
-    }
+  const isSquatPattern = (n.includes("squat") || n.includes("leg press") || n.includes("lunge"));
+  const isHingePattern = (n.includes("deadlift") || n.includes("romanian") || n.includes("hip thrust") || n.includes("glute bridge") || n.includes("back extension"));
+  const isPressPattern = (n.includes("press") || n.includes("bench"));
+  const isPullPattern = (n.includes("row") || n.includes("pulldown") || n.includes("pull-up") || n.includes("chin"));
 
-    raw = profileWeightKg * factor;
-  } else {
-    // Conservative defaults (kg) used when profile/1RM has been cleared.
-    if (n.includes("rear delt") || n.includes("lateral raise") || n.includes("front raise")) raw = 6;
-    else if (n.includes("fly")) raw = 10;
-    else if (n.includes("curl")) raw = 12;
-    else if (n.includes("triceps") || n.includes("extension")) raw = 15;
-    else if (n.includes("straight-arm") || n.includes("rope pulldown")) raw = 20;
-    else if (n.includes("pulldown") || n.includes("row") || n.includes("press")) raw = 30;
-    else if (n.includes("leg press")) raw = 60;
-    else if (n.includes("squat") || n.includes("deadlift")) raw = 40;
-    else raw = 20;
+  if (isSquatPattern) factor = 0.70;
+  else if (isHingePattern) factor = 0.75;
+  else if (isPressPattern) factor = 0.40;
+  else if (isPullPattern) factor = 0.45;
+
+  // Isolation scaling (derived from anchor, not stored).
+  const isUpperIsolation = (
+    n.includes("rear delt") || n.includes("lateral raise") || n.includes("front raise") || n.includes("fly") ||
+    n.includes("curl") || n.includes("triceps") || n.includes("extension") || n.includes("straight-arm")
+  );
+  const isLowerIsolation = (n.includes("leg curl") || n.includes("hamstring curl"));
+
+  if (isUpperIsolation) factor = 0.30;      // ~25–35%
+  if (isLowerIsolation) factor = 0.40;      // ~35–50%
+
+  // Age taper (subtle): 0.5% per year over 35, capped at 15%.
+  let ageAdj = 1;
+  if (Number.isFinite(ageYears) && ageYears > 35) {
+    const drop = Math.min(0.15, (ageYears - 35) * 0.005);
+    ageAdj = 1 - drop;
   }
 
-  // caps
+  // Height/BMI adjustment (very subtle): avoid over-inflating suggestions at extremes.
+  let bmiAdj = 1;
+  if (Number.isFinite(heightCm) && heightCm > 0) {
+    const hM = heightCm / 100;
+    const bmi = weightKg / (hM * hM);
+    if (Number.isFinite(bmi)) {
+      if (bmi < 20) bmiAdj = 0.90;
+      else if (bmi > 30) bmiAdj = 0.95;
+    }
+  }
+
+  // Sex adjustment (very light): keep conservative, and only apply when the
+  // user has explicitly provided it.
+  // - Female: slightly lower baseline
+  // - Male/Other/Unknown: no change
+  let sexAdj = 1;
+  if (typeof sexRaw === "string" && sexRaw.trim()) {
+    const s = sexRaw.trim().toLowerCase();
+    if (s === "female" || s === "f" || s.startsWith("fem")) sexAdj = 0.92;
+    else if (s === "male" || s === "m" || s.startsWith("mal")) sexAdj = 1;
+  }
+
+  let raw = weightKg * factor * ageAdj * bmiAdj * sexAdj;
+
+  // Conservative caps for isolation/cable.
   if (n.includes("rear delt") || n.includes("lateral raise") || n.includes("front raise")) raw = Math.min(raw, 12);
   if (n.includes("curl")) raw = Math.min(raw, 20);
   if (n.includes("triceps") || n.includes("extension")) raw = Math.min(raw, 25);
   if (n.includes("straight-arm") || n.includes("rope pulldown")) raw = Math.min(raw, 35);
   if (n.includes("fly")) raw = Math.min(raw, 30);
 
-  const inc = (equipmentCode === "BB" || equipmentCode === "MC") ? 2.5 : 1;
-  const rounded = roundToIncrement(raw, inc);
-  return rounded ? String(rounded) : "";
+  // v1 rounding: nearest 2.5 kg regardless of equipment.
+  const rounded = roundToIncrement(raw, 2.5);
+  return (rounded != null && rounded !== "") ? String(rounded) : "0";
 }
 
 function getOneRMBasedSuggestion(exName, targetReps, equipmentCode) {
   if (isCoreOrBW(exName)) return "00";
-  const key = oneRMKeyMap[exName];
+  const key = oneRMKeyMap[exName] || inferOneRMKeyFromName(exName);
   if (!key) return "";
   const oneRMData = readJSON(STORAGE_KEYS.oneRM, {});
   const oneRM = oneRMData?.[key];
@@ -1339,12 +1616,46 @@ function getOneRMBasedSuggestion(exName, targetReps, equipmentCode) {
   return suggested ? formatSuggestedWeightFromKg(suggested, equipmentCode) : "";
 }
 
+function inferOneRMKeyFromName(exName) {
+  const n = (exName || "").toString().toLowerCase();
+  if (!n) return "";
+  if (isSupersetExerciseName(exName)) return "";
+  if (isCardioExercise(exName)) return "";
+
+  // Bench/chest press family
+  if (n.includes("bench") || n.includes("chest press") || (n.includes("press") && n.includes("incline")) || n.includes("dip")) {
+    return "bench_press";
+  }
+
+  // Overhead/shoulder press family
+  if (n.includes("overhead") || n.includes("shoulder press") || n.includes("military") || n.includes("arnold press") || (n.includes("press") && (n.includes("shoulder") || n.includes("seated")))) {
+    return "ohp";
+  }
+
+  // Squat pattern
+  if (n.includes("squat") || n.includes("leg press") || n.includes("lunge") || n.includes("split squat")) {
+    return "squat";
+  }
+
+  // Hinge pattern
+  if (n.includes("deadlift") || n.includes("romanian") || n.includes("rdl") || n.includes("hip thrust") || n.includes("glute bridge") || n.includes("back extension")) {
+    return "deadlift";
+  }
+
+  // Row/pull (avoid true BW pull-ups for safety)
+  if (n.includes("row") || n.includes("pulldown") || n.includes("pull down")) {
+    return "row";
+  }
+
+  return "";
+}
+
 // -------------------------
 // Progressive overload (week-to-week suggestion)
 // -------------------------
 function getIncrementForEquipment(equipmentCode) {
   const code = (equipmentCode || "MC").toUpperCase();
-  if (code === "BB" || code === "MC") return 2.5;
+  if (code === "BB" || code === "MC" || code === "CBL") return 2.5;
   if (code === "DB" || code === "KB") return 1;
   return 0;
 }
@@ -1980,8 +2291,16 @@ function getProgramForWeek(weekNumber, seriesName) {
 
   // Sklar selective migration:
   // - Planned/unstarted days use the current template.
-  // - Started/in-progress/completed days must remain on the prior template.
+  // - Started/in-progress/completed days may need to remain on a prior definition
+  //   for back-compat with older saved data.
+  //
+  // v4.3.16: This is now **opt-in**. If enabled, the UI may swap a day definition
+  // to the prior template once the user logs any inputs. That behaviour is not
+  // desired for fresh/current templates, so we only apply it when the flag below
+  // is explicitly set.
   if (series === DEFAULT_SERIES_NAME) {
+    const preservePrevTemplate = (localStorage.getItem("tm_sklar_preserve_prev_template") === "1");
+    if (!preservePrevTemplate) return deepClone(template);
     try {
       const st = getWorkoutState(series);
       const weekKey = String(weekNumber);
@@ -2276,7 +2595,7 @@ function getSetState(state, week, dayIndex, exIndex, setIndex) {
   const dayState = ensureDayState(state, week, dayIndex);
   const exKey = String(exIndex);
   const sKey = String(setIndex);
-  if (!dayState.exercises[exKey]) dayState.exercises[exKey] = { sets: {}, equipment: null };
+  if (!dayState.exercises[exKey]) dayState.exercises[exKey] = { sets: {}, equipment: null, dnc: false, dncStash: null };
   if (!dayState.exercises[exKey].sets[sKey]) dayState.exercises[exKey].sets[sKey] = { w: "", r: "", ss: false };
 
   // Back-compat: older saves won't have an SSet flag.
@@ -2322,7 +2641,7 @@ function resetWeek(week) {
 function getExerciseState(state, week, dayIndex, exIndex) {
   const dayState = ensureDayState(state, week, dayIndex);
   const exKey = String(exIndex);
-  if (!dayState.exercises[exKey]) dayState.exercises[exKey] = { sets: {}, equipment: null };
+  if (!dayState.exercises[exKey]) dayState.exercises[exKey] = { sets: {}, equipment: null, dnc: false, dncStash: null };
   return dayState.exercises[exKey];
 }
 
@@ -2396,6 +2715,21 @@ document.addEventListener("DOMContentLoaded", () => {
     const safe = (mode === "resume" || mode === "next") ? mode : "next";
     const prefs = readJSON(STORAGE_KEYS.prefs, {});
     prefs.continueMode = safe;
+    writeJSON(STORAGE_KEYS.prefs, prefs);
+  }
+
+
+  // -------------------------
+  // Suggested weights kill-switch (default: OFF)
+  // -------------------------
+  function getSuggestedWeightsEnabled() {
+    const prefs = readJSON(STORAGE_KEYS.prefs, {});
+    return !!(prefs && prefs.suggestedWeightsEnabled === true);
+  }
+
+  function setSuggestedWeightsEnabled(isEnabled) {
+    const prefs = readJSON(STORAGE_KEYS.prefs, {});
+    prefs.suggestedWeightsEnabled = (isEnabled === true);
     writeJSON(STORAGE_KEYS.prefs, prefs);
   }
 
@@ -2878,7 +3212,7 @@ function renderCustomBuilderForCurrentDay() {
     topRow.className = "exercise-header-top-row";
 
     const meta = exerciseLibrary?.[ex.name] || {};
-    const defaultEquip = meta?.equipment || "MC";
+    const defaultEquip = (meta?.equipment || tmInferEquipmentCode(ex.name) || "MC");
     const selectedEquip = (ex.equipment || defaultEquip);
 
     const title = document.createElement("p");
@@ -3077,6 +3411,12 @@ function renderCustomBuilderForCurrentDay() {
 }
 
 function getBuilderSuggestedWeightDisplay(exName, targetReps, equipmentCode) {
+  // Suggested weights feature toggle (default OFF).
+  // When disabled, the builder shows only the unit placeholder for weights.
+  try {
+    if (!getSuggestedWeightsEnabled()) return "";
+  } catch (_) {}
+
   if (isCoreOrBW(exName)) return "00";
 
   const equip = (equipmentCode || "MC").toUpperCase();
@@ -3085,11 +3425,7 @@ function getBuilderSuggestedWeightDisplay(exName, targetReps, equipmentCode) {
 
   // Fall back to profile-based suggestion (kg internally) then format to display units.
   const profile = readJSON(STORAGE_KEYS.profile, null);
-  const profileWeightKg = profile?.units === "imperial"
-    ? (Number(profile.weight) * 0.453592)
-    : Number(profile?.weight);
-
-  const kgStr = profileFallbackSuggestionKg(exName, profileWeightKg, equip);
+  const kgStr = profileFallbackSuggestionKg(exName, profile, equip);
   const kgNum = parseFloat(kgStr);
   if (!kgStr || !Number.isFinite(kgNum) || kgNum <= 0) return "";
   return formatSuggestedWeightFromKg(kgNum, equip);
@@ -3383,11 +3719,12 @@ function openCustomExercisePicker(context) {
         const fallbackSetCount = Number.isFinite(lastSets) ? Math.min(8, Math.max(1, lastSets)) : 4;
         const overlayAddSets = parseInt(overlay.dataset.addSetCount || "", 10);
         const chosenAddSetCount = Number.isFinite(overlayAddSets) ? Math.min(8, Math.max(1, overlayAddSets)) : fallbackSetCount;
+        const inferredEquip = (meta.equipment || tmInferEquipmentCode(name) || "MC");
         const newExBase = {
           name,
           prescription: "4 x 8",
           notes: "",
-          equipment: meta.equipment || "MC"
+          equipment: inferredEquip
         };
 
         if (overlay.dataset.mode === "replace") {
@@ -4620,6 +4957,7 @@ const seriesSorted = seriesNames
         showScreen("screen-workout");
         currentWeek = e.week;
         setActiveWeekTab(currentWeek);
+        try { syncReviewNavUI(); } catch (_) {}
         currentDayIndex = e.dayIndex;
         const select = document.getElementById("workout-day-select");
         if (select) select.value = String(currentDayIndex);
@@ -4664,6 +5002,7 @@ const seriesSorted = seriesNames
       if (!Number.isNaN(w)) {
         currentWeek = w;
         setActiveWeekTab(w);
+        syncReviewNavUI();
 
         // If the user has chosen "Next incomplete" behaviour, jump to the first incomplete
         // day in the selected week (prevents returning to already-completed days).
@@ -4685,6 +5024,49 @@ const seriesSorted = seriesNames
   const workoutGoal = document.getElementById("workout-goal");
   const workoutExerciseList = document.getElementById("workout-exercise-list");
   const workoutCompletedBadge = document.getElementById("workout-completed-badge");
+
+  // Review navigation (same day, previous/next week)
+  const workoutReviewPrev = document.getElementById("workout-review-prev");
+  const workoutReviewNext = document.getElementById("workout-review-next");
+  const reviewMinWeek = 1;
+  const reviewMaxWeek = (() => {
+    let max = 6;
+    try {
+      const nums = Array.from(weekTabs || []).map(t => parseInt(t.dataset.week, 10)).filter(n => Number.isFinite(n));
+      if (nums.length) max = Math.max(...nums);
+    } catch (_) {}
+    return max;
+  })();
+
+  function syncReviewNavUI() {
+    if (workoutReviewPrev) workoutReviewPrev.classList.toggle("is-disabled", currentWeek <= reviewMinWeek);
+    if (workoutReviewNext) workoutReviewNext.classList.toggle("is-disabled", currentWeek >= reviewMaxWeek);
+  }
+
+  // Review week navigation: keep the same day, shift the active week.
+  if (workoutReviewPrev) {
+    workoutReviewPrev.addEventListener("click", () => {
+      if (currentWeek <= reviewMinWeek) return;
+      currentWeek = currentWeek - 1;
+      setActiveWeekTab(currentWeek);
+      const sel = document.getElementById("workout-day-select");
+      if (sel) sel.value = String(currentDayIndex);
+      syncReviewNavUI();
+      renderWorkoutDay(currentDayIndex);
+    });
+  }
+
+  if (workoutReviewNext) {
+    workoutReviewNext.addEventListener("click", () => {
+      if (currentWeek >= reviewMaxWeek) return;
+      currentWeek = currentWeek + 1;
+      setActiveWeekTab(currentWeek);
+      const sel = document.getElementById("workout-day-select");
+      if (sel) sel.value = String(currentDayIndex);
+      syncReviewNavUI();
+      renderWorkoutDay(currentDayIndex);
+    });
+  }
 
   function getCurrentDayState() {
     const state = getWorkoutState();
@@ -5097,6 +5479,10 @@ let editContext = null; // { dayRef, exRef, titleEl, exIndex }
   function applyExerciseSwap(newName) {
     if (!editContext) return;
 
+    // Edit 4.5.1: Treadmill-style cardio uses a single 3-field row (duration + incline + intensity).
+    // Default these to 1 set so the Sets selector is intuitive and Progress isn't accidentally inflated.
+    const isTreadmillCardioSwap = isTreadmillStyleCardio(newName || "");
+
     // Critical UX safeguard: changing an exercise must never silently delete user-entered data.
     // Behaviour:
     // 1) If there is no logged input for this slot, proceed with the swap.
@@ -5161,6 +5547,7 @@ let editContext = null; // { dayRef, exRef, titleEl, exIndex }
         const weekTpl = ensureCustomWeekOverride(activeSeries, week);
         if (weekTpl?.[dayIdx]?.exercises?.[exIdx]) {
           weekTpl[dayIdx].exercises[exIdx].name = newName;
+          if (isTreadmillCardioSwap) weekTpl[dayIdx].exercises[exIdx].setCount = 1;
           // Keep local reference consistent so the overlay and re-render match.
           editContext.exRef.name = newName;
           const st = getWorkoutState(activeSeries);
@@ -5185,6 +5572,21 @@ let editContext = null; // { dayRef, exRef, titleEl, exIndex }
       const dayIdx = editContext.dayIndex ?? currentDayIndex;
       const exIdx = editContext.exIndex;
       setExerciseNameOverride(series, week, dayIdx, exIdx, newName);
+
+      // Default the equipment pill based on the NEW exercise name.
+      // This is safe: it runs only when the user explicitly swaps/replaces an exercise.
+      // Users can still manually override the pill afterwards.
+      try {
+        const st = getWorkoutState(series);
+        ensureDayState(st, week, dayIdx);
+        const exState = getExerciseState(st, week, dayIdx, exIdx);
+        exState.equipment = (exerciseLibrary?.[newName]?.equipment || tmInferEquipmentCode(newName) || "MC");
+
+        // Edit 4.5.1: Default treadmill-style cardio to 1 set in workout state.
+        if (isTreadmillCardioSwap) exState.setCount = 1;
+
+        saveWorkoutState(st, series);
+      } catch (_) {}
 
       // If this is a custom programme edit in Week 1, also mirror the change into the
       // saved programme definition so the builder "sheet" view stays in sync.
@@ -5409,6 +5811,13 @@ function findCategoryForExercise(exerciseName) {
         currentSets = Number.isFinite(parseInt(exState.setCount, 10))
           ? Math.min(8, Math.max(1, parseInt(exState.setCount, 10)))
           : 4;
+
+        // Edit 4.5.1: Ensure treadmill-style cardio defaults to 1 set (including legacy state).
+        if (isTreadmillStyleCardio(exRef.name || "") && currentSets !== 1) {
+          exState.setCount = 1;
+          currentSets = 1;
+          saveWorkoutState(state);
+        }
       } else {
         // Custom base: prefer the exercise definition's setCount
         const defCnt = Number.isFinite(parseInt(exRef.setCount, 10))
@@ -5550,7 +5959,7 @@ updateWorkoutSummary(day);
 
       // Treadmill-style cardio renders as a single 3-field row (duration + incline + intensity),
       // so it should contribute exactly 1 "set" to Progress regardless of stored setCount.
-      if (isCardioExercise(ex.name) && isTreadmillStyleCardio(ex.name || "")) {
+      if (isTreadmillStyleCardio(ex.name || "")) {
         total += 1;
         return;
       }
@@ -5598,8 +6007,36 @@ function updateWorkoutSummary(day) {
     Object.keys(exEntries).forEach((exKey) => {
       const exIndex = parseInt(exKey, 10);
       const exName = (Number.isFinite(exIndex) && exercisesForIndex[exIndex]) ? (exercisesForIndex[exIndex].name || "") : "";
-      const cardio = isCardioExercise(exName);
+
+      // Cardio progress must be name-first but also resilient to free-typed exercise names.
+      // If the saved set data uses cardio fields (t / inten / inc), treat it as cardio for Progress.
       const sets = exEntries[exKey]?.sets || {};
+      const treadmill = isTreadmillStyleCardio(exName || "");
+      let cardio = isCardioExercise(exName);
+      if (!cardio) {
+        try {
+          cardio = Object.keys(sets).some((k) => {
+            const s = sets[k] || {};
+            return ("t" in s) || ("inten" in s) || ("inc" in s);
+          });
+        } catch (_) {}
+      }
+
+      // Treadmill-style cardio is a single-row input, so it must count as ONE progress unit.
+      if (treadmill) {
+        const firstKey = Object.keys(sets)[0] || "0";
+        const s0 = sets["0"] || sets[firstKey] || {};
+        if (s0 && s0.ss === true) totalSupersets += 1;
+        const tVal = parseFloat(s0.t);
+        const inten = (s0.inten || "").toString().trim();
+        const inc = s0.inc;
+        if (Number.isFinite(tVal) && tVal > 0 && inten) {
+          completedSets += 1;
+          totalCardioKcal += estimateCardioCaloriesForSet(exName, tVal, inc, inten);
+        }
+        return;
+      }
+
       Object.keys(sets).forEach((sKey) => {
         const s = sets[sKey] || {};
         if (s && s.ss === true) totalSupersets += 1;
@@ -5659,15 +6096,17 @@ function updateWorkoutSummary(day) {
     currentEditWeightPill.dataset.value = wKg || "";
     currentEditRepsPill.dataset.value = r;
 
-    if (w) {
-      currentEditWeightPill.textContent = formatWeightPill(wKg || "", currentEditContext?.equipmentCode);
+    const wNum = Number(wKg);
+    const hasNonZeroW = wKg !== "" && Number.isFinite(wNum) && wNum > 0;
+    if (hasNonZeroW) {
+      currentEditWeightPill.textContent = formatWeightPill(wKg, currentEditContext?.equipmentCode);
       currentEditWeightPill.classList.remove("input-pill--suggested");
     } else if (wSuggestion) {
       currentEditWeightPill.textContent = formatWeightPill(currentEditWeightPill?.dataset?.suggestionKg || "", currentEditContext?.equipmentCode);
       currentEditWeightPill.classList.add("input-pill--suggested");
     } else {
-      currentEditWeightPill.textContent = getWeightUnitLabel(getActiveUnits());
-      currentEditWeightPill.classList.remove("input-pill--suggested");
+      currentEditWeightPill.textContent = formatWeightPill("", currentEditContext?.equipmentCode);
+      currentEditWeightPill.classList.add("input-pill--suggested");
     }
 
     if (r) {
@@ -5850,13 +6289,13 @@ updateWorkoutSummary(day);
   function buildEquipmentRow(card, defaultEquip, onChange) {
     const equipmentRow = document.createElement("div");
     equipmentRow.className = "equipment-pill-row";
-    const options = ["DB", "BB", "KB", "BW", "MC"];
+    const options = ["DB", "BB", "KB", "BW", "MC", "CBL"];
 
     options.forEach((code) => {
       const pill = document.createElement("button");
       pill.type = "button";
       pill.className = "equipment-pill";
-      pill.textContent = code;
+      pill.textContent = (code === "MC") ? "MCH" : code;
       pill.dataset.equipmentCode = code;
       if (code === defaultEquip) {
         pill.classList.add("equipment-pill--active");
@@ -5881,22 +6320,25 @@ updateWorkoutSummary(day);
   function refreshCardSuggestions(card, ex, exIndex, dayIndex, equipCode) {
     // Recompute suggestions for this exercise card when equipment changes.
     const profile = readJSON(STORAGE_KEYS.profile, null);
-    const profileWeightKg = profile?.units === "imperial"
-      ? (Number(profile.weight) * 0.453592)
-      : Number(profile?.weight);
+    const suggestedOn = getSuggestedWeightsEnabled();
 
     const targetReps = getTargetRepsFromPrescription(ex.prescription) || 8;
-    const oneRMBase = getOneRMBasedSuggestion(ex.name, targetReps, equipCode);
-    const baseSuggestionKg = oneRMBase ? null : null;
-    const baseSuggestion = oneRMBase || (() => {
-      const kgStr = profileFallbackSuggestionKg(ex.name, profileWeightKg, equipCode);
-      const kgNum = parseFloat(kgStr);
-      if (!kgStr) return "";
-      if (getActiveUnits() === "imperial") {
-        return formatSuggestedWeightFromKg(Number.isFinite(kgNum) ? kgNum : 0, equipCode) || "";
-      }
-      return kgStr;
-    })();
+
+    // IMPORTANT: The kill switch must fully disable weight suggestions.
+    // We still keep the prescribed reps visible as part of the programme.
+    let baseSuggestion = "";
+    if (suggestedOn) {
+      const oneRMBase = getOneRMBasedSuggestion(ex.name, targetReps, equipCode);
+      baseSuggestion = oneRMBase || (() => {
+        const kgStr = profileFallbackSuggestionKg(ex.name, profile, equipCode);
+        const kgNum = parseFloat(kgStr);
+        if (!kgStr) return "";
+        if (getActiveUnits() === "imperial") {
+          return formatSuggestedWeightFromKg(Number.isFinite(kgNum) ? kgNum : 0, equipCode) || "";
+        }
+        return kgStr;
+      })();
+    }
 
     const stPrev = getWorkoutState(); // for progression lookup
     const prevDayState = currentWeek > 1 ? ensureDayState(stPrev, currentWeek - 1, dayIndex) : null;
@@ -5911,13 +6353,16 @@ updateWorkoutSummary(day);
       if (!wPill || !rPill) continue;
 
       // Only update suggestions if user has not entered a value
-      const hasUserW = (wPill.dataset.value || "") !== "";
+      const rawUserW = String(wPill.dataset.value || "").trim();
+      const hasUserW = rawUserW !== "" && Number(rawUserW) > 0;
       const hasUserR = (rPill.dataset.value || "") !== "";
 
       const suggestionR = String(targetReps);
 
       let suggestionW = "";
-      if (isCoreOrBW(ex.name)) {
+      if (!suggestedOn) {
+        suggestionW = "";
+      } else if (isCoreOrBW(ex.name)) {
         suggestionW = "00";
       } else if (currentWeek > 1) {
         const prevSet = prevDayState?.exercises?.[String(exIndex)]?.sets?.[String(setIndex)];
@@ -5955,8 +6400,8 @@ updateWorkoutSummary(day);
 	          wPill.textContent = formatWeightPill(String(suggestionW ?? ""), equipCode);
 	          wPill.classList.add("input-pill--suggested");
 	        } else {
-	          wPill.textContent = getWeightUnitLabel(getActiveUnits());
-	          wPill.classList.remove("input-pill--suggested");
+	          wPill.textContent = formatWeightPill("", equipCode);
+	          wPill.classList.add("input-pill--suggested");
 	        }
 	      }
 
@@ -6004,6 +6449,18 @@ updateWorkoutSummary(day);
   }
 
   function updateExerciseCardCompletion(card, state, week, dayIndex, exIndex, setCount, isCardio) {
+    // Edit: 4.5.4 — DNC (Did Not Complete) per-card state.
+    // DNC overrides UI completion styling (grey/green) and renders as a red/pink "skipped" card.
+    try {
+      const exState = getExerciseState(state, week, dayIndex, exIndex);
+      const isDnc = !!exState?.dnc;
+      card.classList.toggle("exercise-card--dnc", isDnc);
+      if (isDnc) {
+        card.classList.remove("exercise-card--completed");
+        return;
+      }
+    } catch (_) {}
+
     const done = isExerciseCompleteForUI(state, week, dayIndex, exIndex, setCount, !!isCardio);
     card.classList.toggle("exercise-card--completed", !!done);
   }
@@ -6083,17 +6540,86 @@ updateWorkoutSummary(day);
     // Keep indices stable for saved set data by inserting nulls for removed base exercises.
     const renderExercises = baseExercises.map((ex, idx) => (removedBaseIndices.includes(idx) ? null : ex)).concat(extraExercises);
 
-    renderExercises.forEach((ex, exIndex) => {
-      if (!ex) return;
-
-      // Apply any persisted exercise-name override for this slot.
-      // This is critical for offline-safe persistence and cross-view consistency.
-      try {
+    // Apply any persisted exercise-name overrides BEFORE ordering so name-first identity remains stable.
+    try {
+      renderExercises.forEach((ex, exIndex) => {
+        if (!ex) return;
         const overrideName = getExerciseNameOverride(dayState, exIndex);
         if (overrideName) ex.name = overrideName;
+      });
+    } catch (_) {}
+
+
+    // Edit: 4.4.0 — UI-only exercise card reordering (per programme + week + day)
+    // Canonical programme order is NEVER mutated. We only reorder the render order.
+    const programmeKey = sanitizeStorageKeyPart(activeSeries);
+    const orderStorageKey = `tmCardOrder:${programmeKey}:w${currentWeek}:d${idx + 1}`;
+
+    const normaliseCardOrderName = (name) => (name || "")
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+
+    const loadCardOrderOverride = () => {
+      try {
+        const v = readJSON(orderStorageKey, null);
+        return Array.isArray(v) ? v : null;
+      } catch (_) {
+        return null;
+      }
+    };
+
+    const saveCardOrderOverride = (names) => {
+      try {
+        const clean = Array.isArray(names)
+          ? names.map(normaliseCardOrderName).filter(Boolean)
+          : [];
+        localStorage.setItem(orderStorageKey, JSON.stringify(clean));
       } catch (_) {}
+    };
+
+    const renderItemsCanonical = renderExercises
+      .map((ex, exIndex) => (ex ? ({ ex, exIndex }) : null))
+      .filter(Boolean);
+
+    const applyCardOrderOverride = (items) => {
+      const override = loadCardOrderOverride();
+      if (!override || !override.length) return items;
+
+      const pos = new Map();
+      override.forEach((n, i) => pos.set(normaliseCardOrderName(n), i));
+
+      const tagged = items.map((it, originalIdx) => {
+        const key = normaliseCardOrderName(it.ex?.name);
+        const p = (key && pos.has(key)) ? pos.get(key) : null;
+        return { it, p, originalIdx };
+      });
+
+      tagged.sort((a, b) => {
+        const ap = (a.p === null) ? Number.MAX_SAFE_INTEGER : a.p;
+        const bp = (b.p === null) ? Number.MAX_SAFE_INTEGER : b.p;
+        if (ap !== bp) return ap - bp;
+        return a.originalIdx - b.originalIdx;
+      });
+
+      return tagged.map((x) => x.it);
+    };
+
+    const computeEffectiveOrderNamesNow = () => {
+      const effective = applyCardOrderOverride(renderItemsCanonical);
+      return effective.map((it) => normaliseCardOrderName(it.ex?.name));
+    };
+
+    const renderItems = applyCardOrderOverride(renderItemsCanonical);
+
+    renderItems.forEach(({ ex, exIndex }, uiIndex) => {
       const card = document.createElement("div");
       card.className = "exercise-card";
+
+      // Edit: 4.5.3 — FLIP animation support for UI-only reorder.
+      // Use the canonical exercise index as a stable identifier for DOM mapping.
+      try { card.dataset.flipId = String(exIndex); } catch (_) {}
 
       // Header
       const header = document.createElement("div");
@@ -6103,10 +6629,19 @@ updateWorkoutSummary(day);
       topRow.className = "exercise-header-top-row";
 
       const meta = exerciseLibrary[ex.name];
-      const defaultEquip = meta?.equipment || "MC";
+      const defaultEquip = (meta?.equipment || tmInferEquipmentCode(ex.name) || "MC");
 
       // Persisted equipment choice per week/day/exercise
       const exState = getExerciseState(state, currentWeek, dayIndex, exIndex);
+      if (!exState.equipment) {
+        // Set a safe default as soon as the exercise exists (do not override user selection later).
+        const stFresh = getWorkoutState();
+        const exStateFresh = getExerciseState(stFresh, currentWeek, dayIndex, exIndex);
+        if (!exStateFresh.equipment) {
+          exStateFresh.equipment = defaultEquip;
+          saveWorkoutState(stFresh);
+        }
+      }
       const selectedEquip = exState.equipment || defaultEquip;
 
       const title = document.createElement("p");
@@ -6114,10 +6649,25 @@ updateWorkoutSummary(day);
       title.textContent = ex.name;
 
       const equipmentRow = buildEquipmentRow(card, selectedEquip, (code) => {
-        // Save equipment choice and refresh suggestions in-place (do NOT re-render the whole day)
-        exState.equipment = code;
-        saveWorkoutState(state);
+        // IMPORTANT:
+        // Do NOT save using the closed-over `state` from the initial render.
+        // Users may have edited set data since renderWorkoutDay() ran; saving a stale
+        // object would overwrite newer inputs and make Progress appear to "lose" sets.
+        // Always pull a fresh state snapshot from localStorage before persisting.
+
+        const stFresh = getWorkoutState();
+        const exStateFresh = getExerciseState(stFresh, currentWeek, dayIndex, exIndex);
+        exStateFresh.equipment = code;
+        saveWorkoutState(stFresh);
+
+        // Refresh suggestions in-place (do NOT re-render the whole day)
         refreshCardSuggestions(card, ex, exIndex, dayIndex, code);
+
+        // Keep footer metrics in sync (progress/volume/reps) after equipment changes.
+        try {
+          const d = getProgramForWeek(currentWeek)[currentDayIndex];
+          updateWorkoutSummary(d);
+        } catch (_) {}
       });
 
       const linksRow = document.createElement("div");
@@ -6179,6 +6729,76 @@ updateWorkoutSummary(day);
         renderWorkoutDay(dayIndex);
       });
 
+
+      // Edit: 4.5.4 — DNC (Did Not Complete) per-card toggle.
+      // UI-only: marks this specific exercise card as intentionally skipped (pink/red),
+      // without deleting it or altering programme structure.
+      const dncBtn = document.createElement("button");
+      dncBtn.type = "button";
+      dncBtn.className = "workout-dnc-pill";
+      dncBtn.textContent = "DNC";
+      dncBtn.setAttribute("aria-label", "Mark exercise as Did Not Complete");
+      dncBtn.setAttribute("title", "Did Not Complete");
+
+      try {
+        const stForBtn = getWorkoutState();
+        const exStateForBtn = getExerciseState(stForBtn, currentWeek, dayIndex, exIndex);
+        if (exStateForBtn && exStateForBtn.dnc) dncBtn.classList.add("workout-dnc-pill--active");
+      } catch (_) {}
+
+      dncBtn.addEventListener("click", () => {
+        // Respect completed-workout lock (user can unlock via 'Edit Completed Workout').
+        if (isCurrentDayCompleted()) {
+          alert("This workout is marked as completed. Tap 'Edit Completed Workout' to make changes.");
+          return;
+        }
+
+        try {
+          const st = getWorkoutState();
+          const exStateNow = getExerciseState(st, currentWeek, dayIndex, exIndex);
+          const wasDnc = !!exStateNow.dnc;
+
+          // Determine the current set count using the same logic as the renderer.
+          const isExtraExercise = !!ex?.__isExtra;
+          const activeSeriesNow = getActiveSeriesName();
+          const setCountNow = (activeSeriesNow === DEFAULT_SERIES_NAME || isExtraExercise)
+            ? (Number.isFinite(parseInt(exStateNow.setCount, 10)) ? Math.min(8, Math.max(1, parseInt(exStateNow.setCount, 10))) : 4)
+            : (Number.isFinite(parseInt(ex.setCount, 10)) ? Math.min(8, Math.max(1, parseInt(ex.setCount, 10))) : 4);
+
+          if (!wasDnc) {
+            // Stash current set data so the toggle is reversible and non-destructive.
+            if (!exStateNow.dncStash) {
+              try { exStateNow.dncStash = JSON.parse(JSON.stringify(exStateNow.sets || {})); } catch (_) { exStateNow.dncStash = {}; }
+            }
+
+            // Force the visible inputs to zero for this exercise card only.
+            for (let i = 0; i < setCountNow; i++) {
+              const s = getSetState(st, currentWeek, dayIndex, exIndex, i);
+              s.w = "0";
+              s.r = "0";
+              // Cardio fields (if present) should also be zeroed.
+              try { s.t = "0"; } catch (_) {}
+              try { s.inc = "0"; } catch (_) {}
+              try { s.inten = "0"; } catch (_) {}
+              try { s.ss = false; } catch (_) {}
+            }
+
+            exStateNow.dnc = true;
+          } else {
+            // Un-toggle: restore stashed values (or revert to suggestions if stash was empty).
+            exStateNow.dnc = false;
+            if (exStateNow.dncStash) {
+              try { exStateNow.sets = JSON.parse(JSON.stringify(exStateNow.dncStash || {})); } catch (_) {}
+              exStateNow.dncStash = null;
+            }
+          }
+
+          saveWorkoutState(st);
+          renderWorkoutDay(dayIndex);
+        } catch (_) {}
+      });
+
+      links.appendChild(dncBtn);
       links.appendChild(infoBtn);
       links.appendChild(editBtn);
       links.appendChild(delBtn);
@@ -6204,30 +6824,82 @@ updateWorkoutSummary(day);
 
       const equipCode = card.dataset.equipment || defaultEquip;
       const targetReps = getTargetRepsFromPrescription(ex.prescription) || 8; // safe default
+	      const activeSeries = getActiveSeriesName();
+
+      // Suggested weights kill switch (default OFF)
+      const suggestedOn = getSuggestedWeightsEnabled();
 
       // Base suggestion: 1RM if mapped, else profile fallback with caps
-const oneRMBase = getOneRMBasedSuggestion(ex.name, targetReps, equipCode);
-const baseSuggestion = oneRMBase || (() => {
-  const kgStr = profileFallbackSuggestionKg(ex.name, profileWeightKg, equipCode);
-  if (!kgStr) return "";
-  if (getActiveUnits() === "imperial") {
-    const kgNum = parseFloat(kgStr);
-    return formatSuggestedWeightFromKg(Number.isFinite(kgNum) ? kgNum : 0, equipCode) || "";
-  }
-  return kgStr;
-})();
+      let baseSuggestion = "";
+      if (suggestedOn) {
+        // Preference order:
+        // 1) Learned anchor (derived from user's own logged sets, avg of best 2 sets from last week)
+        // 2) Explicit 1RM (if provided for mapped key lifts)
+        // 3) Profile fallback conservative baseline
+        const learnedBase = getLearnedSuggestionForExercise(ex.name, targetReps, equipCode, activeSeries, currentWeek);
+        const oneRMBase = learnedBase ? "" : getOneRMBasedSuggestion(ex.name, targetReps, equipCode);
+        baseSuggestion = learnedBase || oneRMBase || (() => {
+          const kgStr = profileFallbackSuggestionKg(ex.name, profile, equipCode);
+          if (!kgStr) return "";
+          if (getActiveUnits() === "imperial") {
+            const kgNum = parseFloat(kgStr);
+            return formatSuggestedWeightFromKg(Number.isFinite(kgNum) ? kgNum : 0, equipCode) || "";
+          }
+          return kgStr;
+        })();
+      }
 
       // Progressive overload: if week>1, use last week's logged weight when successful
       function progressedSuggestion(setIndex) {
+        if (!suggestedOn) return "";
         // Core/BW stays 00
         if (isCoreOrBW(ex.name)) return "00";
 
         const wNow = String(currentWeek);
         if (currentWeek <= 1) return baseSuggestion;
 
+        const prevWeek = currentWeek - 1;
         const prevState = getWorkoutState();
-        const prevDayState = ensureDayState(prevState, currentWeek - 1, dayIndex);
-        const prevSet = prevDayState?.exercises?.[String(exIndex)]?.sets?.[String(setIndex)];
+        const prevDayState = ensureDayState(prevState, prevWeek, dayIndex);
+
+        // Name-first lookup (slot fallback)
+        // If the user has edited/replaced/inserted exercises, the same "slot" index may no longer
+        // represent the same movement. Prefer matching by exercise name for week-to-week progression.
+        let prevExIndex = exIndex;
+        try {
+          const norm = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+          const targetName = norm(ex.name);
+          if (targetName) {
+            const prevProgram = getProgramForWeek(prevWeek);
+            const prevDay = prevProgram?.[dayIndex];
+            if (prevDay) {
+              if (!Array.isArray(prevDayState.removedBaseIndices)) prevDayState.removedBaseIndices = [];
+              const removed = prevDayState.removedBaseIndices;
+              const prevExtras = Array.isArray(prevDayState.extraExercises) ? prevDayState.extraExercises : [];
+              const prevBase = (prevDay.exercises || []);
+              const prevRender = prevBase.map((exObj, idx) => (removed.includes(idx) ? null : exObj)).concat(prevExtras);
+
+              for (let i = 0; i < prevRender.length; i++) {
+                const exObj = prevRender[i];
+                if (!exObj) continue;
+                let name = exObj.name;
+                try {
+                  const overrideName = getExerciseNameOverride(prevDayState, i);
+                  if (overrideName) name = overrideName;
+                } catch (_) {}
+                if (norm(name) === targetName) {
+                  prevExIndex = i;
+                  break;
+                }
+              }
+            }
+          }
+        } catch (_) {
+          // If anything goes wrong, keep slot-based behaviour.
+          prevExIndex = exIndex;
+        }
+
+        const prevSet = prevDayState?.exercises?.[String(prevExIndex)]?.sets?.[String(setIndex)];
 
         const prevW = prevSet?.w;
         const prevR = prevSet?.r;
@@ -6246,7 +6918,6 @@ const baseSuggestion = oneRMBase || (() => {
         return baseSuggestion;
       }
 
-      const activeSeries = getActiveSeriesName();
       // Sklar stores setCount per exercise instance in workout state.
       // Custom programmes store setCount on the programme template snapshot *except* for in-session extras,
       // which also live in workout state and must behave like Sklar.
@@ -6396,15 +7067,19 @@ const baseSuggestion = oneRMBase || (() => {
           repsPill.dataset.value = saved.r || "";
 
           // Render weight pill (NO parentheses)
-          if (saved.w !== "") {
+          // Treat 0 as an empty placeholder for display.
+          const savedWNum = Number(saved.w);
+          const hasSavedW = (saved.w !== "") && Number.isFinite(savedWNum) && savedWNum > 0;
+          if (hasSavedW) {
             weightPill.textContent = formatWeightPill(saved.w, exState?.equipment || defaultEquip);
             weightPill.classList.remove("input-pill--suggested");
           } else if (suggestionW !== "") {
             weightPill.textContent = formatWeightPill(suggestionW, exState?.equipment || defaultEquip);
             weightPill.classList.add("input-pill--suggested");
           } else {
-            weightPill.textContent = getWeightUnitLabel(getActiveUnits());
-            weightPill.classList.remove("input-pill--suggested");
+            // No saved weight and no suggestion: always show a muted double-zero placeholder.
+            weightPill.textContent = formatWeightPill("", exState?.equipment || defaultEquip);
+            weightPill.classList.add("input-pill--suggested");
           }
 
           // Render reps pill
@@ -6455,6 +7130,132 @@ const baseSuggestion = oneRMBase || (() => {
       }
 
       card.appendChild(setsGrid);
+
+      // Edit: 4.4.0 — UI-only: workout card reorder controls (up/down)
+      // NOTE: this persists a per-programme + week + day UI display order in localStorage.
+      // Canonical programme arrays and workout data structures are NOT mutated.
+      try {
+        const reorderControls = document.createElement("div");
+        reorderControls.className = "card-reorder-controls";
+
+        const upBtn = document.createElement("button");
+        upBtn.type = "button";
+        upBtn.className = "reorder-btn reorder-btn--up";
+        upBtn.setAttribute("aria-label", "Move exercise up");
+        upBtn.innerHTML = `
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 14l6-6 6 6" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        `;
+
+        const downBtn = document.createElement("button");
+        downBtn.type = "button";
+        downBtn.className = "reorder-btn reorder-btn--down";
+        downBtn.setAttribute("aria-label", "Move exercise down");
+        downBtn.innerHTML = `
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 10l6 6 6-6" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        `;
+
+        // Disable at boundaries.
+        const isFirst = (uiIndex <= 0);
+        const isLast = (uiIndex >= (renderItems.length - 1));
+        if (isFirst) {
+          upBtn.disabled = true;
+          upBtn.classList.add("reorder-btn--disabled");
+        }
+        if (isLast) {
+          downBtn.disabled = true;
+          downBtn.classList.add("reorder-btn--disabled");
+        }
+
+        const moveInUIOrder = (direction) => {
+          // direction: -1 (up) or +1 (down)
+          try {
+            // Edit: 4.5.3 — FLIP animation for reorder (visual only).
+            // Capture current positions before the re-render, then animate to the new layout.
+            const prefersReduced = (() => {
+              try { return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (_) { return false; }
+            })();
+
+            const containerEl = workoutExerciseList;
+            const first = new Map();
+            if (!prefersReduced && containerEl) {
+              try {
+                containerEl.querySelectorAll(".exercise-card").forEach((el) => {
+                  const id = el?.dataset?.flipId;
+                  if (!id) return;
+                  first.set(String(id), el.getBoundingClientRect());
+                });
+              } catch (_) {}
+            }
+
+            const names = computeEffectiveOrderNamesNow();
+            const from = uiIndex;
+            const to = from + direction;
+            if (to < 0 || to >= names.length) return;
+            const tmp = names[from];
+            names[from] = names[to];
+            names[to] = tmp;
+            saveCardOrderOverride(names);
+
+            // Re-render immediately; state is name-first and indices remain canonical.
+            renderWorkoutDay(currentDayIndex);
+
+            if (!prefersReduced && containerEl && first.size) {
+              try {
+                const lastEls = Array.from(containerEl.querySelectorAll(".exercise-card"));
+                lastEls.forEach((el) => {
+                  const id = el?.dataset?.flipId;
+                  if (!id) return;
+                  const firstRect = first.get(String(id));
+                  if (!firstRect) return;
+                  const lastRect = el.getBoundingClientRect();
+                  const dx = firstRect.left - lastRect.left;
+                  const dy = firstRect.top - lastRect.top;
+                  if (dx === 0 && dy === 0) return;
+
+                  // Invert.
+                  el.style.transition = "none";
+                  el.style.transform = `translate(${dx}px, ${dy}px)`;
+
+                  // Play.
+                  requestAnimationFrame(() => {
+                    el.style.transition = "transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1)";
+                    el.style.transform = "";
+                  });
+
+                  // Cleanup.
+                  const onDone = () => {
+                    try {
+                      el.style.transition = "";
+                      el.style.transform = "";
+                    } catch (_) {}
+                    el.removeEventListener("transitionend", onDone);
+                  };
+                  el.addEventListener("transitionend", onDone);
+                });
+              } catch (_) {}
+            }
+          } catch (_) {}
+        };
+
+        upBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          if (upBtn.disabled) return;
+          moveInUIOrder(-1);
+        });
+        downBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          if (downBtn.disabled) return;
+          moveInUIOrder(1);
+        });
+
+        reorderControls.appendChild(upBtn);
+        reorderControls.appendChild(downBtn);
+        card.appendChild(reorderControls);
+      } catch (_) {}
 
       // UI-only: visually distinguish completed exercises (all sets logged).
       try {
@@ -6526,6 +7327,7 @@ function countSupersets(workout){
 }
 
 updateWorkoutSummary(day);
+    try { syncReviewNavUI(); } catch (_) {}
     syncWorkoutCompletionUI();
   }
 
@@ -6829,12 +7631,50 @@ updateWorkoutSummary(day);
 
   moveSettingsToBottom();
 
-  // Continue behaviour selector (Settings)
-  const continueModeSelect = document.getElementById("settings-continue-mode");
-  if (continueModeSelect) {
-    continueModeSelect.value = getContinueMode();
-    continueModeSelect.addEventListener("change", () => {
-      setContinueMode(continueModeSelect.value);
+  // Continue behaviour toggles (Settings) - mutually exclusive (radio-style)
+  const continueNextToggle = document.getElementById("settings-continue-next");
+  const continueResumeToggle = document.getElementById("settings-continue-resume");
+  function syncContinueTogglesFromMode(mode) {
+    const m = (mode === "resume" || mode === "next") ? mode : "next";
+    if (continueNextToggle) continueNextToggle.checked = (m === "next");
+    if (continueResumeToggle) continueResumeToggle.checked = (m === "resume");
+  }
+  if (continueNextToggle && continueResumeToggle) {
+    // Initial sync
+    syncContinueTogglesFromMode(getContinueMode());
+
+    continueNextToggle.addEventListener("change", () => {
+      if (continueNextToggle.checked) {
+        setContinueMode("next");
+        syncContinueTogglesFromMode("next");
+      } else {
+        // Prevent a state where both are off
+        syncContinueTogglesFromMode(getContinueMode());
+      }
+    });
+
+    continueResumeToggle.addEventListener("change", () => {
+      if (continueResumeToggle.checked) {
+        setContinueMode("resume");
+        syncContinueTogglesFromMode("resume");
+      } else {
+        // Prevent a state where both are off
+        syncContinueTogglesFromMode(getContinueMode());
+      }
+    });
+  } else {
+    // Backwards-compat: if only one toggle exists, fall back to current stored mode
+    const mode = getContinueMode();
+    if (continueNextToggle) continueNextToggle.checked = (mode === "next");
+    if (continueResumeToggle) continueResumeToggle.checked = (mode === "resume");
+  }
+
+  // Suggested weights toggle (Settings) - kill switch (default OFF)
+  const suggestedWeightsToggle = document.getElementById("settings-suggested-weights");
+  if (suggestedWeightsToggle) {
+    suggestedWeightsToggle.checked = getSuggestedWeightsEnabled();
+    suggestedWeightsToggle.addEventListener("change", () => {
+      setSuggestedWeightsEnabled(!!suggestedWeightsToggle.checked);
     });
   }
 
