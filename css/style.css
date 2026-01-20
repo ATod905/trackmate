@@ -689,6 +689,47 @@ body {
   gap: 10px;
 }
 
+/* Review nav (same day, previous/next week) */
+.week-review-nav{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.week-review-label{
+  font-size: 13px;
+  color: #48535c;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.week-review-btn{
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  border: 1px solid rgba(140,150,160,0.55);
+  background: rgba(240,242,244,0.95);
+  color: #3e4952;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  font: inherit;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.week-review-btn:active{
+  transform: scale(0.98);
+}
+
+.week-review-btn.is-disabled{
+  opacity: 0.35;
+  pointer-events: none;
+}
+
 /* Completed status pill (shown only when a day is marked completed) */
 .completed-pill{
   display:inline-flex;
@@ -730,6 +771,42 @@ body {
 .workout-reset-day:active{
   transform: translateY(1px);
 }
+
+/* DNC (Did Not Complete) — per-exercise pill (neutral by default; turns danger-pink when active) */
+/* DNC pill (exercise-level) — same geometry as equipment pills, reset-day palette */
+.exercise-header-links .workout-dnc-pill{
+  flex: 0 0 auto;
+  border-radius: 999px;
+
+  /* Match equipment pill sizing */
+  padding: 1px 7px;
+  font-size: 9px;
+  line-height: 1;
+  min-width: 26px;
+  text-align: center;
+
+  /* Reset Day colour family */
+  border: 1px solid rgba(255,107,107,0.35);
+  background: rgba(255,107,107,0.08);
+  color: #ff6b6b;
+
+  cursor: pointer;
+
+  /* sits between equipment pills and info icon */
+  margin-left: 6px;
+  margin-right: 10px;
+}
+
+.exercise-header-links .workout-dnc-pill--active{
+  border: 1px solid rgba(255,107,107,0.55);
+  background: rgba(255,107,107,0.14);
+  color: #ff6b6b;
+}
+
+.exercise-header-links .workout-dnc-pill:active{
+  transform: translateY(1px);
+}
+
 
 /* Edit Program (custom series only) */
 .workout-edit-program{
@@ -810,6 +887,17 @@ body {
 
 /* Exercise cards */
 
+/* Workout screen: widen cards on mobile while keeping a framed look */
+#screen-workout.screen {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+#screen-workout .exercise-list {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
 .exercise-list {
   width: 100%;
   max-width: 430px;
@@ -823,8 +911,50 @@ body {
 .exercise-card {
   background: #ffffff;
   border-radius: 18px;
+  position: relative;
   padding: 12px 14px 14px;
   box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+}
+
+/* UI-only: workout card reorder controls (visual placeholder; behaviour added later) */
+.exercise-card .card-reorder-controls {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 2;
+  pointer-events: auto; /* Edit 4.4.0: enable taps for UI-only reorder */
+}
+
+.exercise-card .card-reorder-controls .reorder-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--tm-teal);
+  border: none;          /* Edit 4.4.2: remove default button border (black outline) */
+  outline: none;         /* Edit 4.4.2: prevent default focus outline */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 12px rgba(15, 23, 42, 0.10);
+}
+
+.exercise-card .card-reorder-controls .reorder-btn:focus,
+.exercise-card .card-reorder-controls .reorder-btn:focus-visible {
+  outline: none;
+}
+
+.exercise-card .card-reorder-controls .reorder-btn svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.exercise-card .card-reorder-controls .reorder-btn--disabled {
+  opacity: 0.45;
+  pointer-events: none;
 }
 
 /* Exercise completion state (UI-only): grey-out when ALL sets are logged */
@@ -839,6 +969,26 @@ body {
 
 .exercise-card--completed .exercise-title {
   color: #0f172a;
+}
+
+/* DNC (Did Not Complete) — per-exercise card state (UI-only) */
+.exercise-card--dnc{
+  background: rgba(255,107,107,0.08);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06), inset 0 0 0 1px rgba(255,107,107,0.25);
+}
+
+.exercise-card--dnc .input-pill{
+  background: rgba(255,107,107,0.10);
+}
+
+/* Ensure DNC remains visible even when the day is marked completed (green background elsewhere) */
+.workout-day--completed .exercise-card--dnc{
+  background: rgba(255,107,107,0.08);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06), inset 0 0 0 1px rgba(255,107,107,0.25);
+}
+
+.workout-day--completed .exercise-card--dnc .input-pill{
+  background: rgba(255,107,107,0.10);
 }
 
 /* Day completion state: teal/light teal background on ALL cards for that day (UI-only)
@@ -882,7 +1032,8 @@ body {
 
 .exercise-header-links {
   display: flex;
-  gap: 12px;
+  /* Tighter spacing between info/edit/delete icons */
+  gap: 6px;
   font-size: 13px;
   color: var(--tm-muted);
 }
@@ -941,10 +1092,10 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   padding: 0;
-  margin-left: 2px;
+  margin-left: 0;
   border-radius: 6px;
   color: var(--tm-muted);
 }
@@ -1048,16 +1199,20 @@ body {
   align-items: center;
 }
 
-/* Treadmill-only cardio layout: 3 equal columns, full-width pills */
+/* Treadmill-only cardio layout: 3 input pills should be narrower and left-aligned
+   to avoid running underneath the bottom-right reorder controls.
+   (Pure CSS change, scoped to treadmill-style 3-input rows only.) */
 .set-fields--treadmill {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
   gap: 10px;
-  width: 100%;
+  align-items: center;
+  justify-content: flex-start;
+  width: auto;
 }
 
 .set-fields--treadmill .input-pill {
-  width: 100%;
+  width: 96px;
+  flex: 0 0 auto;
 }
 
 .input-pill--treadmill {
@@ -1095,6 +1250,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
+  z-index: 50; /* ensure footer always sits above card overlays */
   max-width: 430px;
   margin: 0 auto;
   background: var(--tm-bg);
@@ -1514,6 +1670,63 @@ body {
 .settings-row-select{ flex: 0 0 auto; padding: 10px 10px; font-size: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.18); background: rgba(0,0,0,0.18); color: var(--tm-text, #fff); font: inherit; }
 .settings-row-button{ flex: 0 0 auto; padding: 10px 12px; font-size: 15px; border-radius: 12px; border: 1px solid rgba(255,107,107,0.35); background: rgba(255,107,107,0.08); color: #ff6b6b; font: inherit; cursor: pointer; }
 
+/* Edit 4.3.15: Settings sub-options indentation (Continue behaviour toggles) */
+.settings-subrow{
+  margin-left: 14px;
+  width: calc(100% - 14px);
+}
+
+/* Edit 4.3.8: Settings toggle switch (used for Suggested weights kill-switch) */
+.tm-switch{
+  position: relative;
+  display: inline-block;
+  width: 46px;
+  height: 26px;
+  flex: 0 0 auto;
+}
+
+.tm-switch input{
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.tm-switch-slider{
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  cursor: pointer;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(160,160,160,0.85);
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.tm-switch-slider::before{
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+  transition: left 0.18s ease;
+}
+
+.tm-switch input:checked + .tm-switch-slider{
+  background: rgba(38,160,164,0.25);
+  border-color: rgba(38,160,164,0.7);
+}
+
+.tm-switch input:checked + .tm-switch-slider::before{
+  left: 23px;
+}
+
 /* Destructive action: Reset Day */
 .workout-day-header .btn-text {
     color: #b42318; /* deep burgundy red */
@@ -1577,6 +1790,23 @@ body {
   max-width: 430px;
   margin-left: auto;
   margin-right: auto;
+}
+
+/* v4.3.2 – Workout screen Equipment Key: neutral grey framed styling (informational, not a CTA) */
+#screen-workout .tm-disclosure-toggle[data-disclosure="workout-equip"]{
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.28);
+  color: #2f3437;
+}
+
+#screen-workout .tm-disclosure-toggle[data-disclosure="workout-equip"] .tm-chev{
+  color: #2f3437;
+  opacity: 0.85;
+}
+
+#screen-workout .tm-disclosure-content[data-disclosure-content="workout-equip"]{
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.20);
 }
 
 .tm-disclosure-group{
@@ -2056,4 +2286,66 @@ body.tm-menu-open .home-hamburger{
 /* Edit: 4.1.20 — Workout Add Exercise modal: remove Suggested Alternatives section + thin search border */
 #exercise-edit-overlay #exercise-edit-suggested{
   display:none;
+}
+
+/* Edit: 4.5.6 — Force DNC to render as a pill (override generic button resets) */
+button.workout-dnc-pill{
+  border: 1px solid rgba(255,107,107,0.35);
+  background: rgba(255,107,107,0.08);
+  color: #ff6b6b;
+
+  /* Match equipment pill geometry (CBL/MCH) */
+  padding: 1px 7px;
+  font-size: 9px;
+  line-height: 1;
+  min-width: 26px;
+  text-align: center;
+
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+button.workout-dnc-pill--active{
+  border: 1px solid rgba(255,107,107,0.55);
+  background: rgba(255,107,107,0.14);
+  color: #ff4d4d;
+}
+
+
+
+/* Edit 4.5.10: DNC pill tighter geometry to match CBL */
+button.workout-dnc-pill {
+    font-size: 9px;           /* keep same as CBL */
+    line-height: 1;
+    padding: 1px 5px;         /* tighter vertically, modest width */
+    min-width: 22px;          /* match CBL */
+    border-radius: 999px;
+}
+
+
+/* Edit 4.5.11: DNC visual priority + reps text muted
+   - DNC cards must remain pink even after Complete Workout (workout-day--completed).
+   - Reps pill text should be muted grey in DNC, matching weight appearance.
+*/
+.workout-day--completed .exercise-card.exercise-card--dnc{
+  background: rgba(255,107,107,0.08);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06), inset 0 0 0 1px rgba(255,107,107,0.25);
+}
+
+.workout-day--completed .exercise-card.exercise-card--dnc .input-pill{
+  background: rgba(255,107,107,0.10);
+}
+
+/* Muted text for DNC pills (weight + reps) */
+.exercise-card--dnc .set-weight-pill,
+.exercise-card--dnc .set-reps-pill{
+  color: var(--tm-muted);
+}
+
+.workout-day--completed .exercise-card.exercise-card--dnc .set-weight-pill,
+.workout-day--completed .exercise-card.exercise-card--dnc .set-reps-pill{
+  color: var(--tm-muted);
 }
