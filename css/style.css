@@ -2349,3 +2349,15 @@ button.workout-dnc-pill {
 .workout-day--completed .exercise-card.exercise-card--dnc .set-reps-pill{
   color: var(--tm-muted);
 }
+
+
+/* Edit 4.5.13: tighten header controls spacing (mobile fit) */
+.exercise-header-links {
+  gap: 2px;              /* was larger; keep controls on one line */
+}
+.exercise-header-links > * {
+  margin: 0;
+}
+.exercise-header-links .workout-dnc-pill {
+  margin-right: 2px;     /* extra-tight between DNC and info */
+}
