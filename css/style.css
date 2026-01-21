@@ -758,13 +758,13 @@ body {
 /* Reset Day (small danger pill; aligned with Settings reset affordance) */
 .workout-reset-day{
   flex: 0 0 auto;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid rgba(255,107,107,0.35);
   background: rgba(255,107,107,0.08);
   color: #ff6b6b;
   font: inherit;
-  font-size: 13px;
+  font-size: 10px;
   cursor: pointer;
 }
 
