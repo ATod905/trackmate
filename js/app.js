@@ -10,7 +10,13 @@
 var durationTicker = null;
 
 function showScreen(id) {
-  document.querySelectorAll(".screen").forEach((s) => s.classList.remove("screen--active"));
+  // Edit 4.6.6: Prevent micro-fade classes from "sticking" on screens.
+  // If a screen previously received tm-fade-out and is later shown via a
+  // non-fade navigation path (e.g. Back buttons), it could appear blank.
+  document.querySelectorAll(".screen").forEach((s) => {
+    s.classList.remove("screen--active");
+    s.classList.remove("tm-fade-out", "tm-fade-in");
+  });
   const target = document.getElementById(id);
   if (target) target.classList.add("screen--active");
 
@@ -46,6 +52,41 @@ function showScreen(id) {
   if (id === "screen-custom-builder") {
     try { syncProgramDraftUI(); renderCustomBuilderForCurrentDay(); } catch (_) {}
   }
+}
+
+/* Edit 4.6.5: micro-fade helper (navigation-only, logic untouched) */
+function withMicroFade(run) {
+  try {
+    const active = document.querySelector(".screen.screen--active");
+    if (!active) { run(); return; }
+
+    // Respect reduced motion
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      run();
+      return;
+    }
+
+    // Fade-out current, then run navigation, then fade-in destination.
+    active.classList.remove("tm-fade-in");
+    active.classList.add("tm-fade-out");
+
+    window.setTimeout(() => {
+      try { run(); } finally {
+        const nowActive = document.querySelector(".screen.screen--active") || active;
+        nowActive.classList.remove("tm-fade-out");
+        nowActive.classList.add("tm-fade-in");
+        window.setTimeout(() => {
+          try { nowActive.classList.remove("tm-fade-in"); } catch (_) {}
+        }, 180);
+      }
+    }, 90);
+  } catch (_) {
+    run();
+  }
+}
+
+function showScreenMicroFade(id) {
+  withMicroFade(() => showScreen(id));
 }
 
 // Token used to guarantee that "Continue to Workouts" renders the intended day.
@@ -125,7 +166,7 @@ function bindHomeLogoShortcuts() {
 
     const goHome = () => {
       try { if (typeof window.closeWorkoutMenu === "function") window.closeWorkoutMenu(); } catch (_) {}
-      showScreen("screen-welcome");
+      showScreenMicroFade("screen-welcome");
     };
 
     logo.addEventListener("click", goHome);
@@ -3860,7 +3901,7 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
   });
 
   document.getElementById("btn-welcome-continue")?.addEventListener("click", () => {
-    enterWorkoutFromEntryPoint();
+    withMicroFade(() => { enterWorkoutFromEntryPoint(); });
   });
 
   function updateWelcomeForProfile() {
@@ -7604,28 +7645,33 @@ updateWorkoutSummary(day);
     const action = btn.dataset.menuAction;
     if (!action) return;
 
+    // Edit 4.7.4: Apply the same micro-fade transition used for Home/Continue
+    // to all hamburger menu navigations. Keep all destination logic intact;
+    // only wrap the navigation calls in withMicroFade.
+    function runMenuNav(fn) {
+      try { closeWorkoutMenu(); } catch (_) {}
+      withMicroFade(() => {
+        try { fn(); } catch (_) {}
+      });
+    }
+
     if (action === "back-to-workout") {
-      closeWorkoutMenu();
-      showScreen("screen-workout");
+      runMenuNav(() => showScreen("screen-workout"));
     } else if (action === "profile") {
-      closeWorkoutMenu();
-      showScreen("screen-profile");
-      loadProfileIntoForm();
+      runMenuNav(() => {
+        showScreen("screen-profile");
+        loadProfileIntoForm();
+      });
     } else if (action === "programs") {
-      closeWorkoutMenu();
-      showScreen("screen-programs");
+      runMenuNav(() => showScreen("screen-programs"));
     } else if (action === "settings") {
-      closeWorkoutMenu();
-      showScreen("screen-settings");
+      runMenuNav(() => showScreen("screen-settings"));
     } else if (action === "equipment-key") {
-      closeWorkoutMenu();
-      showScreen("screen-equipment-key");
+      runMenuNav(() => showScreen("screen-equipment-key"));
     } else if (action === "history") {
-      closeWorkoutMenu();
-      openHistoryLanding();
+      runMenuNav(() => openHistoryLanding());
     } else if (action === "home") {
-      closeWorkoutMenu();
-      showScreen("screen-welcome");
+      runMenuNav(() => showScreen("screen-welcome"));
     }
   });
 
