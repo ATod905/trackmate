@@ -93,7 +93,8 @@ body {
 /* Back Button */
 .link-back {
   align-self: flex-start;
-  margin-top: 20px;
+  /* Edit 4.6.7: reduce top gap above back buttons across the app */
+  margin-top: 10px;
   margin-bottom: 4px;
   padding: 0;
   border: none;
@@ -175,8 +176,9 @@ body {
 /* Version label */
 
 .welcome-version {
-  margin-top: auto;
-  margin-bottom: 20px;
+  /* Edit 4.6.7: bring version label up slightly on the welcome screen */
+  margin-top: 24px;
+  margin-bottom: 12px;
   font-size: 14px;
   color: var(--tm-muted);
 }
@@ -218,6 +220,32 @@ body {
 /* Screens that have the centred logo + hamburger header */
 .screen.screen--with-header {
   align-items: stretch; /* let header + text hug the top nicely */
+  position: relative;  /* anchor Back button alignment to the header row */
+}
+
+/* Edit 4.6.8: Align Back button to the same header row as the logo + hamburger */
+.screen--with-header > .link-back{
+  position: absolute;
+  left: 16px;
+  /* Edit 4.7.2: vertically align Back with the header row (logo + hamburger) */
+  top: 26px;
+  transform: translateY(-50%);
+  margin: 0;
+  z-index: 2;
+}
+
+/* Edit 4.7.2: Workout screen uses the same header pattern; keep Back aligned to the header row */
+#screen-workout {
+  position: relative;
+}
+
+#screen-workout > .link-back {
+  position: absolute;
+  left: 16px;
+  top: 26px;
+  transform: translateY(-50%);
+  margin: 0;
+  z-index: 2;
 }
 
 /* Pull the title up closer to the logo when a header is present */
@@ -518,13 +546,16 @@ body {
   width: 100%;
   max-width: 430px;
   margin: 0 auto 8px;
-  padding: 12px 16px 0;
+  padding: 4px 16px 0;
   position: relative;
   z-index: 0; /* enables ::before behind text without escaping stacking context */
   display: flex;
   justify-content: center;   /* centre logo */
   align-items: center;
 }
+
+/* Edit 4.7.3: Lift logo within workout header to align with Back */
+.workout-header .header-logo-center{ margin-bottom: 0; }
 /* Fix spacing only on profile page */
 #screen-profile .workout-header {
   margin-bottom: 0 !important;
@@ -558,7 +589,7 @@ body {
   cursor: pointer;
   position: absolute;
   right: 16px;
-  top: 12px;
+  top: 4px;
 }
 
 .workout-menu-button span {
@@ -2491,4 +2522,23 @@ button.settings-item.settings-item--danger[data-settings-action="reset-all"]{
 /* Edit 4.5.22: DNC text regular weight (not bold) */
 .exercise-header-links button.workout-dnc-pill{
   font-weight: 400 !important;
+}
+
+/* Edit 4.6.5: Micro-fade transition for Home + Continue navigation (non-invasive) */
+@media (prefers-reduced-motion: reduce) {
+  .screen.tm-fade-out,
+  .screen.tm-fade-in {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+.screen.tm-fade-out {
+  opacity: 0;
+  transition: opacity 90ms ease-out;
+}
+
+.screen.tm-fade-in {
+  opacity: 1;
+  transition: opacity 140ms ease-out;
 }
