@@ -2361,3 +2361,134 @@ button.workout-dnc-pill {
 .exercise-header-links .workout-dnc-pill {
   margin-right: 2px;     /* extra-tight between DNC and info */
 }
+\n
+/* Edit 4.5.14: shift right-column sets (2 & 4) leftwards; keep reorder buttons bottom-right */
+.exercise-card .sets-grid {
+  column-gap: 12px;
+}
+
+.exercise-card .set-col.right {
+  margin-left: -10px;
+}
+
+.exercise-card .reorder-controls {
+  right: 8px;
+}
+
+
+/* Edit 4.5.15: reduce centre dead-space by shifting right sets column left (visual only) */
+.exercise-card .sets-grid {
+  grid-template-columns: 0.95fr 1.05fr; /* boundary slightly left vs 1fr/1fr */
+  column-gap: 8px;                      /* halve the apparent middle gap */
+}
+
+
+/* Edit 4.5.16: DNC pill = exact CBL pill geometry (colour only differs) */
+button.workout-dnc-pill {
+  /* geometry copied from .equipment-pill */
+  font-size: 9px;
+  line-height: 1;
+  padding: 2px 5px;
+  min-height: auto;
+  min-width: 22px;
+  border-radius: 999px;
+
+  /* colour scheme retained */
+  background-color: #ffeaea;
+  border: 1px solid #ff9a9a;
+  color: #ff5a5a;
+}
+
+/* Active DNC state (same geometry) */
+button.workout-dnc-pill--active {
+  background-color: #ffd6d6;
+  border-color: #ff7a7a;
+  color: #ff4a4a;
+}
+
+
+/* Edit 4.5.17: DNC pill must match equipment pill (CBL) geometry exactly (colour only differs) */
+.exercise-header-links button.workout-dnc-pill{
+  /* geometry = .equipment-pill */
+  font-size: 9px !important;
+  line-height: 1 !important;
+  padding: 2px 5px !important;
+  min-width: 22px !important;
+  height: auto !important;
+  border-radius: 999px !important;
+  box-sizing: border-box !important;
+
+  /* remove extra spacing so it matches the equipment pills */
+  margin: 0 !important;
+
+  /* keep DNC colour palette */
+  background-color: rgba(255,107,107,0.08) !important;
+  border: 1px solid rgba(255,107,107,0.35) !important;
+  color: #ff6b6b !important;
+}
+
+.exercise-header-links button.workout-dnc-pill.workout-dnc-pill--active{
+  background-color: rgba(255,107,107,0.14) !important;
+  border-color: rgba(255,107,107,0.55) !important;
+  color: #ff6b6b !important;
+}
+
+
+/* Edit 4.5.18: Reset All Data button pink background (no other changes) */
+.settings-reset-all,
+.settings-reset-all button,
+button.reset-all-data {
+  background-color: rgba(255,107,107,0.08) !important;
+}
+
+
+/* Edit 4.5.19: Settings 'Reset All Data' button soft pink fill (visual only) */
+button.settings-item.settings-item--danger[data-settings-action="reset-all"]{
+  background: rgba(255,107,107,0.08) !important;
+}
+
+
+/* Edit 4.5.20: DNC pill geometry MUST match equipment pill (CBL) exactly; colour only differs */
+.exercise-header-links button.workout-dnc-pill{
+  /* Geometry: mirror .equipment-pill */
+  font-size: 9px !important;
+  line-height: 1 !important;
+  padding: 2px 5px !important;
+  min-width: 22px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  box-sizing: border-box !important;
+  border-radius: 999px !important;
+
+  /* Remove any button defaults */
+  margin: 0 !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
+  font-weight: 500 !important;
+
+  /* Colour palette: soft pink bg + red outline + red text */
+  background: rgba(255,107,107,0.08) !important;
+  border: 1px solid rgba(255,107,107,0.35) !important;
+  color: #ff6b6b !important;
+}
+
+.exercise-header-links button.workout-dnc-pill.workout-dnc-pill--active{
+  background: rgba(255,107,107,0.14) !important;
+  border-color: rgba(255,107,107,0.55) !important;
+  color: #ff6b6b !important;
+}
+
+
+/* Edit 4.5.21: Prevent flex-stretch from making DNC taller than equipment pills */
+.exercise-header-links{
+  align-items: center; /* stops children stretching to icon row height */
+}
+.exercise-header-links button.workout-dnc-pill{
+  align-self: center;
+}
+
+
+/* Edit 4.5.22: DNC text regular weight (not bold) */
+.exercise-header-links button.workout-dnc-pill{
+  font-weight: 400 !important;
+}
