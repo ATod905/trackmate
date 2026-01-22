@@ -2611,11 +2611,11 @@ button.settings-item.settings-item--danger[data-settings-action="reset-all"]{
 
 /* Run animation */
 .tm-subtle-splash.tm-zoom-splash--run{
-  animation: tmZoomSplashFade 320ms ease-out forwards;
+  animation: tmZoomSplashFade 450ms ease-out forwards;
 }
 
 .tm-subtle-splash.tm-zoom-splash--run img{
-  animation: tmZoomSplashLogo 320ms ease-out forwards;
+  animation: tmZoomSplashLogo 450ms ease-out forwards;
 }
 
 @keyframes tmZoomSplashLogo{
