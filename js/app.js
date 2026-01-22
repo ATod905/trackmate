@@ -1,3 +1,14 @@
+/*
+ TrackMate © 2026 Aleks Todorovic
+ All rights reserved.
+
+ This software is the intellectual property of Aleks Todorovic.
+ Unauthorised copying, modification, distribution, or use of this
+ software, in whole or in part, is strictly prohibited.
+
+ For permitted use or licensing enquiries, contact the author.
+*/
+
 // TrackMate - app.js (Coding_v4: stable + editable + progressive suggestions)
 // Drop-in replacement for /js/app.js
 
@@ -4091,6 +4102,20 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
   const labelHeight = document.getElementById("label-height-unit");
   const labelWeight = document.getElementById("label-weight-unit");
 
+  // Profile: Suggested weights toggle (mirrors Settings)
+  const profileSuggestedWeightsToggle = document.getElementById("profile-suggested-weights");
+  if (profileSuggestedWeightsToggle) {
+    profileSuggestedWeightsToggle.checked = getSuggestedWeightsEnabled();
+    profileSuggestedWeightsToggle.addEventListener("change", () => {
+      const enabled = !!profileSuggestedWeightsToggle.checked;
+      setSuggestedWeightsEnabled(enabled);
+      const settingsToggle = document.getElementById("settings-suggested-weights");
+      if (settingsToggle) settingsToggle.checked = enabled;
+    });
+  }
+
+
+
   function updateUnitLabels() {
     const units = unitsHidden.value || "metric";
     if (units === "imperial") {
@@ -7729,7 +7754,10 @@ updateWorkoutSummary(day);
   if (suggestedWeightsToggle) {
     suggestedWeightsToggle.checked = getSuggestedWeightsEnabled();
     suggestedWeightsToggle.addEventListener("change", () => {
-      setSuggestedWeightsEnabled(!!suggestedWeightsToggle.checked);
+      const enabled = !!suggestedWeightsToggle.checked;
+      setSuggestedWeightsEnabled(enabled);
+      const profileToggle = document.getElementById("profile-suggested-weights");
+      if (profileToggle) profileToggle.checked = enabled;
     });
   }
 
