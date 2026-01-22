@@ -9,13 +9,13 @@
  For permitted use or licensing enquiries, contact the author.
 */
 
-/* TrackMate service worker (v4.7.8)
+/* TrackMate service worker (v4.7.10)
    - Caches the app shell for offline use
    - Cache-first for same-origin requests
 */
 
 // TrackMate PWA cache version (bump this whenever you deploy changes)
-const CACHE_VERSION = "v4-7-8";
+const CACHE_VERSION = "v4-7-11";
 const CACHE_NAME = `trackmate-${CACHE_VERSION}`;
 
 const APP_SHELL = [
