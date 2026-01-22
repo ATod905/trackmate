@@ -1,3 +1,14 @@
+/*
+ TrackMate © 2026 Aleks Todorovic
+ All rights reserved.
+
+ This software is the intellectual property of Aleks Todorovic.
+ Unauthorised copying, modification, distribution, or use of this
+ software, in whole or in part, is strictly prohibited.
+
+ For permitted use or licensing enquiries, contact the author.
+*/
+
 :root {
   --tm-teal: #1f9aa0;
   --tm-text: #3b4651;
@@ -363,6 +374,23 @@ body {
 .profile-submit {
   margin-top: 8px;
   width: 100%;
+}
+
+
+/* Profile: Suggested weights helper */
+
+.profile-suggested-weights {
+  margin-top: 12px;
+}
+
+.profile-suggested-weights .settings-item {
+  margin-bottom: 6px;
+}
+
+.tm-help {
+  font-size: 0.9rem;
+  color: var(--tm-muted);
+  line-height: 1.35;
 }
 
 /* Start vs 1RM choice screen */
@@ -2541,4 +2569,13 @@ button.settings-item.settings-item--danger[data-settings-action="reset-all"]{
 .screen.tm-fade-in {
   opacity: 1;
   transition: opacity 140ms ease-out;
+}
+
+
+/* Welcome screen legal footer */
+.welcome-copyright{
+  margin-top: 6px;
+  font-size: 12px;
+  color: #8a9099;
+  text-align: center;
 }
