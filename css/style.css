@@ -2579,3 +2579,61 @@ button.settings-item.settings-item--danger[data-settings-action="reset-all"]{
   color: #8a9099;
   text-align: center;
 }
+
+
+/* ------------------------------------------------------------
+   Launch splash (inverted colour zoom) — cosmetic only
+   Background: teal | Logo: white | Quick zoom to reveal app
+   ------------------------------------------------------------ */
+.tm-subtle-splash{
+  position: fixed;
+  inset: 0;
+  background: #1f9aa0; /* TrackMate teal */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 1;
+  pointer-events: none;
+  will-change: opacity;
+}
+
+.tm-subtle-splash img{
+  width: 120px;
+  max-width: 42vw;
+  height: auto;
+  opacity: 1;
+  transform: scale(1);
+  will-change: transform;
+  /* Force logo to white (works regardless of source logo colour) */
+  filter: brightness(0) invert(1);
+}
+
+/* Run animation */
+.tm-subtle-splash.tm-zoom-splash--run{
+  animation: tmZoomSplashFade 320ms ease-out forwards;
+}
+
+.tm-subtle-splash.tm-zoom-splash--run img{
+  animation: tmZoomSplashLogo 320ms ease-out forwards;
+}
+
+@keyframes tmZoomSplashLogo{
+  0%   { transform: scale(1); }
+  55%  { transform: scale(1.05); }
+  100% { transform: scale(22); }
+}
+
+@keyframes tmZoomSplashFade{
+  0%   { opacity: 1; }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .tm-subtle-splash,
+  .tm-subtle-splash img{
+    animation: none !important;
+    transition: none !important;
+  }
+}
