@@ -2697,10 +2697,41 @@ function getExerciseState(state, week, dayIndex, exIndex) {
   return dayState.exercises[exKey];
 }
 
+
+// -------------------------
+// Ultra-subtle launch overlay (cosmetic only)
+// -------------------------
+function runUltraSubtleSplash(){
+  const splash = document.getElementById("tm-subtle-splash");
+  if(!splash) return;
+
+  // Respect reduced-motion: remove immediately.
+  try{
+    if(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+      splash.remove();
+      return;
+    }
+  }catch(_){}
+
+  // Ensure at least one paint, then run the zoom animation.
+  requestAnimationFrame(() => {
+    try{
+      splash.classList.add("tm-zoom-splash--run");
+    }catch(_){}
+
+    // Hard stop: remove after the animation window even if something goes odd.
+    setTimeout(() => {
+      try{ splash.remove(); }catch(_){}
+    }, 520);
+  });
+}
+
+
 // -------------------------
 // DOMContentLoaded - main
 // -------------------------
 document.addEventListener("DOMContentLoaded", () => {
+  try { runUltraSubtleSplash(); } catch (_) {}
   // Make all TrackMate logos act as a Home shortcut.
   try { bindHomeLogoShortcuts(); } catch (_) {}
 
