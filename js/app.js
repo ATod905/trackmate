@@ -4724,17 +4724,25 @@ function appendHistoryLog(entry) {
 
 function removeHistoryLogEntry(seriesName, week, dayIndex) {
   const series = (seriesName || DEFAULT_SERIES_NAME).toString();
+  const canon = canonicalSeriesName(series);
   const w = Number(week);
   const d = Number(dayIndex);
   if (!Number.isFinite(w) || !Number.isFinite(d)) return;
-  const log = getHistoryLog().filter((x) =>
-    !(x && ((x.series || DEFAULT_SERIES_NAME).toString().trim() || DEFAULT_SERIES_NAME) === series && Number(x.week) === w && Number(x.dayIndex) === d)
-  );
+  const log = getHistoryLog().filter((x) => {
+    if (!x) return false;
+    const s = (x.series || DEFAULT_SERIES_NAME).toString().trim() || DEFAULT_SERIES_NAME;
+    return !(canonicalSeriesName(s) === canon && Number(x.week) === w && Number(x.dayIndex) === d);
+  });
   writeHistoryLog(log);
 }
 
 function purgeHistorySeries(seriesName) {
-  const log = getHistoryLog().filter((e) => e && e.series !== seriesName);
+  const canon = canonicalSeriesName(seriesName || DEFAULT_SERIES_NAME);
+  const log = getHistoryLog().filter((e) => {
+    if (!e) return false;
+    const s = (e.series || DEFAULT_SERIES_NAME).toString().trim() || DEFAULT_SERIES_NAME;
+    return canonicalSeriesName(s) !== canon;
+  });
   writeHistoryLog(log);
 }
 
@@ -4783,16 +4791,14 @@ function renderHistoryList() {
     return;
   }
 
-  // For now, completed workouts belong to the built-in Sklar programme.
-  // This is intentionally simple and can be extended later when custom programmes store programme IDs in history.
-  const SERIES_NAME = getActiveSeriesName();
-
-  
   if (!historyActiveSeries) {
     // Series list view (all series found in history, plus the current active series)
     const activeSeries = getActiveSeriesName();
-    const namesSet = new Set(entries.map((e) => (e.series || activeSeries)));
-    namesSet.add(activeSeries);
+    // Past Workouts should reflect completed history only. Do NOT force-add the current active series
+    // (otherwise a just-deleted series can remain visible with 0 completions).
+    // Also, older builds may have stored entries without a series; treat those as the default series,
+    // not whatever happens to be active right now.
+    const namesSet = new Set(entries.map((e) => (e.series || DEFAULT_SERIES_NAME)));
 
     const seriesNames = Array.from(namesSet).filter(Boolean);
 
@@ -4800,7 +4806,7 @@ function renderHistoryList() {
 const reg = normaliseSeriesRegistrySchema();
 const seriesSorted = seriesNames
   .map((name) => {
-    const seriesEntries = entries.filter((e) => (e.series || activeSeries) === name);
+    const seriesEntries = entries.filter((e) => (e.series || DEFAULT_SERIES_NAME) === name);
     const completedMostRecent = seriesEntries.reduce((m, e) => Math.max(m, Number(e.completedAt || 0)), 0);
     const createdAt = Number(reg[name]?.createdAt || 0);
     return { name, sortTs: Math.max(completedMostRecent, createdAt) };
@@ -4809,7 +4815,7 @@ const seriesSorted = seriesNames
   .map((x) => x.name);
 
     seriesSorted.forEach((seriesName) => {
-      const seriesEntries = entries.filter((e) => (e.series || activeSeries) === seriesName);
+      const seriesEntries = entries.filter((e) => (e.series || DEFAULT_SERIES_NAME) === seriesName);
       const completedCount = seriesEntries.length;
       const mostRecent = seriesEntries.reduce((m, e) => Math.max(m, Number(e.completedAt || 0)), 0);
       const registryCreatedAt = Number(reg[seriesName]?.createdAt || 0);
@@ -5011,6 +5017,9 @@ const seriesSorted = seriesNames
       delBtn.textContent = "Delete";
       delBtn.addEventListener("click", () => {
         if (!confirm("Delete this workout record? This will clear logged sets and completion status for that day.")) return;
+        // Also remove the history log entry so it disappears from Past Workouts immediately.
+        // (Older builds stored series names with different punctuation/spacing; use canonical matching.)
+        try { removeHistoryLogEntry(historyActiveSeries, e.week, e.dayIndex); } catch (_) {}
         resetDay(e.week, e.dayIndex);
         renderHistoryList();
       });
