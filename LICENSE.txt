@@ -1,0 +1,9 @@
+TrackMate © 2026 Aleks Todorovic
+All rights reserved.
+
+This software and its source code are proprietary and confidential.
+No permission is granted to use, copy, modify, merge, publish,
+distribute, sublicense, or sell copies of the software, in whole
+or in part, without explicit written permission from the author.
+
+Any unauthorised use is strictly prohibited.

@@ -1,4 +1,14 @@
 <!DOCTYPE html>
+<!--
+ TrackMate © 2026 Aleks Todorovic
+ All rights reserved.
+
+ This software is the intellectual property of Aleks Todorovic.
+ Unauthorised copying, modification, distribution, or use of this
+ software, in whole or in part, is strictly prohibited.
+
+ For permitted use or licensing enquiries, contact the author.
+-->
 <html lang="en">
 
 <head>
@@ -50,7 +60,8 @@
                 </button>
             </div>
 
-			<p class="welcome-version">Version 4.7.6</p>
+			<p class="welcome-version">Version 4.7.8</p>
+			<p class="welcome-copyright">© 2026 TrackMate. All rights reserved.</p>
         </main>
 
         <!-- PROFILE SCREEN - PAGE 2 -->
@@ -171,6 +182,20 @@
                 </button>
             
             </form>
+
+
+            <div class="profile-suggested-weights">
+                <div class="settings-item settings-row" id="profile-suggested-weights-row">
+                    <div class="settings-row-label">Suggested weights</div>
+                    <label class="tm-switch" aria-label="Enable suggested weights">
+                        <input type="checkbox" id="profile-suggested-weights" />
+                        <span class="tm-switch-slider"></span>
+                    </label>
+                </div>
+                <div class="tm-help">
+                    If you would like suggested weights to be added into your programme every week as a target, please turn this on. You can turn it off at any point in the Settings menu.
+                </div>
+            </div>
 
             <div class="tm-disclosure-group">
                 <button type="button" class="tm-disclosure-toggle" data-disclosure="profile-1rm" aria-expanded="false">
@@ -427,7 +452,7 @@
             <section class="choice-card">
                 <h2 class="choice-title">Do a 1 Rep Max Test (1RM)</h2>
                 <p class="choice-text">
-                    Use a weight you can lift 3–6 times and we’ll estimate your 1-rep maxes.
+                    A 1 Rep Max (1RM) is an estimate of the maximum weight you could lift for one repetition. TrackMate estimates this from a safe set of 3–6 controlled reps. Do not attempt a true 1-rep max.
                 </p>
                 <button id="btn-go-1rm" class="btn btn-outline-teal btn-full">
                     Run 1 Rep Max Test

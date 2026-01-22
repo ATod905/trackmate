@@ -1,10 +1,21 @@
-/* TrackMate service worker (v4.7.6)
+/*
+ TrackMate © 2026 Aleks Todorovic
+ All rights reserved.
+
+ This software is the intellectual property of Aleks Todorovic.
+ Unauthorised copying, modification, distribution, or use of this
+ software, in whole or in part, is strictly prohibited.
+
+ For permitted use or licensing enquiries, contact the author.
+*/
+
+/* TrackMate service worker (v4.7.8)
    - Caches the app shell for offline use
    - Cache-first for same-origin requests
 */
 
 // TrackMate PWA cache version (bump this whenever you deploy changes)
-const CACHE_VERSION = "v4-7-6";
+const CACHE_VERSION = "v4-7-8";
 const CACHE_NAME = `trackmate-${CACHE_VERSION}`;
 
 const APP_SHELL = [
