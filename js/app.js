@@ -2722,7 +2722,7 @@ function runUltraSubtleSplash(){
     // Hard stop: remove after the animation window even if something goes odd.
     setTimeout(() => {
       try{ splash.remove(); }catch(_){}
-    }, 520);
+    }, 760);
   });
 }
 
