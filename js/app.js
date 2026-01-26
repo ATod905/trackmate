@@ -6343,7 +6343,7 @@ updateWorkoutSummary(day);
 
     timePill.textContent = tRaw ? `${tRaw} min` : "dur. (min)";
     if (inclinePill) inclinePill.textContent = incRaw ? `incl. ${incRaw}` : "incl.";
-    intensityPill.textContent = intenRaw ? intenRaw : "ints.";
+    intensityPill.textContent = intenRaw ? `${intenRaw} ints` : "ints.";
 
     timePill.classList.toggle("input-pill--suggested", !tRaw);
     if (inclinePill) inclinePill.classList.toggle("input-pill--suggested", !incRaw);
@@ -7093,8 +7093,8 @@ updateWorkoutSummary(day);
           intensityPill.dataset.value = saved.inten || "";
 
           timePill.textContent = saved.t ? `${saved.t} min` : "dur. (min)";
-          if (inclinePill) inclinePill.textContent = saved.inc ? `incl. ${saved.inc}` : "incl.";
-          intensityPill.textContent = saved.inten ? `${saved.inten}` : "ints.";
+          if (inclinePill) inclinePill.textContent = saved.inc ? `incl: ${saved.inc}` : "incl.";
+          intensityPill.textContent = saved.inten ? `ints: ${saved.inten}` : "ints.";
 
           timePill.classList.toggle("input-pill--suggested", !saved.t);
           if (inclinePill) inclinePill.classList.toggle("input-pill--suggested", !saved.inc);
