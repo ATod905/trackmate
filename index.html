@@ -67,7 +67,7 @@
                 </button>
             </div>
 
-			<p class="welcome-version">Version 4.7.12</p>
+			<p class="welcome-version">Version 4.7.15</p>
 			<p class="welcome-copyright">© 2026 TrackMate. All rights reserved.</p>
         </main>
 
@@ -986,7 +986,16 @@
 
       <div class="set-edit-row">
         <label for="cardio-edit-intensity" class="set-edit-label">Intensity</label>
-        <input id="cardio-edit-intensity" class="set-edit-input" placeholder="e.g. Level 1-10" />
+        <input
+          id="cardio-edit-intensity"
+          class="set-edit-input"
+          type="number"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          step="1"
+          min="0"
+          placeholder="e.g. 1–10"
+        />
       </div>
 
       <div class="set-edit-actions">
