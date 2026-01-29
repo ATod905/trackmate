@@ -673,6 +673,8 @@ Box Jumps
 Broad Jumps
 Shuttle Runs
 Hill Sprints
+Airborne Heismans
+Swing Kicks
 
 Chest
 Chest - Pressing (Generic)
@@ -724,6 +726,21 @@ Dips (Chest Focus)
 Resistance Band Chest Press
 Resistance Band Chest Fly
 Resistance Band Incline Chest Press
+Clap or Plyo Push-Ups
+Decline Push-Ups
+Diamond Push-Ups
+Dive-Bomber Push-Ups
+Floor Flys
+Heavy Pants
+Military Push-Ups
+One-Arm Push-Ups
+One-Arm Balance Push-Ups
+Planche Push-Ups
+Side-to-Side Push-Ups
+Slow-Motion 3-in-1 Push-Ups
+Standard Push-Ups
+Two-Switch Speed Push-Ups
+Wide Fly Push-Ups
 
 Back
 Back - Deadlift Variations
@@ -772,6 +789,27 @@ Resistance Band Straight-Arm Pulldown
 Back - Posterior Chain / Spinal
 Back Extension / Hyperextension
 Reverse Hyperextension
+Alternating Side Lunges
+Balance Lunges
+Calf Raise Squats
+Calf Raises
+Deadlift Squats
+Frog Squats
+Jump Squats
+Knee Tuck Jumps
+Lateral Leapfrog Squats
+Leapfrog Squats
+Mary Katherine Lunges
+Power Squats
+Run Stance Squats
+Single-Leg Wall Squats
+Sneaky Lunges
+Squat Reach Jumps
+Step-Back Lunges
+Super Skaters
+Toe Roll Iso Lunges
+Three-Way Lunges
+Wall Squats
 
 Shoulders
 Shoulders - Pressing
@@ -814,6 +852,20 @@ Scaption Raise
 Shoulders - Bodyweight
 Handstand Push-Up
 Pike Push-Up
+Back Flys
+Chin-Ups
+Closed-Grip Overhand Pull-Ups
+Corn Cob Pull-Ups
+Elbows-Out Lawnmowers
+Fly-Row Presses
+Lawnmowers
+Max-Rep Pull-Ups
+Reverse Grip Bent-Over Rows
+Reverse Grip Chin-Ups
+Seated Bent-Over Back Flys
+Switch Grip Pull-Ups
+Towel Pull-Ups
+Wide Front Pull-Ups
 
 Legs
 Legs - Squat Patterns
@@ -869,6 +921,16 @@ Sled Push
 Sled Pull
 Resistance Band Squat
 Resistance Band Hip Thrust
+Alternating Shoulder Presses
+Deep Swimmer’s Presses
+In & Out Shoulder Flys
+In & Out Straight-Arm Shoulder Flys
+Pike Presses
+Pour Flys
+Scarecrows
+Two-Angle Shoulder Flys
+Upright Rows
+Weighted Circles
 
 Arms
 Biceps
@@ -899,6 +961,23 @@ Resistance Band Curl
 Resistance Band Hammer Curl
 Resistance Band Preacher Curl
 Chin-Up (Biceps Focus)
+Congdon Curls
+Congdon Locomotives
+Crouching Cohen Curls
+Curl-Up / Hammer Downs
+Dumbbell Cross-Body Blows
+Full Supination Concentration Curls
+Hammer Curls
+In & Out Bicep Curls
+In-Out Hammer Curls
+One-Arm Concentration Curls
+One-Arm Corkscrew Curls
+One-Arm Cross-Body Curls
+Open Arm Curls
+Static Arm Curls
+Strip-Set Curls
+Throw the Bomb
+Twenty-Ones
 Triceps
 Close-Grip Bench Press
 Neutral-Grip Close-Grip Bench Press
@@ -924,6 +1003,15 @@ Resistance Band Pushdown
 Resistance Band Overhead Extension
 Resistance Band Kickback
 Isometric Tricep Extension Hold
+Chair Dips
+Lying Tricep Extensions
+Lying-Down Tricep Extensions
+Overhead Tricep Extensions
+Side-Leaning Tricep Extensions
+Side Tri-Rises
+Two-Arm Tricep Kickbacks
+Front-to-Back Tricep Extensions
+Flip-Grip Twist Tricep Kickbacks
 Arm Supersets (Selectable)
 Biceps + Triceps (Superset)
 Hammer Curl + Tricep Pushdown (Superset)
@@ -966,6 +1054,74 @@ Mountain Climbers
 Stability Ball Crunch
 Woodchopper - Cable
 Resistance Band Woodchopper
+Bicycle
+Crunchy Frog
+Fifer Scissors
+Hip Rock ’n’ Raise
+In & Outs
+Leg Climbs
+Mason Twist
+Oblique V-Ups
+Pulse-Ups
+Superman
+V-Up Roll-Up
+Wide-Leg Sit-Ups
+
+Yoga
+Yoga - Traditional & Core Styles
+Ashtanga Yoga
+Hatha Yoga
+Integral Yoga
+Iyengar Yoga
+Kundalini Yoga
+Sivananda Yoga
+Vinyasa Yoga
+
+Yoga - Strength, Fitness & Dynamic Yoga
+Core Yoga
+Functional Yoga
+Power Yoga
+Rocket Yoga
+Yoga Sculpt
+YogaX
+
+Yoga - Restorative, Recovery & Gentle
+Chair Yoga
+Gentle Yoga
+Recovery Yoga
+Restorative Yoga
+Yin Yoga
+
+Yoga - Mindfulness, Breath & Mental Focus
+Meditative Yoga
+Mindful Yoga
+Pranayama (Breathwork)
+Yoga Nidra
+
+Yoga - Hot & Environment-Specific
+Aerial Yoga
+Bikram Yoga
+Hot Yoga
+Outdoor Yoga
+
+Yoga - Therapeutic & Purpose-Led
+Post-Natal Yoga
+Pre-Natal Yoga
+Senior Yoga
+Therapeutic Yoga
+Yoga for Back Care
+
+Yoga - Hybrid & Modern Styles
+Animal Flow Yoga
+Mobility Yoga
+Pilates-Inspired Yoga
+Stretch & Flow
+
+Yoga - Spiritual & Cultural Styles
+Bhakti Yoga
+Jnana Yoga
+Mantra Yoga
+Tantra Yoga
 
 `;
 
@@ -975,7 +1131,7 @@ function tmNormalizeLine(s){ return (s||"").replace(/\s+/g," ").trim(); }
 
 function tmParseRawExerciseList(rawText){
   const lines = String(rawText||"").split(/\r?\n/).map(tmNormalizeLine).filter(Boolean);
-  const headers = new Set(["Arms","Back","Chest","Legs","Shoulders","Core","Cardio"]);
+  const headers = new Set(["Arms","Back","Chest","Legs","Shoulders","Core","Cardio","Yoga"]);
   const out = {}; let current=null; let currentSub=null;
 
   function isSubheading(line, currentHeader){
@@ -1054,7 +1210,7 @@ function tmInferEquipmentCode(name){
   }
   // Equipment key
   // - CBL: Cable
-  // - MC : Machine (displayed as MCH)
+  // - MC : Machine (displayed as Mch)
   // Cables first: avoids misclassifying rope pulldowns as "machine" due to the word "pulldown".
   if (n.includes("cable") || n.includes("cbl") || n.includes("rope") || n.includes("face pull") || n.includes("face-pull")) return "CBL";
   if (n.includes("smith") || n.includes("machine") || n.includes("pec deck") || n.includes("pulldown") || n.includes("leg press")) return "MC";
@@ -1159,11 +1315,11 @@ function tmBuildExerciseCatalog(){
 const TM_EXERCISE_CATALOG = tmBuildExerciseCatalog();
 
 (function tmMergeIntoExistingLibraries(){
-  ["Back","Chest","Shoulders","Legs","Arms","Core","Cardio"].forEach((k)=>{ if(!exerciseCategories[k]) exerciseCategories[k]=[]; });
+  ["Back","Chest","Shoulders","Legs","Arms","Core","Cardio","Yoga"].forEach((k)=>{ if(!exerciseCategories[k]) exerciseCategories[k]=[]; });
   TM_EXERCISE_CATALOG.forEach((e)=>{
     const cat=tmMapBodyPartToCategory(e.bodyPart);
     if (Array.isArray(exerciseCategories[cat]) && !exerciseCategories[cat].includes(e.name)) exerciseCategories[cat].push(e.name);
-    if (!exerciseLibrary[e.name]) exerciseLibrary[e.name]={ category:cat, equipment:e.equipment, subcategory:(e.subcategory||""), alternatives:[], type:(cat==="Cardio" ? "cardio" : undefined) };
+    if (!exerciseLibrary[e.name]) exerciseLibrary[e.name]={ category:cat, equipment:e.equipment, subcategory:(e.subcategory||""), alternatives:[], type:((cat==="Cardio" || cat==="Yoga") ? "cardio" : undefined) };
     // If an entry already exists, keep existing fields but add subcategory if missing.
     if (exerciseLibrary[e.name] && !exerciseLibrary[e.name].subcategory && e.subcategory) exerciseLibrary[e.name].subcategory = e.subcategory;
     if (!exerciseDescriptions[e.name]){
@@ -1395,6 +1551,9 @@ function computeLearnedExerciseStatsForWeek(seriesName, weekNumber) {
     if (!day || !Array.isArray(day.exercises)) continue;
 
     const dayState = ensureDayState(state, w, dayIndex);
+
+    // Edit 4.8.1: Ignore DNC days for learned stats.
+    if (dayState && dayState.dncDay) continue;
 
     for (let exIndex = 0; exIndex < day.exercises.length; exIndex++) {
       const ex = day.exercises[exIndex];
@@ -2483,6 +2642,7 @@ function getWorkoutState(seriesName) {
           try {
             if (!ds || typeof ds !== "object") return false;
             if (ds.completed) return true;
+            if (ds.dncDay) return true;
             if (ds.startedAt || ds.endedAt) return true;
             const exs = ds.exercises && typeof ds.exercises === "object" ? ds.exercises : {};
             for (const exKey of Object.keys(exs)) {
@@ -2617,6 +2777,11 @@ function ensureDayState(state, week, dayIndex) {
   if (!state.weeks[wKey][dKey]) {
     state.weeks[wKey][dKey] = {
       completed: false,
+      // Edit 4.8.1: Day-level DNC (Did Not Complete)
+      // - Persisted per week/day
+      // - When true: UI turns pink; inputs ignored until Reset
+      dncDay: false,
+      dncAt: null,
       completedAt: null,
       startedAt: null,
       endedAt: null,
@@ -2633,6 +2798,8 @@ function ensureDayState(state, week, dayIndex) {
   const ds = state.weeks[wKey][dKey];
   if (!Array.isArray(ds.extraExercises)) ds.extraExercises = [];
   if (!("completedAt" in ds)) ds.completedAt = ds.completed ? (ds.completedAt ?? Date.now()) : null;
+  if (!("dncDay" in ds)) ds.dncDay = false;
+  if (!("dncAt" in ds)) ds.dncAt = null;
   if (!("startedAt" in ds)) ds.startedAt = null;
   if (!("endedAt" in ds)) ds.endedAt = null;
   if (!("durationSec" in ds)) ds.durationSec = null;
@@ -2993,9 +3160,16 @@ function findNextIncompleteWorkout() {
       return exs.length > 0;
     });
     const completedSet = getCompletedWorkoutKeySetForSeries(getActiveSeriesName());
+    const state = getWorkoutState();
     for (const w of weekOrder) {
       for (const d of dayIndices) {
-        if (!isWorkoutCompletedFor(w, d, completedSet)) return { week: w, dayIndex: d };
+        if (isWorkoutCompletedFor(w, d, completedSet)) continue;
+        // Edit 4.8.1: Treat DNC as "closed" for Continue / next-incomplete navigation.
+        try {
+          const ds = ensureDayState(state, w, d);
+          if (ds && ds.dncDay) continue;
+        } catch (_) {}
+        return { week: w, dayIndex: d };
       }
     }
     return null;
@@ -3008,8 +3182,14 @@ function findNextIncompleteWorkout() {
       return exs.length > 0;
     });
     const completedSet = getCompletedWorkoutKeySetForSeries(getActiveSeriesName());
+    const state = getWorkoutState();
     for (const d of dayIndices) {
-      if (!isWorkoutCompletedFor(week, d, completedSet)) return d;
+      if (isWorkoutCompletedFor(week, d, completedSet)) continue;
+      try {
+        const ds = ensureDayState(state, week, d);
+        if (ds && ds.dncDay) continue;
+      } catch (_) {}
+      return d;
     }
     return dayIndices.length ? dayIndices[0] : 0;
   }
@@ -3295,7 +3475,7 @@ function renderCustomBuilderForCurrentDay() {
     topRow.className = "exercise-header-top-row";
 
     const meta = exerciseLibrary?.[ex.name] || {};
-    const defaultEquip = (meta?.equipment || tmInferEquipmentCode(ex.name) || "MC");
+    const defaultEquip = (meta?.equipment || tmInferEquipmentCode(ex.name) || "BW");
     const selectedEquip = (ex.equipment || defaultEquip);
 
     const title = document.createElement("p");
@@ -4015,6 +4195,19 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
     showScreen("screen-workout");
     renderWorkoutDay(0);
   });
+
+  // Classic P90X (UI stub: phases will be implemented in a future edit)
+  function bindP90XPhaseButton(id, phaseLabel) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("click", (e) => {
+      try { e?.preventDefault?.(); } catch (_) {}
+      window.alert(`Classic P90X — ${phaseLabel} is coming soon.`);
+    });
+  }
+  bindP90XPhaseButton("btn-program-p90x-phase1", "Phase 1");
+  bindP90XPhaseButton("btn-program-p90x-phase2", "Phase 2");
+  bindP90XPhaseButton("btn-program-p90x-phase3", "Phase 3");
 
   // Defensive event delegation: ensures the Rock programme button works even if
   // the direct listener fails to bind (e.g., due to cached/partial DOM states).
@@ -5183,12 +5376,25 @@ const seriesSorted = seriesNames
     return !!getCurrentDayState()?.completed;
   }
 
+  function isCurrentDayDNC() {
+    return !!getCurrentDayState()?.dncDay;
+  }
+
   function syncWorkoutCompletionUI() {
     const completed = isCurrentDayCompleted();
+    const dncDay = isCurrentDayDNC();
+
+    const footer = document.querySelector(".workout-footer");
 
     // Visual overlay on cards
     workoutExerciseList?.classList.toggle("workout-day--completed", completed);
-    if (workoutExerciseList) workoutExerciseList.dataset.completed = completed ? "true" : "false";
+    workoutExerciseList?.classList.toggle("workout-day--dnc", dncDay);
+    if (workoutExerciseList) {
+      workoutExerciseList.dataset.completed = completed ? "true" : "false";
+      workoutExerciseList.dataset.dncDay = dncDay ? "true" : "false";
+    }
+
+    if (footer) footer.classList.toggle("workout-day--dnc", dncDay);
 
     // Completed pill: grey when incomplete, teal when complete
     if (workoutCompletedBadge) {
@@ -5199,6 +5405,10 @@ const seriesSorted = seriesNames
     // Bottom button label + style
     const completeBtn = document.querySelector(".workout-complete");
     if (completeBtn) {
+      // DNC days: lock completion until Reset.
+      completeBtn.classList.toggle("is-disabled", !!dncDay);
+      try { completeBtn.disabled = !!dncDay; } catch (_) {}
+
       if (completed) {
          completeBtn.textContent = "Edit Completed Workout";
          completeBtn.classList.remove("btn-teal");
@@ -5208,7 +5418,25 @@ const seriesSorted = seriesNames
         completeBtn.classList.remove("btn-danger-pill");
         completeBtn.classList.add("btn-teal");
       }
+
+      // If DNC is active, keep the button visually consistent (teal) but disabled.
+      if (dncDay) {
+        completeBtn.textContent = "Complete Workout";
+        completeBtn.classList.remove("btn-danger-pill");
+        completeBtn.classList.add("btn-teal");
+      }
     }
+
+    // DNC button label + disable rules
+    const dncBtn = document.querySelector(".workout-dnc");
+    if (dncBtn) {
+      dncBtn.textContent = dncDay ? "Reset?" : "DNC";
+      // If the day is completed, do not allow marking DNC (user must unlock first).
+      const lock = !!completed;
+      dncBtn.classList.toggle("is-disabled", lock);
+      try { dncBtn.disabled = lock; } catch (_) {}
+    }
+
     // Reuse-week button is only relevant for custom programmes
     
   }
@@ -5314,7 +5542,7 @@ const seriesSorted = seriesNames
   function ensureWorkoutStarted() {
     const state = getWorkoutState();
     const ds = ensureDayState(state, currentWeek, currentDayIndex);
-    if (ds.completed) return; // do not re-start completed workouts
+    if (ds.completed || ds.dncDay) return; // do not start completed or DNC workouts
     if (!ds.startedAt) {
       ds.startedAt = Date.now();
       saveWorkoutState(state);
@@ -5335,6 +5563,12 @@ const seriesSorted = seriesNames
     if (!summaryDurationEl) return;
     const state = getWorkoutState();
     const ds = ensureDayState(state, currentWeek, currentDayIndex);
+
+    // Edit 4.8.1: DNC days do not track duration.
+    if (ds.dncDay) {
+      summaryDurationEl.textContent = "—";
+      return;
+    }
 
     // Prefer stored duration once completed; otherwise show live elapsed time since start.
     if (ds.durationSec !== null && ds.durationSec !== undefined) {
@@ -5811,7 +6045,7 @@ let editContext = null; // { dayRef, exRef, titleEl, exIndex }
 
     // Sort/group by CATEGORY so search results keep context (e.g., Arms vs Legs).
     const collator = new Intl.Collator(undefined, { sensitivity: "base" });
-    const preferredOrder = ["Arms","Back","Chest","Legs","Shoulders","Core","Cardio"];
+    const preferredOrder = ["Arms","Back","Chest","Legs","Shoulders","Core","Cardio","Yoga"];
     const rank = new Map();
     preferredOrder.forEach((c, i) => rank.set(c, i));
 
@@ -6004,7 +6238,7 @@ updateWorkoutSummary(day);
     }
 
     (function(){
-      const preferredOrder = ["Arms","Back","Chest","Legs","Shoulders","Core","Cardio"];
+      const preferredOrder = ["Arms","Back","Chest","Legs","Shoulders","Core","Cardio","Yoga"];
       const keys = Object.keys(exerciseCategories);
       const ordered = [
         ...preferredOrder.filter(k => keys.includes(k)),
@@ -6095,6 +6329,18 @@ function updateWorkoutSummary(day) {
     const state = getWorkoutState();
     const dayState = ensureDayState(state, currentWeek, currentDayIndex);
 
+    // Edit 4.8.1: DNC days are ignored in summaries.
+    if (dayState.dncDay) {
+      const unit = getWeightUnitLabel(getActiveUnits());
+      summaryVolumeEl.textContent = `0 ${unit}`;
+      summaryRepsEl.textContent = "0";
+      if (summarySupersetsEl) summarySupersetsEl.textContent = "0";
+      const expected = expectedTotalSetsForDay(day);
+      summaryProgressEl.textContent = `0/${expected}`;
+      if (summaryDurationEl) summaryDurationEl.textContent = "—";
+      return;
+    }
+
     // Build an index->exercise map so we can treat cardio sets differently.
     // IMPORTANT: Keep indices aligned to renderWorkoutDay() (null placeholders preserved).
     // If indices drift, cardio detection and progress can become incorrect after add/remove.
@@ -6178,6 +6424,17 @@ function updateWorkoutSummary(day) {
   // Save set edits
   setEditSave?.addEventListener("click", () => {
     if (!currentEditContext) { closeSetEditor(); return; }
+
+    // Edit 4.8.1: Block edits when the day is marked DNC.
+    try {
+      const st = getWorkoutState();
+      const ds = ensureDayState(st, currentWeek, currentDayIndex);
+      if (ds.dncDay) {
+        alert("This workout day is marked DNC. Tap Reset? to re-open it for editing.");
+        closeSetEditor();
+        return;
+      }
+    } catch (_) {}
 
     try { ensureWorkoutStarted(); } catch (_) {}
 
@@ -6395,13 +6652,15 @@ updateWorkoutSummary(day);
   function buildEquipmentRow(card, defaultEquip, onChange) {
     const equipmentRow = document.createElement("div");
     equipmentRow.className = "equipment-pill-row";
-    const options = ["DB", "BB", "KB", "BW", "MC", "CBL"];
+	    // Order matters (matches UI/UX expectations): DB, BB, KB, BND, BW, Mch, Cbl
+	    // Internal codes: MC = machine (displayed as "Mch")
+	    const options = ["DB", "BB", "KB", "BND", "BW", "MC", "CBL"];
 
     options.forEach((code) => {
       const pill = document.createElement("button");
       pill.type = "button";
       pill.className = "equipment-pill";
-      pill.textContent = (code === "MC") ? "MCH" : code;
+	      pill.textContent = (code === "MC") ? "Mch" : (code === "CBL") ? "Cbl" : (code === "BND") ? "Bnd" : code;
       pill.dataset.equipmentCode = code;
       if (code === defaultEquip) {
         pill.classList.add("equipment-pill--active");
@@ -6735,7 +6994,7 @@ updateWorkoutSummary(day);
       topRow.className = "exercise-header-top-row";
 
       const meta = exerciseLibrary[ex.name];
-      const defaultEquip = (meta?.equipment || tmInferEquipmentCode(ex.name) || "MC");
+      const defaultEquip = (meta?.equipment || tmInferEquipmentCode(ex.name) || "BW");
 
       // Persisted equipment choice per week/day/exercise
       const exState = getExerciseState(state, currentWeek, dayIndex, exIndex);
@@ -6967,6 +7226,9 @@ updateWorkoutSummary(day);
         const prevWeek = currentWeek - 1;
         const prevState = getWorkoutState();
         const prevDayState = ensureDayState(prevState, prevWeek, dayIndex);
+
+        // Edit 4.8.1: Do not carry over progression from a DNC day.
+        if (prevDayState && prevDayState.dncDay) return baseSuggestion;
 
         // Name-first lookup (slot fallback)
         // If the user has edited/replaced/inserted exercises, the same "slot" index may no longer
@@ -7573,6 +7835,12 @@ workoutDaySelect?.addEventListener("change", () => {
     const state = getWorkoutState();
     const dayState = ensureDayState(state, currentWeek, currentDayIndex);
 
+    // Edit 4.8.1: DNC days cannot be completed until Reset.
+    if (dayState.dncDay) {
+      alert("This workout day is marked DNC. Tap Reset? to re-open it.");
+      return;
+    }
+
     const dayNumber = getDisplayDayNumber(currentDayIndex);
 
     if (!dayState.completed) {
@@ -7654,6 +7922,65 @@ function countSupersets(workout){
 
 updateWorkoutSummary(day);
     syncWorkoutCompletionUI();
+  });
+
+  // Edit 4.8.1: Day-level DNC toggle (persisted)
+  document.querySelector(".workout-dnc")?.addEventListener("click", () => {
+    const state = getWorkoutState();
+    const ds = ensureDayState(state, currentWeek, currentDayIndex);
+    const dayNumber = getDisplayDayNumber(currentDayIndex);
+
+    if (ds.completed) {
+      alert("This workout is marked complete. Tap 'Edit Completed Workout' first if you need to change the status.");
+      return;
+    }
+
+    if (!ds.dncDay) {
+      const msg = "Are you sure you want to mark this workout as Did Not Complete?\n\nIf you do manage to complete this in the future, simply tap Reset? and you can add your information inside.";
+      const ok = window.confirm(msg);
+      if (!ok) return;
+
+      ds.dncDay = true;
+      ds.dncAt = Date.now();
+
+      // Defensive: ensure we never keep a completion record for a DNC day.
+      ds.completed = false;
+      try { removeHistoryLogEntry(getActiveSeriesName(), currentWeek, currentDayIndex); } catch (_) {}
+
+      saveWorkoutState(state);
+      try { closeSetEditor(); } catch (_) {}
+      updateWorkoutSummary(getProgramForWeek(currentWeek)[currentDayIndex]);
+      syncWorkoutCompletionUI();
+      alert(`Saved. Week ${currentWeek}, Day ${dayNumber} marked DNC.`);
+      return;
+    }
+
+    // Reset DNC (re-open day, keep any existing inputs in place)
+const okReset = window.confirm("Reset this DNC day? Your existing inputs will remain, and you can continue logging as normal.");
+if (!okReset) return;
+
+// Edit 4.8.3: Micro-animation for Reset -> visually "re-open" the day.
+const dncBtnEl = document.querySelector(".workout-dnc");
+const dayListEl = document.getElementById("workout-exercise-list");
+const footerEl = document.querySelector(".workout-footer");
+try { dncBtnEl?.classList.add("is-disabled"); } catch (_) {}
+
+dayListEl?.classList.add("workout-day--dnc-resetting");
+footerEl?.classList.add("workout-day--dnc-resetting");
+
+// Allow the animation to play briefly before removing DNC state + re-rendering.
+window.setTimeout(() => {
+  ds.dncDay = false;
+  ds.dncAt = null;
+  saveWorkoutState(state);
+  updateWorkoutSummary(getProgramForWeek(currentWeek)[currentDayIndex]);
+  syncWorkoutCompletionUI();
+
+  // Cleanup (if a re-render removed the nodes, these are no-ops)
+  dayListEl?.classList.remove("workout-day--dnc-resetting");
+  footerEl?.classList.remove("workout-day--dnc-resetting");
+  try { dncBtnEl?.classList.remove("is-disabled"); } catch (_) {}
+}, 220);
   });
 
   // -------------------------
