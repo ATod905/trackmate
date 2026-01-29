@@ -420,6 +420,19 @@ body {
   width: 100%;
 }
 
+/* Program selection: multi-phase programme buttons (e.g., P90X) */
+.program-phase-actions{
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.program-phase-actions .btn{
+  flex: 1;
+  padding: 14px 10px;
+  font-size: 14px;
+}
+
 /* Program selection: custom programme cards (Continue / Edit / Delete) */
 .program-card-actions{
   display: flex;
@@ -1351,6 +1364,71 @@ body {
 .workout-complete {
   width: 100%;
 }
+
+/* Edit 4.8.1: Footer action split (Complete + DNC) */
+.workout-footer-actions{
+  display: flex;
+  gap: 10px;
+}
+
+.workout-footer-actions .workout-complete{
+  flex: 3;
+  width: auto;
+}
+
+.workout-footer-actions .workout-dnc{
+  flex: 1;
+  width: auto;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.workout-footer-actions .workout-complete.is-disabled,
+.workout-footer-actions .workout-dnc.is-disabled{
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* Edit 4.8.1: Day-level DNC state (pink overlay on the full day) */
+.workout-day--dnc .exercise-card{
+  position: relative;
+  background: rgba(255,107,107,0.08);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06), inset 0 0 0 1px rgba(255,107,107,0.22);
+}
+
+
+/* Edit 4.8.3: Micro-animation when a DNC day is Reset (visual "re-open") */
+@keyframes tmDncResetPulse {
+  0% {
+    transform: scale(0.995);
+    filter: saturate(1.05);
+  }
+  55% {
+    transform: scale(1.01);
+    filter: saturate(1.12);
+  }
+  100% {
+    transform: scale(1);
+    filter: saturate(1);
+  }
+}
+
+/* Apply the pulse during reset; keeps the day locked while animating */
+.workout-day--dnc.workout-day--dnc-resetting .exercise-card {
+  animation: tmDncResetPulse 260ms ease-out;
+}
+
+.workout-day--dnc .exercise-card .input-pill{
+  background: rgba(255,107,107,0.10);
+}
+
+/* DNC day should prevent edits until Reset */
+.workout-day--dnc .exercise-card,
+.workout-day--dnc .exercise-header-links,
+.workout-day--dnc .sets-grid{
+  pointer-events: none;
+}
+
 
 /* Slide-out workout menu */
 
@@ -2353,7 +2431,7 @@ button.workout-dnc-pill{
   background: rgba(255,107,107,0.08);
   color: #ff6b6b;
 
-  /* Match equipment pill geometry (CBL/MCH) */
+  /* Match equipment pill geometry (Cbl/Mch) */
   padding: 1px 7px;
   font-size: 9px;
   line-height: 1;
@@ -2636,4 +2714,16 @@ button.settings-item.settings-item--danger[data-settings-action="reset-all"]{
     animation: none !important;
     transition: none !important;
   }
+}
+
+
+/* Edit 4.8.2: Normalise footer action button shapes (Complete + DNC)
+   - Same height
+   - Same border-radius (rounded rectangle)
+   - Preserve colour semantics
+*/
+.workout-footer-actions .workout-complete,
+.workout-footer-actions .workout-dnc{
+  border-radius: var(--radius-lg);
+  padding: 14px 18px;
 }
