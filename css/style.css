@@ -37,9 +37,33 @@ body {
 }
 
 #app {
+  width: 100%;
   min-height: 100vh;
+  background: var(--tm-bg);
   display: flex;
 }
+
+/* Edit 5.1.0: Dark / Twilight Mode (Android-style inversion) */
+html[data-theme="invert"] #app {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* Counter-invert assets so they do not appear as negatives */
+html[data-theme="invert"] img,
+html[data-theme="invert"] svg,
+html[data-theme="invert"] .tm-logo,
+html[data-theme="invert"] .icon {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* Overlays / modals sit outside #app in this build, so invert them explicitly */
+html[data-theme="invert"] .modal,
+html[data-theme="invert"] .overlay,
+html[data-theme="invert"] .set-edit-modal,
+html[data-theme="invert"] .set-edit-overlay {
+  filter: invert(1) hue-rotate(180deg);
+}
+
 
 /* Screens */
 
@@ -665,6 +689,10 @@ body {
   color: var(--tm-text);
 }
 
+.week-tab--hidden {
+  display: none !important;
+}
+
 .week-tab--active {
   font-weight: 600;
 }
@@ -919,7 +947,16 @@ body {
   background: transparent;
   font: inherit;
   font-size: 14px;
-  padding-right: 4px;
+  width: auto;
+  min-width: 0;
+  padding-right: 18px;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' fill='none' stroke='%23364754' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 2px center;
+  background-size: 12px 12px;
 }
 
 .day-pill select:focus-visible {
@@ -927,12 +964,13 @@ body {
 }
 
 .day-pill-tag {
-  padding: 2px 10px;
+  padding: 2px 8px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  white-space: nowrap;
   background: rgba(31, 154, 160, 0.1);
   color: var(--tm-teal);
 }
@@ -1285,6 +1323,32 @@ body {
 .set-fields--treadmill .input-pill {
   width: 96px;
   flex: 0 0 auto;
+}
+
+/* Yoga-only cardio layout: single full-width column with duration + intensity. */
+.sets-grid--yoga {
+  grid-template-columns: 1fr;
+}
+
+.set-fields--yoga {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+  /* Slightly narrower than full-card width for better breathing room.
+     Scoped to Yoga only (exercise name contains "Yoga"). */
+  width: 80%;
+  margin-right: auto;
+}
+
+.set-fields--yoga .input-pill {
+  width: 100%;
+}
+
+.input-pill--yoga {
+  padding: 10px 12px;
+  font-size: 14px;
+  border-radius: 14px;
 }
 
 .input-pill--treadmill {
@@ -2520,6 +2584,13 @@ button.workout-dnc-pill {
 }
 
 
+
+
+/* Edit 5.0.11: Yoga sets grid must stay single-column inside exercise cards (override 4.5.15 two-column tweak). */
+.exercise-card .sets-grid.sets-grid--yoga {
+  grid-template-columns: 1fr;
+  column-gap: 16px;
+}
 /* Edit 4.5.16: DNC pill = exact CBL pill geometry (colour only differs) */
 button.workout-dnc-pill {
   /* geometry copied from .equipment-pill */
@@ -2726,4 +2797,17 @@ button.settings-item.settings-item--danger[data-settings-action="reset-all"]{
 .workout-footer-actions .workout-dnc{
   border-radius: var(--radius-lg);
   padding: 14px 18px;
+}
+
+/* Classic P90X: divider label (e.g., "Bonus Round") */
+.exercise-divider{
+  margin: 6px 2px 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.06);
+  color: rgba(15, 23, 42, 0.75);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 12px;
 }
