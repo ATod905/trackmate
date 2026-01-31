@@ -405,10 +405,18 @@ const DEFAULT_SERIES_NAME = "Sklar Series";
 // Built-in additional preset programme(s)
 const ROCK_SERIES_NAME = "The Rock Training Program";
 const FIGHTCLUB_SERIES_NAME = "Fight Club Training Program";
+const SERIES_P90X_CLASSIC_PHASE1 = "Classic P90X - Phase 1";
+const SERIES_P90X_CLASSIC_PHASE2 = "Classic P90X - Phase 2";
+const SERIES_P90X_CLASSIC_PHASE3 = "Classic P90X - Phase 3";
+
+// Edit: 5.1.1 — P90X Classic (Phases 1–3): show prescribed reps as "Max" (display-only).
+function isP90XClassicSeriesName(seriesName) {
+  return (seriesName === SERIES_P90X_CLASSIC_PHASE1) || (seriesName === SERIES_P90X_CLASSIC_PHASE2) || (seriesName === SERIES_P90X_CLASSIC_PHASE3);
+}
 
 function isBuiltInPresetSeries(seriesName) {
   const name = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
-  return (name === DEFAULT_SERIES_NAME) || (name === ROCK_SERIES_NAME) || (name === FIGHTCLUB_SERIES_NAME);
+  return (name === DEFAULT_SERIES_NAME) || (name === ROCK_SERIES_NAME) || (name === FIGHTCLUB_SERIES_NAME) || (name === SERIES_P90X_CLASSIC_PHASE1) || (name === SERIES_P90X_CLASSIC_PHASE2) || (name === SERIES_P90X_CLASSIC_PHASE3);
 }
 
 function getPrefsObject() {
@@ -419,6 +427,37 @@ function getPrefsObject() {
 function setPrefsObject(nextPrefs) {
   writeJSON(STORAGE_KEYS.prefs, nextPrefs && typeof nextPrefs === "object" ? nextPrefs : {});
 }
+
+// -------------------------
+// Theme (Light / Dark-Twilight via inversion filter)
+// -------------------------
+function applyThemeToDocument(theme) {
+  const t = (theme === "invert") ? "invert" : "light";
+  try { document.documentElement.setAttribute("data-theme", t); } catch (_) {}
+}
+
+function getThemePref() {
+  const prefs = getPrefsObject();
+  let t = (prefs.theme || "light").toString().toLowerCase();
+  // Backwards-compat: map any legacy "dark" to "invert"
+  if (t === "dark") t = "invert";
+  if (t !== "invert") t = "light";
+  // Normalise storage if needed
+  if ((prefs.theme || "") !== t) {
+    prefs.theme = t;
+    setPrefsObject(prefs);
+  }
+  return t;
+}
+
+function setThemePref(theme) {
+  const t = (theme === "invert") ? "invert" : "light";
+  const prefs = getPrefsObject();
+  prefs.theme = t;
+  setPrefsObject(prefs);
+  applyThemeToDocument(t);
+}
+
 
 function getActiveSeriesName() {
   const prefs = getPrefsObject();
@@ -626,6 +665,11 @@ const exerciseCategories = {
 function isCardioExercise(exerciseName) {
   const meta = exerciseLibrary?.[exerciseName] || {};
   return (meta.type === "cardio") || (meta.category === "Cardio");
+}
+
+// Yoga sessions should behave like time/intensity-based activities (bodyweight by default).
+function isYogaExercise(exerciseName) {
+  return /yoga/i.test(String(exerciseName || "").trim());
 }
 
 // "Treadmill-style" cardio uses a single 3-field row: duration + incline + intensity.
@@ -2203,6 +2247,357 @@ const fightClubProgramWeek1 = [
   }
 ];
 
+
+// -------------------------
+// Program data (Classic P90X — Phase 1)
+// -------------------------
+// Phase 1 (4 weeks). Weeks repeat unchanged.
+// Note: This series includes 5 primary training days plus 3 additional Ab Ripper X sessions (8 sessions total per week).
+const p90xClassicPhase1Week1 = [
+  {
+    id: "p90x_d1_chest_back",
+    theme: "CHEST & BACK",
+    goal: "Strength & endurance (P90X Phase 1)",
+    exercises: [
+      { name: "Standard Push-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Wide Front Pull-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Military Push-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Reverse Grip Chin-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Wide Fly Push-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Closed-Grip Overhand Pull-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Decline Push-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Heavy Pants (DB)", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Diamond Push-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Lawnmowers (DB)", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Dive-Bomber Push-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Back Flys (DB)", prescription: "2 x Max", equipment: "DB", setCount: 2 }
+    ]
+  },
+  {
+    id: "p90x_d1_ab_ripper_x",
+    theme: "ABS",
+    goal: "Ab Ripper X",
+    exercises: [
+      { name: "In & Outs", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Bicycle", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Crunchy Frog", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Wide-Leg Sit-Ups", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Fifer Scissors", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Hip Rock ’n’ Raise", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Pulse-Ups", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "V-Up Roll-Up", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Oblique V-Ups", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Leg Climbs", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Mason Twist", prescription: "1 x Max", equipment: "BW", setCount: 1 }
+    ]
+  },
+  {
+    id: "p90x_d2_plyometrics",
+    theme: "PLYOMETRICS",
+    goal: "Plyometrics (bodyweight)",
+    exercises: [
+      { name: "Jump Squats", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Run Stance Squats", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Airborne Heismans", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Swing Kicks", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Squat Reach Jumps", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Jump Squats", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Run Stance Squats", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Airborne Heismans", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Swing Kicks", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Squat Reach Jumps", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Lateral Leapfrog Squats", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Power Squats", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Knee Tuck Jumps", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Mary Katherine Lunges", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Leapfrog Squats", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Power Squats", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Knee Tuck Jumps", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Mary Katherine Lunges", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Leapfrog Squats", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Calf Raises", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Toe Roll Iso Lunges", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Calf Raises", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Toe Roll Iso Lunges", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Frog Squats", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Calf Raises", prescription: "Reps: ____", equipment: "BW", setCount: 1 }
+    ]
+  },
+  {
+    id: "p90x_d3_shoulders_arms",
+    theme: "SHOULDERS & ARMS",
+    goal: "Strength & endurance (P90X Phase 1)",
+    exercises: [
+      { name: "Alternating Shoulder Presses", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "In & Out Bicep Curls", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Two-Arm Tricep Kickbacks", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Deep Swimmer’s Presses", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Full Supination Concentration Curls", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Chair Dips", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Upright Rows", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Static Arm Curls", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Flip-Grip Twist Tricep Kickbacks", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Two-Angle Shoulder Flys", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Crouching Cohen Curls", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Lying-Down Tricep Extensions", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Bonus Round", prescription: "", equipment: "BW", setCount: 1 },
+      { name: "In & Out Straight-Arm Shoulder Flys", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Congdon Curls", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Side Tri-Rises", prescription: "2 x Max", equipment: "BW", setCount: 2 }
+    ]
+  },
+  {
+    id: "p90x_d3_ab_ripper_x",
+    theme: "ABS",
+    goal: "Ab Ripper X",
+    exercises: [
+      { name: "In & Outs", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Bicycle", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Crunchy Frog", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Wide-Leg Sit-Ups", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Fifer Scissors", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Hip Rock ’n’ Raise", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Pulse-Ups", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "V-Up Roll-Up", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Oblique V-Ups", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Leg Climbs", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Mason Twist", prescription: "1 x Max", equipment: "BW", setCount: 1 }
+    ]
+  },
+  {
+    id: "p90x_d4_yoga",
+    theme: "YOGA",
+    goal: "Yoga session",
+    exercises: [
+      { name: "Yoga X (Full Session)", prescription: "Time / Intensity", equipment: "BW", setCount: 1 }
+    ]
+  },
+  {
+    id: "p90x_d5_legs_back",
+    theme: "LEGS & BACK",
+    goal: "Strength & endurance (P90X Phase 1)",
+    exercises: [
+      { name: "Reverse Grip Chin-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Wide Front Pull-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Closed-Grip Overhand Pull-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Switch Grip Pull-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Balance Lunges", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Calf Raise Squats", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Super Skaters", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Wall Squats", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Step-Back Lunges", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Alternating Side Lunges", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Single-Leg Wall Squats", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Deadlift Squats (DB)", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Three-Way Lunges", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Sneaky Lunges", prescription: "2 x Max", equipment: "BW", setCount: 2 }
+    ]
+  },
+  {
+    id: "p90x_d5_ab_ripper_x",
+    theme: "ABS",
+    goal: "Ab Ripper X",
+    exercises: [
+      { name: "In & Outs", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Bicycle", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Crunchy Frog", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Wide-Leg Sit-Ups", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Fifer Scissors", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Hip Rock ’n’ Raise", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Pulse-Ups", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "V-Up Roll-Up", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Oblique V-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Leg Climbs", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Mason Twist", prescription: "1 x Max", equipment: "BW", setCount: 1 }
+    ]
+  }
+];
+
+// -------------------------
+// Program data (Classic P90X — Phase 2)
+// -------------------------
+// Phase 2 (4 weeks). Weeks repeat unchanged.
+// Note: This series includes 5 primary training days plus 3 additional Ab Ripper X sessions (8 sessions total per week).
+const p90xClassicPhase2Week1 = [
+  {
+    id: "p90x2_d1_chest_shoulders_triceps",
+    // Phase 2 cosmetic label: keep compact to avoid pushing Review/Reset controls on mobile.
+    theme: "CH / SH / TRI",
+    goal: "Strength & endurance (P90X Phase 2)",
+    exercises: [
+      { name: "Slow-Motion 3-in-1 Push-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "In & Out Shoulder Flys", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Chair Dips", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Plange Push-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Pike Presses", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Side Tri-Rises", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Floor Flys", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Scarecrows", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Overhead Tricep Extensions", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Two-Switch Speed Push-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Lying Tricep Extensions", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Side-to-Side Push-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Pour Flys", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Side-Leaning Tricep Extensions", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "One-Arm Push-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Weighted Circles", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Throw the Bomb", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Plyo Push-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Slo-Mo Throws", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Front-to-Back Tricep Extensions", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "One-Arm Balance Push-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Fly-Row Presses", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Dumbbell Cross-Body Blows", prescription: "2 x Max", equipment: "DB", setCount: 2 }
+    ]
+  },
+  {
+    id: "p90x2_d1_ab_ripper_x",
+    theme: "ABS",
+    goal: "Ab Ripper X",
+    exercises: [
+      { name: "In & Outs", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Bicycle", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Crunchy Frog", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Wide-Leg Sit-Ups", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Fifer Scissors", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Hip Rock ’n’ Raise", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Pulse-Ups", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "V-Up Roll-Up", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Oblique V-Ups", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Leg Climbs", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Mason Twist", prescription: "1 x Max", equipment: "BW", setCount: 1 }
+    ]
+  },
+  {
+    id: "p90x2_d2_plyometrics",
+    theme: "PLYOMETRICS",
+    goal: "Plyometrics (bodyweight)",
+    exercises: [
+      { name: "Jump Squats", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Run Stance Squats", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Airborne Heismans", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Swing Kicks", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Squat Reach Jumps", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Jump Squats", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Run Stance Squats", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Airborne Heismans", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Swing Kicks", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Squat Reach Jumps", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Lateral Leapfrog Squats", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Power Squats", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Knee Tuck Jumps", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Mary Katherine Lunges", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Leapfrog Squats", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Power Squats", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Knee Tuck Jumps", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Mary Katherine Lunges", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Leapfrog Squats", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Calf Raises", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Toe Roll Iso Lunges", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Calf Raises", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Toe Roll Iso Lunges", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Frog Squats", prescription: "Reps: ____", equipment: "BW", setCount: 1 },
+      { name: "Calf Raises", prescription: "Reps: ____", equipment: "BW", setCount: 1 }
+    ]
+  },
+  {
+    id: "p90x2_d3_back_biceps",
+    theme: "BACK & BICEPS",
+    goal: "Strength & endurance (P90X Phase 2)",
+    exercises: [
+      { name: "Wide Front Pull-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Lawnmowers", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Twenty-Ones", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "One-Arm Cross-Body Curls", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Switch Grip Pull-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Elbows-Out Lawnmowers", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Standing Bicep Curls", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "One-Arm Concentration Curls", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Corn Cob Pull-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Reverse Grip Bent-Over Rows", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Open Arm Curls", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Static Arm Curls", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Towel Pull-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Congdon Locomotives", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Crouching Cohen Curls", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "One-Arm Corkscrew Curls", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Chin-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Seated Bent-Over Back Flys", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Curl-Up / Hammer Downs", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Hammer Curls", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Max-Rep Pull-Ups", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Superman", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "In-Out Hammer Curls", prescription: "1 x Max", equipment: "DB", setCount: 1 },
+      { name: "Strip-Set Curls", prescription: "1 x Max", equipment: "DB", setCount: 1 }
+    ]
+  },
+  {
+    id: "p90x2_d3_ab_ripper_x",
+    theme: "ABS",
+    goal: "Ab Ripper X",
+    exercises: [
+      { name: "In & Outs", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Bicycle", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Crunchy Frog", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Wide-Leg Sit-Ups", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Fifer Scissors", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Hip Rock ’n’ Raise", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Pulse-Ups", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "V-Up Roll-Up", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Oblique V-Ups", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Leg Climbs", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Mason Twist", prescription: "1 x Max", equipment: "BW", setCount: 1 }
+    ]
+  },
+  {
+    id: "p90x2_d4_yoga",
+    theme: "YOGA",
+    goal: "Yoga session",
+    exercises: [
+      { name: "Yoga X (Full Session)", prescription: "Time / Intensity", equipment: "BW", setCount: 1 }
+    ]
+  },
+  {
+    id: "p90x2_d5_legs_back",
+    theme: "LEGS & BACK",
+    goal: "Strength & endurance (P90X Phase 2)",
+    exercises: [
+      { name: "Reverse Grip Chin-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Wide Front Pull-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Closed-Grip Overhand Pull-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Switch Grip Pull-Ups", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Balance Lunges", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Calf Raise Squats", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Super Skaters", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Wall Squats", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Step-Back Lunges", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Alternating Side Lunges", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Single-Leg Wall Squats", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Deadlift Squats", prescription: "2 x Max", equipment: "DB", setCount: 2 },
+      { name: "Three-Way Lunges", prescription: "2 x Max", equipment: "BW", setCount: 2 },
+      { name: "Sneaky Lunges", prescription: "2 x Max", equipment: "BW", setCount: 2 }
+    ]
+  },
+  {
+    id: "p90x2_d5_ab_ripper_x",
+    theme: "ABS",
+    goal: "Ab Ripper X",
+    exercises: [
+      { name: "In & Outs", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Bicycle", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Crunchy Frog", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Wide-Leg Sit-Ups", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Fifer Scissors", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Hip Rock ’n’ Raise", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Pulse-Ups", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "V-Up Roll-Up", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Oblique V-Ups", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Leg Climbs", prescription: "1 x Max", equipment: "BW", setCount: 1 },
+      { name: "Mason Twist", prescription: "1 x Max", equipment: "BW", setCount: 1 }
+    ]
+  }
+];
+
 const WEEKS_IN_SERIES = 6;
 
 function buildCustomWeekTemplateFromDraft(draft, weekNumber) {
@@ -2436,6 +2831,10 @@ function getProgramWeekTemplateForSeries(seriesName) {
   if (name === DEFAULT_SERIES_NAME) return programWeek1;
   if (name === ROCK_SERIES_NAME) return rockProgramWeek1;
   if (name === FIGHTCLUB_SERIES_NAME) return fightClubProgramWeek1;
+  if (name === SERIES_P90X_CLASSIC_PHASE1) return p90xClassicPhase1Week1;
+  if (name === SERIES_P90X_CLASSIC_PHASE2) return p90xClassicPhase2Week1;
+  // Phase 3 rotates weeks between Phase 1 and Phase 2 templates; Week 1 shape matches Phase 1.
+  if (name === SERIES_P90X_CLASSIC_PHASE3) return p90xClassicPhase1Week1;
 
   const custom = loadCustomProgramForSeries(name);
   if (custom) return buildCustomWeekTemplateFromDraft(custom);
@@ -2499,6 +2898,14 @@ function getProgramForWeek(weekNumber, seriesName) {
   //   that specific week becomes independent via a stored snapshot.
   const series = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
   const template = getProgramWeekTemplateForSeries(series);
+
+  // Classic P90X — Phase 3: rotate weeks between Phase 1 (odd weeks) and Phase 2 (even weeks).
+  // This is an explicit preset-only branch to avoid any custom-program fall-through.
+  if (series === SERIES_P90X_CLASSIC_PHASE3) {
+    const w = Math.max(1, parseInt(weekNumber, 10) || 1);
+    const base = (w % 2 === 0) ? p90xClassicPhase2Week1 : p90xClassicPhase1Week1;
+    return deepClone(base);
+  }
 
   // Sklar selective migration:
   // - Planned/unstarted days use the current template.
@@ -2567,6 +2974,18 @@ function getProgramForWeek(weekNumber, seriesName) {
   // Built-in Fight Club preset: always use the built-in template (weeks repeat unchanged).
   // Do not treat this as a custom series with week overrides.
   if (series === FIGHTCLUB_SERIES_NAME) {
+    return deepClone(template);
+  }
+
+  // Built-in Classic P90X Phase 1 preset: always use the built-in template (weeks repeat unchanged).
+  // Do not treat this as a custom series with week overrides.
+  if (series === SERIES_P90X_CLASSIC_PHASE1) {
+    return deepClone(template);
+  }
+
+  // Built-in Classic P90X Phase 2 preset: always use the built-in template (weeks repeat unchanged).
+  // Do not treat this as a custom series with week overrides.
+  if (series === SERIES_P90X_CLASSIC_PHASE2) {
     return deepClone(template);
   }
 
@@ -2901,6 +3320,10 @@ document.addEventListener("DOMContentLoaded", () => {
   try { runUltraSubtleSplash(); } catch (_) {}
   // Make all TrackMate logos act as a Home shortcut.
   try { bindHomeLogoShortcuts(); } catch (_) {}
+
+  // Apply theme early (avoid Android fixed-position issues by filtering #app only)
+  try { applyThemeToDocument(getThemePref()); } catch (_) {}
+
 
   // Ensure the active series exists in the registry (used for ordering in My Past Workouts)
   ensureSeriesRegistryEntry(getActiveSeriesName());
@@ -3354,6 +3777,80 @@ function syncWorkoutDaySelectOptionsForSeries(seriesName) {
     return;
   }
 
+
+
+// Classic P90X Phase 1 preset: 8 sessions per week (5 primary days + 3 Ab Ripper X days)
+if (name === SERIES_P90X_CLASSIC_PHASE1) {
+  const options = [
+    { value: "0", label: "Day 1a" },
+    { value: "1", label: "Day 1b" },
+    { value: "2", label: "Day 2" },
+    { value: "3", label: "Day 3a" },
+    { value: "4", label: "Day 3b" },
+    { value: "5", label: "Day 4" },
+    { value: "6", label: "Day 5a" },
+    { value: "7", label: "Day 5b" },
+  ];
+  select.innerHTML = "";
+  options.forEach((o) => {
+    const opt = document.createElement("option");
+    opt.value = o.value;
+    opt.textContent = o.label;
+    select.appendChild(opt);
+  });
+  if (options.some((o) => o.value === current)) select.value = current;
+  else select.value = "0";
+  return;
+}
+
+// Classic P90X Phase 2 preset: 8 sessions per week (5 primary days + 3 Ab Ripper X days)
+if (name === SERIES_P90X_CLASSIC_PHASE2) {
+  const options = [
+    { value: "0", label: "Day 1a" },
+    { value: "1", label: "Day 1b" },
+    { value: "2", label: "Day 2" },
+    { value: "3", label: "Day 3a" },
+    { value: "4", label: "Day 3b" },
+    { value: "5", label: "Day 4" },
+    { value: "6", label: "Day 5a" },
+    { value: "7", label: "Day 5b" },
+  ];
+  select.innerHTML = "";
+  options.forEach((o) => {
+    const opt = document.createElement("option");
+    opt.value = o.value;
+    opt.textContent = o.label;
+    select.appendChild(opt);
+  });
+  if (options.some((o) => o.value === current)) select.value = current;
+  else select.value = "0";
+  return;
+}
+
+// Classic P90X Phase 3 preset: 8 sessions per week (5 primary days + 3 Ab Ripper X days)
+if (name === SERIES_P90X_CLASSIC_PHASE3) {
+  const options = [
+    { value: "0", label: "Day 1a" },
+    { value: "1", label: "Day 1b" },
+    { value: "2", label: "Day 2" },
+    { value: "3", label: "Day 3a" },
+    { value: "4", label: "Day 3b" },
+    { value: "5", label: "Day 4" },
+    { value: "6", label: "Day 5a" },
+    { value: "7", label: "Day 5b" },
+  ];
+  select.innerHTML = "";
+  options.forEach((o) => {
+    const opt = document.createElement("option");
+    opt.value = o.value;
+    opt.textContent = o.label;
+    select.appendChild(opt);
+  });
+  if (options.some((o) => o.value === current)) select.value = current;
+  else select.value = "0";
+  return;
+}
+
   // Custom programmes: Days 1-7
   select.innerHTML = "";
   for (let i = 0; i < 7; i++) {
@@ -3474,8 +3971,9 @@ function renderCustomBuilderForCurrentDay() {
     const topRow = document.createElement("div");
     topRow.className = "exercise-header-top-row";
 
+    const isYoga = isYogaExercise(ex.name || "");
     const meta = exerciseLibrary?.[ex.name] || {};
-    const defaultEquip = (meta?.equipment || tmInferEquipmentCode(ex.name) || "BW");
+    const defaultEquip = isYoga ? "BW" : (meta?.equipment || tmInferEquipmentCode(ex.name) || "BW");
     const selectedEquip = (ex.equipment || defaultEquip);
 
     const title = document.createElement("p");
@@ -3553,12 +4051,34 @@ function renderCustomBuilderForCurrentDay() {
     setsGrid.className = "sets-grid";
 
     const meta2 = exerciseLibrary?.[ex.name] || {};
-    const isCardio = (meta2?.type === "cardio") || (String(meta2?.category || "").toLowerCase() === "cardio");
-    const isTreadmill = isTreadmillStyleCardio(ex.name || "");
+    const isYoga2 = isYogaExercise(ex.name || "");
+    const isCardio = isYoga2 || (meta2?.type === "cardio") || (String(meta2?.category || "").toLowerCase() === "cardio");
+    const isTreadmill = (!isYoga2) && isTreadmillStyleCardio(ex.name || "");
 
     // Cardio exercises in the Custom Programme builder should preview cardio inputs (not kg/reps).
     if (isCardio) {
-      if (isTreadmill) {
+      if (isYoga2) {
+        // Yoga preview: single full-width column with 2 inputs (duration, intensity).
+        setsGrid.classList.add("sets-grid--yoga");
+        const cell = document.createElement("div");
+        cell.className = "set-cell";
+
+        const fields = document.createElement("div");
+        fields.className = "set-fields set-fields--yoga";
+
+        const durPill = document.createElement("div");
+        durPill.className = "input-pill input-pill--yoga";
+        durPill.textContent = "dur. (min)";
+
+        const intsPill = document.createElement("div");
+        intsPill.className = "input-pill input-pill--yoga";
+        intsPill.textContent = "ints.";
+
+        fields.appendChild(durPill);
+        fields.appendChild(intsPill);
+        cell.appendChild(fields);
+        setsGrid.appendChild(cell);
+      } else if (isTreadmill) {
         // Treadmill preview: single full-width row with 3 inputs (duration, incline, intensity).
         setsGrid.classList.add("sets-grid--treadmill");
 
@@ -3628,7 +4148,12 @@ function renderCustomBuilderForCurrentDay() {
     }
 
 
-    const targetReps = getTargetRepsFromPrescription(ex.prescription) || 8;
+    // Edit: 5.1.1 — P90X Classic (Phases 1–3): show "Max" instead of numeric reps for Max-style prescriptions.
+    // NOTE: display-only; internal calculations keep a safe numeric default.
+    const activeSeries = getActiveSeriesName();
+    const isP90XClassic = isP90XClassicSeriesName(activeSeries);
+    const hasMaxPrescription = /\bmax\b/i.test(String(ex.prescription || ""));
+    const targetReps = (isP90XClassic && hasMaxPrescription) ? 8 : (getTargetRepsFromPrescription(ex.prescription) || 8);
     const equipCode = card.dataset.equipment || selectedEquip;
 
     const visibleSets = Number.isFinite(parseInt(ex.setCount, 10)) ? Math.min(8, Math.max(1, parseInt(ex.setCount, 10))) : 4;
@@ -3696,7 +4221,7 @@ function getBuilderSuggestedWeightDisplay(exName, targetReps, equipmentCode) {
 
 function refreshBuilderCardSuggestions(card, ex, equipCode) {
   const meta = exerciseLibrary?.[ex?.name] || {};
-  const isCardio = (meta?.type === "cardio") || (String(meta?.category || "").toLowerCase() === "cardio");
+  const isCardio = isYogaExercise(ex?.name || "") || (meta?.type === "cardio") || (String(meta?.category || "").toLowerCase() === "cardio");
   if (isCardio) return;
   const targetReps = getTargetRepsFromPrescription(ex.prescription) || 8;
   const wSuggest = getBuilderSuggestedWeightDisplay(ex.name, targetReps, equipCode);
@@ -4205,9 +4730,54 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
       window.alert(`Classic P90X — ${phaseLabel} is coming soon.`);
     });
   }
-  bindP90XPhaseButton("btn-program-p90x-phase1", "Phase 1");
-  bindP90XPhaseButton("btn-program-p90x-phase2", "Phase 2");
-  bindP90XPhaseButton("btn-program-p90x-phase3", "Phase 3");
+
+// Classic P90X — Phase 1 (preset programme)
+document.getElementById("btn-program-p90x-phase1")?.addEventListener("click", (e) => {
+  try { e?.preventDefault?.(); } catch (_) {}
+  setActiveSeriesName(SERIES_P90X_CLASSIC_PHASE1);
+  try { syncWorkoutDaySelectOptionsForSeries(SERIES_P90X_CLASSIC_PHASE1); } catch (_) {}
+  currentWeek = 1;
+  currentDayIndex = 0;
+  setActiveWeekTab(1);
+  const sel = document.getElementById("workout-day-select");
+  if (sel) sel.value = "0";
+  closeWorkoutMenu();
+  showScreen("screen-workout");
+  try { window.scrollTo({ top: 0, left: 0, behavior: "auto" }); } catch (_) {}
+  renderWorkoutDay(0);
+});
+
+// Classic P90X — Phase 2 (preset programme)
+document.getElementById("btn-program-p90x-phase2")?.addEventListener("click", (e) => {
+  try { e?.preventDefault?.(); } catch (_) {}
+  setActiveSeriesName(SERIES_P90X_CLASSIC_PHASE2);
+  try { syncWorkoutDaySelectOptionsForSeries(SERIES_P90X_CLASSIC_PHASE2); } catch (_) {}
+  currentWeek = 1;
+  currentDayIndex = 0;
+  setActiveWeekTab(1);
+  const sel = document.getElementById("workout-day-select");
+  if (sel) sel.value = "0";
+  closeWorkoutMenu();
+  showScreen("screen-workout");
+  try { window.scrollTo({ top: 0, left: 0, behavior: "auto" }); } catch (_) {}
+  renderWorkoutDay(0);
+});
+
+// Classic P90X — Phase 3 (preset programme; rotates weeks between Phase 1 and Phase 2)
+document.getElementById("btn-program-p90x-phase3")?.addEventListener("click", (e) => {
+  try { e?.preventDefault?.(); } catch (_) {}
+  setActiveSeriesName(SERIES_P90X_CLASSIC_PHASE3);
+  try { syncWorkoutDaySelectOptionsForSeries(SERIES_P90X_CLASSIC_PHASE3); } catch (_) {}
+  currentWeek = 1;
+  currentDayIndex = 0;
+  setActiveWeekTab(1);
+  const sel = document.getElementById("workout-day-select");
+  if (sel) sel.value = "0";
+  closeWorkoutMenu();
+  showScreen("screen-workout");
+  try { window.scrollTo({ top: 0, left: 0, behavior: "auto" }); } catch (_) {}
+  renderWorkoutDay(0);
+});
 
   // Defensive event delegation: ensures the Rock programme button works even if
   // the direct listener fails to bind (e.g., due to cached/partial DOM states).
@@ -5295,8 +5865,54 @@ const seriesSorted = seriesNames
     weekTabs.forEach((tab) => tab.classList.toggle("week-tab--active", parseInt(tab.dataset.week, 10) === week));
   }
 
+  function getPlannedWeeksCountForSeries(seriesName) {
+    const series = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
+    if (series === SERIES_P90X_CLASSIC_PHASE1) return 4;
+    if (series === SERIES_P90X_CLASSIC_PHASE2) return 4;
+    if (series === SERIES_P90X_CLASSIC_PHASE3) return 4;
+    return 6;
+  }
+
+  function computeReviewMaxWeek() {
+    let max = 6;
+    try {
+      const nums = Array.from(weekTabs || [])
+        .filter(t => !t.classList.contains("week-tab--hidden"))
+        .map(t => parseInt(t.dataset.week, 10))
+        .filter(n => Number.isFinite(n));
+      if (nums.length) max = Math.max(...nums);
+    } catch (_) {}
+    return max;
+  }
+
+  let __lastAppliedWeekTabsSeries = "";
+  function applyWeekTabVisibilityForSeries(seriesName) {
+    const series = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
+    if (__lastAppliedWeekTabsSeries === series) return;
+    __lastAppliedWeekTabsSeries = series;
+
+    const maxWeeks = getPlannedWeeksCountForSeries(series);
+    weekTabs.forEach((tab) => {
+      const w = parseInt(tab.dataset.week, 10);
+      const hide = Number.isFinite(w) && w > maxWeeks;
+      tab.classList.toggle("week-tab--hidden", hide);
+      tab.disabled = !!hide;
+      if (hide) tab.setAttribute("aria-hidden", "true");
+      else tab.removeAttribute("aria-hidden");
+    });
+
+    if (currentWeek > maxWeeks) {
+      currentWeek = maxWeeks;
+      setActiveWeekTab(currentWeek);
+    }
+
+    reviewMaxWeek = computeReviewMaxWeek();
+    syncReviewNavUI();
+  }
+
   weekTabs.forEach((tab) => {
     tab.addEventListener("click", () => {
+      if (tab.classList.contains("week-tab--hidden") || tab.disabled) return;
       const w = parseInt(tab.dataset.week, 10);
       if (!Number.isNaN(w)) {
         currentWeek = w;
@@ -5328,14 +5944,7 @@ const seriesSorted = seriesNames
   const workoutReviewPrev = document.getElementById("workout-review-prev");
   const workoutReviewNext = document.getElementById("workout-review-next");
   const reviewMinWeek = 1;
-  const reviewMaxWeek = (() => {
-    let max = 6;
-    try {
-      const nums = Array.from(weekTabs || []).map(t => parseInt(t.dataset.week, 10)).filter(n => Number.isFinite(n));
-      if (nums.length) max = Math.max(...nums);
-    } catch (_) {}
-    return max;
-  })();
+  let reviewMaxWeek = computeReviewMaxWeek();
 
   function syncReviewNavUI() {
     if (workoutReviewPrev) workoutReviewPrev.classList.toggle("is-disabled", currentWeek <= reviewMinWeek);
@@ -6269,6 +6878,12 @@ updateWorkoutSummary(day);
       });
     }
 
+    // Ensure the exercise editor always opens scrolled to the top (prevents mid-modal resumes).
+    try {
+      const modal = editOverlay?.querySelector?.(".set-edit-modal");
+      if (modal) modal.scrollTop = 0;
+    } catch (_) {}
+
     editOverlay.classList.add("set-edit-overlay--active");
   }
 
@@ -6624,7 +7239,7 @@ updateWorkoutSummary(day);
       if (card) {
         const setCount = card.querySelectorAll(".set-cell").length;
         const exName = card.querySelector(".exercise-title")?.textContent || "";
-        updateExerciseCardCompletion(card, state, week, dayIndex, exIndex, setCount, isCardioExercise(exName));
+        updateExerciseCardCompletion(card, state, week, dayIndex, exIndex, setCount, isYogaExercise(exName) || isCardioExercise(exName));
       }
     } catch (_) {}
 
@@ -6687,7 +7302,13 @@ updateWorkoutSummary(day);
     const profile = readJSON(STORAGE_KEYS.profile, null);
     const suggestedOn = getSuggestedWeightsEnabled();
 
-    const targetReps = getTargetRepsFromPrescription(ex.prescription) || 8;
+    // Edit: 5.1.1 — P90X Classic (Phases 1–3): show "Max" instead of numeric reps for Max-style prescriptions.
+    // NOTE: display-only; internal calculations keep a safe numeric default.
+    const activeSeries = getActiveSeriesName();
+    const isP90XClassic = isP90XClassicSeriesName(activeSeries);
+    const hasMaxPrescription = /\bmax\b/i.test(String(ex.prescription || ""));
+    const targetReps = (isP90XClassic && hasMaxPrescription) ? 8 : (getTargetRepsFromPrescription(ex.prescription) || 8);
+    const repsLabel = (isP90XClassic && hasMaxPrescription) ? "Max" : String(targetReps);
 
     // IMPORTANT: The kill switch must fully disable weight suggestions.
     // We still keep the prescribed reps visible as part of the programme.
@@ -6722,7 +7343,7 @@ updateWorkoutSummary(day);
       const hasUserW = rawUserW !== "" && Number(rawUserW) > 0;
       const hasUserR = (rPill.dataset.value || "") !== "";
 
-      const suggestionR = String(targetReps);
+      const suggestionR = (isP90XClassic && hasMaxPrescription) ? "Max" : String(targetReps);
 
       let suggestionW = "";
       if (!suggestedOn) {
@@ -6775,7 +7396,7 @@ updateWorkoutSummary(day);
 	        rPill.textContent = `${rPill.dataset.value} reps`;
 	        rPill.classList.remove("input-pill--suggested");
 	      } else {
-	        rPill.textContent = `${suggestionR} reps`;
+	        rPill.textContent = (suggestionR === "Max") ? "Max" : `${suggestionR} reps`;
 	        rPill.classList.add("input-pill--suggested");
 	      }
     }
@@ -6832,7 +7453,9 @@ updateWorkoutSummary(day);
 
   // Render workout day
   function renderWorkoutDay(dayIndex) {
-    const program = getProgramForWeek(currentWeek);
+    const activeSeries = getActiveSeriesName();
+    try { applyWeekTabVisibilityForSeries(activeSeries); } catch (_) {}
+    const program = getProgramForWeek(currentWeek, activeSeries);
     let idx = parseInt(dayIndex, 10);
     if (!Number.isFinite(idx)) idx = 0;
 
@@ -6852,8 +7475,6 @@ updateWorkoutSummary(day);
     currentDayIndex = idx;
     
     setLastViewedWorkout(currentWeek, currentDayIndex);
-
-    const activeSeries = getActiveSeriesName();
 
     // Ensure the Edit pill visibility stays in sync when switching programmes/days.
     try { syncWorkoutEditProgramButton(); } catch (_) {}
@@ -6979,6 +7600,18 @@ updateWorkoutSummary(day);
     const renderItems = applyCardOrderOverride(renderItemsCanonical);
 
     renderItems.forEach(({ ex, exIndex }, uiIndex) => {
+
+// Classic P90X divider labels (e.g., "Bonus Round") — render as a simple section label, not a workout card.
+try {
+  const exName = (ex?.name || "").toString().trim().toLowerCase();
+  if (exName === "bonus round") {
+    const divider = document.createElement("div");
+    divider.className = "exercise-divider";
+    divider.textContent = "Bonus Round";
+    workoutExerciseList.appendChild(divider);
+    return;
+  }
+} catch (_) {}
       const card = document.createElement("div");
       card.className = "exercise-card";
 
@@ -6993,8 +7626,9 @@ updateWorkoutSummary(day);
       const topRow = document.createElement("div");
       topRow.className = "exercise-header-top-row";
 
+      const isYoga = isYogaExercise(ex.name || "");
       const meta = exerciseLibrary[ex.name];
-      const defaultEquip = (meta?.equipment || tmInferEquipmentCode(ex.name) || "BW");
+      const defaultEquip = isYoga ? "BW" : (meta?.equipment || tmInferEquipmentCode(ex.name) || "BW");
 
       // Persisted equipment choice per week/day/exercise
       const exState = getExerciseState(state, currentWeek, dayIndex, exIndex);
@@ -7188,8 +7822,14 @@ updateWorkoutSummary(day);
       setsGrid.className = "sets-grid";
 
       const equipCode = card.dataset.equipment || defaultEquip;
-      const targetReps = getTargetRepsFromPrescription(ex.prescription) || 8; // safe default
 	      const activeSeries = getActiveSeriesName();
+
+      // Edit: 5.1.1 — P90X Classic (Phases 1–3): show "Max" instead of numeric reps for Max-style prescriptions.
+      // NOTE: display-only; internal calculations keep a safe numeric default.
+      const isP90XClassic = isP90XClassicSeriesName(activeSeries);
+      const hasMaxPrescription = /\bmax\b/i.test(String(ex.prescription || ""));
+      const targetReps = (isP90XClassic && hasMaxPrescription) ? 8 : (getTargetRepsFromPrescription(ex.prescription) || 8); // safe default
+      const repsLabel = (isP90XClassic && hasMaxPrescription) ? "Max" : String(targetReps);
 
       // Suggested weights kill switch (default OFF)
       const suggestedOn = getSuggestedWeightsEnabled();
@@ -7294,8 +7934,11 @@ updateWorkoutSummary(day);
         ? (Number.isFinite(parseInt(exState.setCount, 10)) ? Math.min(8, Math.max(1, parseInt(exState.setCount, 10))) : 4)
         : (Number.isFinite(parseInt(ex.setCount, 10)) ? Math.min(8, Math.max(1, parseInt(ex.setCount, 10))) : 4);
 
-      const isCardio = isCardioExercise(ex.name);
-      const isTreadmillCardio = isCardio && isTreadmillStyleCardio(ex.name || "");
+      const isCardio = isYoga || isCardioExercise(ex.name);
+      const isTreadmillCardio = isCardio && (!isYoga) && isTreadmillStyleCardio(ex.name || "");
+
+      // Yoga sessions always track as a single duration/intensity row.
+      const effectiveSetCount = isYoga ? 1 : setCount;
 
       // Treadmill cards should use the full card width for the single 3-field row.
       // The default .sets-grid is a 2-column grid (meant for multiple set cells),
@@ -7304,14 +7947,18 @@ updateWorkoutSummary(day);
         setsGrid.classList.add("sets-grid--treadmill");
       }
 
-      for (let setIndex = 0; setIndex < setCount; setIndex++) {
+      if (isYoga) {
+        setsGrid.classList.add("sets-grid--yoga");
+      }
+
+      for (let setIndex = 0; setIndex < effectiveSetCount; setIndex++) {
         // Treadmill activities use a single 3-field row (no per-set rows).
         if (isTreadmillCardio && setIndex > 0) continue;
         const cell = document.createElement("div");
         cell.className = "set-cell";
 
         let label = null;
-        if (!isTreadmillCardio) {
+        if (!isTreadmillCardio && !isYoga) {
           label = document.createElement("div");
           label.className = "set-label";
           // Set label row (with optional per-set Superset indicator)
@@ -7329,9 +7976,12 @@ updateWorkoutSummary(day);
         const saved = getSetState(st, currentWeek, dayIndex, exIndex, setIndex);
 
         if (isCardio) {
-          const isTreadmill = isTreadmillStyleCardio(ex.name || "");
+          const isTreadmill = (!isYoga) && isTreadmillStyleCardio(ex.name || "");
           if (isTreadmill) fields.classList.add("set-fields--treadmill");
-          const pillBaseClass = isTreadmill ? "input-pill input-pill--treadmill" : "input-pill input-pill--small";
+          if (isYoga) fields.classList.add("set-fields--yoga");
+          const pillBaseClass = isTreadmill
+            ? "input-pill input-pill--treadmill"
+            : (isYoga ? "input-pill input-pill--yoga" : "input-pill input-pill--small");
 
           const timePill = document.createElement("button");
           timePill.type = "button";
@@ -7426,7 +8076,7 @@ updateWorkoutSummary(day);
           }
 
           const suggestionW = progressedSuggestion(setIndex) || (isCoreOrBW(ex.name) ? "00" : "");
-          const suggestionR = String(targetReps);
+          const suggestionR = repsLabel;
 
           weightPill.dataset.suggestion = suggestionW;
           repsPill.dataset.suggestion = suggestionR;
@@ -7455,7 +8105,7 @@ updateWorkoutSummary(day);
             repsPill.textContent = `${saved.r} reps`;
             repsPill.classList.remove("input-pill--suggested");
           } else if (suggestionR) {
-            repsPill.textContent = `${suggestionR} reps`;
+            repsPill.textContent = (suggestionR === "Max") ? "Max" : `${suggestionR} reps`;
             repsPill.classList.add("input-pill--suggested");
           } else {
             repsPill.textContent = "reps";
@@ -8118,6 +8768,16 @@ window.setTimeout(() => {
       if (profileToggle) profileToggle.checked = enabled;
     });
   }
+
+  // Dark / Twilight mode toggle (Settings) — canonical dark experience via inversion
+  const themeInvertToggle = document.getElementById("settings-theme-invert");
+  if (themeInvertToggle) {
+    themeInvertToggle.checked = (getThemePref() === "invert");
+    themeInvertToggle.addEventListener("change", () => {
+      setThemePref(themeInvertToggle.checked ? "invert" : "light");
+    });
+  }
+
 
   // Settings screen actions
   document.querySelectorAll("[data-settings-action]").forEach((btn) => {
