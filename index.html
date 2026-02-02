@@ -46,7 +46,7 @@
 
             <h1 id="welcomeTitle" class="welcome-title">Welcome!</h1>
 
-			<p class="welcome-tagline">TrackMate: Your Training Buddy.</p>
+			<p class="welcome-tagline">TrackMate — Your Training Buddy.</p>
 
             <div class="welcome-buttons">
                 <button id="btn-welcome-setup" class="btn btn-outline-teal">
@@ -67,7 +67,7 @@
                 </button>
             </div>
 
-			<p class="welcome-version">Version 5.1.1</p>
+			<p class="welcome-version">Version 5.2.7</p>
 			<p class="welcome-copyright">© 2026 TrackMate. All rights reserved.</p>
         </main>
 
@@ -278,7 +278,7 @@
 
 
             <section class="choice-card">
-                <h2 class="choice-title">Sklar 6-Week Strength &amp; Hypertrophy</h2>
+                <div class="choice-title-row"><h2 class="choice-title">Sklar 6-Week Strength &amp; Hypertrophy</h2><button type="button" class="program-preview-btn" data-preview-series="sklar" aria-label="Preview Sklar 6-Week Strength &amp; Hypertrophy"><img class="program-preview-icon" src="assets/preview-icon.png" alt="" aria-hidden="true"></button></div>
                 <p class="choice-text">
                     Upper / lower / pump split inspired by trainer Paul Sklar with 6 weeks of progressive training.
                 </p>
@@ -288,7 +288,7 @@
             </section>
 
             <section class="choice-card">
-                <h2 class="choice-title">The Rock Training Program</h2>
+                <div class="choice-title-row"><h2 class="choice-title">The Rock Training Program</h2><button type="button" class="program-preview-btn" data-preview-series="rock" aria-label="Preview The Rock Training Program"><img class="program-preview-icon" src="assets/preview-icon.png" alt="" aria-hidden="true"></button></div>
                 <p class="choice-text">
                     High-volume bodybuilding split with 6 training days per week.
                 </p>
@@ -298,7 +298,7 @@
             </section>
 
             <section class="choice-card">
-                <h2 class="choice-title">Fight Club Training Program</h2>
+                <div class="choice-title-row"><h2 class="choice-title">Fight Club Training Program</h2><button type="button" class="program-preview-btn" data-preview-series="fightclub" aria-label="Preview Fight Club Training Program"><img class="program-preview-icon" src="assets/preview-icon.png" alt="" aria-hidden="true"></button></div>
                 <p class="choice-text">
                     Lean muscle, high definition, traditional split + cardio with 6 training days per week.
                 </p>
@@ -308,7 +308,7 @@
             </section>
 
 			<section class="choice-card">
-				<h2 class="choice-title">Classic P90X</h2>
+				<div class="choice-title-row"><h2 class="choice-title">Classic P90X</h2><button type="button" class="program-preview-btn" data-preview-series="p90x" aria-label="Preview Classic P90X"><img class="program-preview-icon" src="assets/preview-icon.png" alt="" aria-hidden="true"></button></div>
 				<p class="choice-text">
 					Iconic 90-day training programme with three phases: strength &amp; endurance, muscle growth, and peak performance.
 				</p>
@@ -1082,5 +1082,17 @@
       </div>
     </div>
   </div>
+
+  <!-- Programme Preview (read-only) -->
+  <div id="program-preview-overlay" class="set-edit-overlay" aria-hidden="true">
+    <div class="set-edit-modal program-preview-modal" style="max-height: 80vh; overflow: hidden;">
+      <div class="program-preview-header">
+        <h2 id="program-preview-title" class="set-edit-title">Programme Preview</h2>
+        <button type="button" id="program-preview-close" class="program-preview-close" aria-label="Close preview">×</button>
+      </div>
+      <div id="program-preview-body" class="program-preview-body"></div>
+    </div>
+  </div>
+
 </body>
 </html>
