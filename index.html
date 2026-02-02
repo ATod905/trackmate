@@ -46,7 +46,7 @@
 
             <h1 id="welcomeTitle" class="welcome-title">Welcome!</h1>
 
-			<p class="welcome-tagline">TrackMate — Your Training Buddy.</p>
+			<p class="welcome-tagline">TrackMate: Your Training Buddy.</p>
 
             <div class="welcome-buttons">
                 <button id="btn-welcome-setup" class="btn btn-outline-teal">
@@ -67,7 +67,7 @@
                 </button>
             </div>
 
-			<p class="welcome-version">Version 5.2.7</p>
+			<p class="welcome-version">Version 5.2.11</p>
 			<p class="welcome-copyright">© 2026 TrackMate. All rights reserved.</p>
         </main>
 
@@ -201,6 +201,42 @@
                 </div>
                 <div class="tm-help">
                     If you would like suggested weights to be added into your programme every week as a target, please turn this on. You can turn it off at any point in the Settings menu.
+                </div>
+
+                <div class="settings-label" style="margin-top: 14px;">How 'Continue to Workouts' button opens:</div>
+
+                <div class="settings-item settings-row settings-subrow" id="profile-continue-next-row">
+                    <div class="settings-row-label">Next incomplete workout</div>
+                    <label class="tm-switch" aria-label="Open next incomplete workout when continuing">
+                        <input type="checkbox" id="profile-continue-next" />
+                        <span class="tm-switch-slider"></span>
+                    </label>
+                </div>
+
+                <div class="settings-item settings-row settings-subrow" id="profile-continue-resume-row">
+                    <div class="settings-row-label">Resume last viewed</div>
+                    <label class="tm-switch" aria-label="Resume last viewed workout when continuing">
+                        <input type="checkbox" id="profile-continue-resume" />
+                        <span class="tm-switch-slider"></span>
+                    </label>
+                </div>
+
+                <div class="settings-item settings-row" id="profile-theme-row" style="margin-top: 10px;">
+                    <div class="settings-row-label">Dark / Twilight mode</div>
+                    <label class="tm-switch" aria-label="Enable Dark / Twilight mode">
+                        <input type="checkbox" id="profile-theme-invert" />
+                        <span class="tm-switch-slider"></span>
+                    </label>
+                </div>
+
+
+
+                <div class="tm-help" style="margin-top: 6px;">
+                    If you would like a high-contrast Twilight mode for improved visibility, please turn this on.
+                </div>
+
+                <div class="tm-help" style="margin-top: 10px;">
+                    If you would like to change these later, please visit the Settings menu.
                 </div>
             </div>
 
@@ -441,6 +477,7 @@
                     <button type="button" class="exercise-edit-category-pill" data-custom-cat="Shoulders">Shoulders</button>
                     <button type="button" class="exercise-edit-category-pill" data-custom-cat="Core">Core</button>
                     <button type="button" class="exercise-edit-category-pill" data-custom-cat="Cardio">Cardio</button>
+                <button type="button" class="exercise-edit-category-pill" data-custom-cat="Yoga">Yoga</button>
                 </div>
 
                 <div id="custom-ex-picker-list" style="margin-top:10px; overflow:auto; max-height: 52vh;"></div>
@@ -885,7 +922,7 @@
                     </label>
                 </div>
 
-                <div class="settings-label">Continue to Workouts opens</div>
+                <div class="settings-label">How 'Continue to Workouts' button opens:</div>
 
                 <div class="settings-item settings-row settings-subrow" id="settings-continue-next-row">
                     <div class="settings-row-label">Next incomplete workout</div>
