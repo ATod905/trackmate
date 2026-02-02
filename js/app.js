@@ -9104,10 +9104,16 @@ window.setTimeout(() => {
   // Continue behaviour toggles (Settings) - mutually exclusive (radio-style)
   const continueNextToggle = document.getElementById("settings-continue-next");
   const continueResumeToggle = document.getElementById("settings-continue-resume");
+  // Profile equivalents (same preference, shown for discoverability)
+  const profileContinueNextToggle = document.getElementById("profile-continue-next");
+  const profileContinueResumeToggle = document.getElementById("profile-continue-resume");
+
   function syncContinueTogglesFromMode(mode) {
     const m = (mode === "resume" || mode === "next") ? mode : "next";
     if (continueNextToggle) continueNextToggle.checked = (m === "next");
     if (continueResumeToggle) continueResumeToggle.checked = (m === "resume");
+    if (profileContinueNextToggle) profileContinueNextToggle.checked = (m === "next");
+    if (profileContinueResumeToggle) profileContinueResumeToggle.checked = (m === "resume");
   }
   if (continueNextToggle && continueResumeToggle) {
     // Initial sync
@@ -9137,6 +9143,32 @@ window.setTimeout(() => {
     const mode = getContinueMode();
     if (continueNextToggle) continueNextToggle.checked = (mode === "next");
     if (continueResumeToggle) continueResumeToggle.checked = (mode === "resume");
+    if (profileContinueNextToggle) profileContinueNextToggle.checked = (mode === "next");
+    if (profileContinueResumeToggle) profileContinueResumeToggle.checked = (mode === "resume");
+  }
+
+  // Bind Profile continue toggles (mirror Settings behaviour)
+  if (profileContinueNextToggle && profileContinueResumeToggle) {
+    // Initial sync (covers cases where Settings screen hasn't been opened yet)
+    syncContinueTogglesFromMode(getContinueMode());
+
+    profileContinueNextToggle.addEventListener("change", () => {
+      if (profileContinueNextToggle.checked) {
+        setContinueMode("next");
+        syncContinueTogglesFromMode("next");
+      } else {
+        syncContinueTogglesFromMode(getContinueMode());
+      }
+    });
+
+    profileContinueResumeToggle.addEventListener("change", () => {
+      if (profileContinueResumeToggle.checked) {
+        setContinueMode("resume");
+        syncContinueTogglesFromMode("resume");
+      } else {
+        syncContinueTogglesFromMode(getContinueMode());
+      }
+    });
   }
 
   // Suggested weights toggle (Settings) - kill switch (default OFF)
@@ -9153,10 +9185,21 @@ window.setTimeout(() => {
 
   // Dark / Twilight mode toggle (Settings) — canonical dark experience via inversion
   const themeInvertToggle = document.getElementById("settings-theme-invert");
+  const profileThemeInvertToggle = document.getElementById("profile-theme-invert");
   if (themeInvertToggle) {
     themeInvertToggle.checked = (getThemePref() === "invert");
     themeInvertToggle.addEventListener("change", () => {
       setThemePref(themeInvertToggle.checked ? "invert" : "light");
+      if (profileThemeInvertToggle) profileThemeInvertToggle.checked = themeInvertToggle.checked;
+    });
+  }
+
+  // Dark / Twilight mode toggle (Profile) — mirrors Settings
+  if (profileThemeInvertToggle) {
+    profileThemeInvertToggle.checked = (getThemePref() === "invert");
+    profileThemeInvertToggle.addEventListener("change", () => {
+      setThemePref(profileThemeInvertToggle.checked ? "invert" : "light");
+      if (themeInvertToggle) themeInvertToggle.checked = profileThemeInvertToggle.checked;
     });
   }
 
