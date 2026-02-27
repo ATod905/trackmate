@@ -17,7 +17,7 @@
   <style>html,body{background:#1f9aa0;}</style>
 <title>TrackMate</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/style.css?v=5.5.27" />
   <link rel="icon" type="image/png" href="assets/TrackMate_logo_icon.png" />
   <link rel="apple-touch-icon" href="assets/TrackMate_logo_icon.png" />
   <link rel="manifest" href="manifest.json" />
@@ -67,7 +67,7 @@
                 </button>
             </div>
 
-			<p class="welcome-version">Version 5.2.11</p>
+			<p class="welcome-version">Version 5.5.27</p>
 			<p class="welcome-copyright">© 2026 TrackMate. All rights reserved.</p>
         </main>
 
@@ -203,7 +203,7 @@
                     If you would like suggested weights to be added into your programme every week as a target, please turn this on. You can turn it off at any point in the Settings menu.
                 </div>
 
-                <div class="settings-label" style="margin-top: 14px;">How 'Continue to Workouts' button opens:</div>
+                <div class="settings-label" style="margin-top: 14px;">Select how the Continue to Workouts button will open:</div>
 
                 <div class="settings-item settings-row settings-subrow" id="profile-continue-next-row">
                     <div class="settings-row-label">Next incomplete workout</div>
@@ -302,9 +302,16 @@
                 </label>
                 <p class="tm-error" id="create-program-error" hidden>Please enter a programme name.</p>
 
+                <div class="program-action-row">
                 <button type="button" id="btn-program-create" class="btn btn-teal btn-full" style="margin-top: 10px;">
                     Start Building
                 </button>
+                
+                <div class="program-reorder-controls" aria-label="Reorder programme">
+                    <button type="button" class="reorder-btn reorder-btn--up" aria-label="Move programme up"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 14l6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                    <button type="button" class="reorder-btn reorder-btn--down" aria-label="Move programme down"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 10l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                </div>
+            </div>
             </section>
 
             <section class="choice-card" id="created-programs-block" hidden>
@@ -318,9 +325,16 @@
                 <p class="choice-text">
                     Upper / lower / pump split inspired by trainer Paul Sklar with 6 weeks of progressive training.
                 </p>
+                <div class="program-action-row">
                 <button type="button" id="btn-program-sklar" class="btn btn-teal btn-full">
                     Use this Program
                 </button>
+                
+                <div class="program-reorder-controls" aria-label="Reorder programme">
+                    <button type="button" class="reorder-btn reorder-btn--up" aria-label="Move programme up"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 14l6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                    <button type="button" class="reorder-btn reorder-btn--down" aria-label="Move programme down"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 10l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                </div>
+            </div>
             </section>
 
             <section class="choice-card">
@@ -328,9 +342,16 @@
                 <p class="choice-text">
                     High-volume bodybuilding split with 6 training days per week.
                 </p>
+                <div class="program-action-row">
                 <button type="button" id="btn-program-rock" class="btn btn-teal btn-full">
                     Use this Program
                 </button>
+                
+                <div class="program-reorder-controls" aria-label="Reorder programme">
+                    <button type="button" class="reorder-btn reorder-btn--up" aria-label="Move programme up"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 14l6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                    <button type="button" class="reorder-btn reorder-btn--down" aria-label="Move programme down"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 10l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                </div>
+            </div>
             </section>
 
             <section class="choice-card">
@@ -338,9 +359,33 @@
                 <p class="choice-text">
                     Lean muscle, high definition, traditional split + cardio with 6 training days per week.
                 </p>
+                <div class="program-action-row">
                 <button type="button" id="btn-program-fightclub" class="btn btn-teal btn-full">
                     Use this Program
                 </button>
+                
+                <div class="program-reorder-controls" aria-label="Reorder programme">
+                    <button type="button" class="reorder-btn reorder-btn--up" aria-label="Move programme up"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 14l6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                    <button type="button" class="reorder-btn reorder-btn--down" aria-label="Move programme down"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 10l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                </div>
+            </div>
+            </section>
+
+            <section class="choice-card">
+                <div class="choice-title-row"><h2 class="choice-title">Rehab- GM</h2><button type="button" class="program-preview-btn" data-preview-series="gm" aria-label="Preview Rehab- GM"><img class="program-preview-icon" src="assets/preview-icon.png" alt="" aria-hidden="true"></button></div>
+                <p class="choice-text">
+                    Knee-friendly leg strength, upper push, and dedicated mobility and recovery day rehab.
+                </p>
+                <div class="program-action-row">
+                <button type="button" id="btn-program-gm" class="btn btn-teal btn-full">
+                    Use this Program
+                </button>
+                
+                <div class="program-reorder-controls" aria-label="Reorder programme">
+                    <button type="button" class="reorder-btn reorder-btn--up" aria-label="Move programme up"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 14l6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                    <button type="button" class="reorder-btn reorder-btn--down" aria-label="Move programme down"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 10l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                </div>
+            </div>
             </section>
 
 			<section class="choice-card">
@@ -349,9 +394,18 @@
 					Iconic 90-day training programme with three phases: strength &amp; endurance, muscle growth, and peak performance.
 				</p>
 				<div class="program-phase-actions" aria-label="Classic P90X phases">
-					<button type="button" id="btn-program-p90x-phase1" class="btn btn-teal">Phase 1</button>
+					<div class="program-action-row">
+                <div class="program-phase-buttons">
+                    <button type="button" id="btn-program-p90x-phase1" class="btn btn-teal">Phase 1</button>
 					<button type="button" id="btn-program-p90x-phase2" class="btn btn-teal">Phase 2</button>
 					<button type="button" id="btn-program-p90x-phase3" class="btn btn-teal">Phase 3</button>
+                </div>
+                
+                <div class="program-reorder-controls" aria-label="Reorder programme">
+                    <button type="button" class="reorder-btn reorder-btn--up" aria-label="Move programme up"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 14l6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                    <button type="button" class="reorder-btn reorder-btn--down" aria-label="Move programme down"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 10l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                </div>
+            </div>
 				</div>
 			</section>
 
@@ -922,7 +976,7 @@
                     </label>
                 </div>
 
-                <div class="settings-label">How 'Continue to Workouts' button opens:</div>
+                <div class="settings-label">Select how the Continue to Workouts button will open:</div>
 
                 <div class="settings-item settings-row settings-subrow" id="settings-continue-next-row">
                     <div class="settings-row-label">Next incomplete workout</div>
@@ -964,16 +1018,19 @@
                                             Select Program
                                         </button>
 
+                    <button type="button" class="workout-menu-link" data-menu-action="1rm">
+                                            Do a 1 Rep Max Test (1RM)
+                                        </button>
+
                     <button type="button" class="workout-menu-link" data-menu-action="history">
                                             My Past Workouts
                                         </button>
-
-                    <button type="button" class="workout-menu-link" data-menu-action="profile">
-                                            Edit Profile
+<button type="button" class="workout-menu-link" data-menu-action="equipment-key">
+                                            Equipment Key
                                         </button>
 
-                    <button type="button" class="workout-menu-link" data-menu-action="equipment-key">
-                                            Equipment Key
+<button type="button" class="workout-menu-link" data-menu-action="profile">
+                                            Edit Profile
                                         </button>
 
                     <div class="workout-menu-divider"></div>
@@ -986,7 +1043,35 @@
         </div>
     </div>
 
-  <script src="js/app.js"></script>
+  
+<script>
+  // TrackMate hard refresh on version change (v5.5.24)
+  (function () {
+    var v = "5.5.24";
+    try {
+      var k = "trackmate_last_app_version";
+      var prev = localStorage.getItem(k);
+      if (prev !== v) {
+        localStorage.setItem(k, v);
+        // Best-effort: unregister service workers + clear caches to avoid sticky regressions.
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            regs.forEach(function (r) { try { r.unregister(); } catch (e) {} });
+          }).catch(function () {});
+        }
+        if (window.caches && caches.keys) {
+          caches.keys().then(function (keys) {
+            return Promise.all(keys.map(function (key) { return caches.delete(key); }));
+          }).catch(function () {});
+        }
+        // Force a full reload once.
+        setTimeout(function () { try { location.reload(true); } catch (e) { location.reload(); } }, 50);
+      }
+    } catch (e) {}
+  })();
+</script>
+
+<script src="js/app.js?v=5.5.27"></script>
 
   <!-- Bottom-sheet editor for sets -->
   <div id="set-edit-overlay" class="set-edit-overlay">
