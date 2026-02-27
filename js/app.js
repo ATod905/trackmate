@@ -20,6 +20,11 @@
 // later declarations execute. Using 'var' avoids the temporal dead zone.
 var durationTicker = null;
 
+// Edit 5.5.13: Prevent ReferenceError in history/programme flows.
+// Used as an in-memory cache for the last saved custom programme definition.
+// Must be declared up-front so screens like Past Workouts can render safely.
+var __lastSavedCustomProgramme = null;
+
 function showScreen(id) {
   // Edit 4.6.6: Prevent micro-fade classes from "sticking" on screens.
   // If a screen previously received tm-fade-out and is later shown via a
@@ -206,6 +211,31 @@ const STORAGE_KEYS = {
   learnedStats: "trackmateLearnedStats"
 };
 
+
+// Reset helper: remove all TrackMate-related keys, including series-scoped keys.
+function clearAllTrackMateStorage() {
+  try {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k) keys.push(k);
+    }
+    keys.forEach((k) => {
+      if (!k) return;
+      // Canonical prefixes used across versions
+      if (k.startsWith('trackmate')) {
+        localStorage.removeItem(k);
+        return;
+      }
+      // Small number of legacy/preset flags use tm_* prefix
+      if (k.startsWith('tm_')) {
+        localStorage.removeItem(k);
+        return;
+      }
+    });
+  } catch (_) {}
+}
+
 // React to 1RM changes made in another tab/window.
 window.addEventListener("storage", (e) => {
   try {
@@ -225,6 +255,17 @@ function workoutStateStorageKeyForSeries(seriesName) {
 function customProgramStorageKeyForSeries(seriesName) {
   const safe = sanitizeStorageKeyPart(seriesName || "Custom");
   return `trackmateCustomProgram::${safe}`;
+}
+
+// Edit: 5.5.1 — Past Workouts should show series that exist (started or reused)
+// even if they have 0 completed workouts yet.
+function seriesHasSavedWorkoutState(seriesName) {
+  try {
+    const key = workoutStateStorageKeyForSeries(seriesName || DEFAULT_SERIES_NAME);
+    return !!localStorage.getItem(key);
+  } catch (_) {
+    return false;
+  }
 }
 
 function canonicalSeriesName(name) {
@@ -405,9 +446,27 @@ const DEFAULT_SERIES_NAME = "Sklar Series";
 // Built-in additional preset programme(s)
 const ROCK_SERIES_NAME = "The Rock Training Program";
 const FIGHTCLUB_SERIES_NAME = "Fight Club Training Program";
+const GM_SERIES_NAME = "Rehab - GM";
 const SERIES_P90X_CLASSIC_PHASE1 = "Classic P90X - Phase 1";
 const SERIES_P90X_CLASSIC_PHASE2 = "Classic P90X - Phase 2";
 const SERIES_P90X_CLASSIC_PHASE3 = "Classic P90X - Phase 3";
+
+
+// Edit: 5.3.6 — Series name normalisation (prevents blank days/workouts when legacy labels differ slightly).
+function normalizeSeriesName(seriesName) {
+  const raw = (seriesName || "").toString().trim();
+  if (!raw) return raw;
+  const lower = raw.toLowerCase();
+  // Map legacy/variant labels for Rehab - GM
+  if (raw === "GM" || lower === "gm" || lower === "rehab-gm" || lower === "rehab- gm" || lower === "rehab -gm" || lower === "rehab- gm" || lower === "rehab- gm") {
+    return GM_SERIES_NAME;
+  }
+  if (lower === "rehab- gm" || lower === "rehab-gm" || lower === "rehab- gm" || lower === "rehab- gm") return GM_SERIES_NAME;
+  if (lower === "rehab- gm" || lower === "rehab- gm") return GM_SERIES_NAME;
+  if (raw === "Rehab- GM") return GM_SERIES_NAME;
+  // Normalise accidental double-spaces
+  return raw.replace(/\s+/g, " ");
+}
 
 // Edit: 5.1.1 — P90X Classic (Phases 1–3): show prescribed reps as "Max" (display-only).
 function isP90XClassicSeriesName(seriesName) {
@@ -425,7 +484,7 @@ function isP90XPlyometricsDay(dayObj) {
 
 function isBuiltInPresetSeries(seriesName) {
   const name = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
-  return (name === DEFAULT_SERIES_NAME) || (name === ROCK_SERIES_NAME) || (name === FIGHTCLUB_SERIES_NAME) || (name === SERIES_P90X_CLASSIC_PHASE1) || (name === SERIES_P90X_CLASSIC_PHASE2) || (name === SERIES_P90X_CLASSIC_PHASE3);
+  return (name === DEFAULT_SERIES_NAME) || (name === ROCK_SERIES_NAME) || (name === FIGHTCLUB_SERIES_NAME) || (name === GM_SERIES_NAME) || (name === SERIES_P90X_CLASSIC_PHASE1) || (name === SERIES_P90X_CLASSIC_PHASE2) || (name === SERIES_P90X_CLASSIC_PHASE3);
 }
 
 function getPrefsObject() {
@@ -471,11 +530,12 @@ function setThemePref(theme) {
 function getActiveSeriesName() {
   const prefs = getPrefsObject();
   const name = (prefs.activeSeriesName || "").toString().trim();
-  return name || DEFAULT_SERIES_NAME;
+  return normalizeSeriesName(name || DEFAULT_SERIES_NAME);
 }
 
 function setActiveSeriesName(name) {
-  const cleaned = (name || "").toString().trim();
+  const cleanedRaw = (name || "").toString().trim();
+  const cleaned = normalizeSeriesName(cleanedRaw || DEFAULT_SERIES_NAME);
   const prefs = getPrefsObject();
   prefs.activeSeriesName = cleaned || DEFAULT_SERIES_NAME;
   setPrefsObject(prefs);
@@ -484,6 +544,57 @@ function setActiveSeriesName(name) {
 function makeCopySeriesName(base) {
   const b = (base || DEFAULT_SERIES_NAME).toString().trim() || DEFAULT_SERIES_NAME;
   return `${b} (Copy)`;
+}
+
+// Edit: 5.5.0 — Reuse Series: ensure the copied series name is unique.
+// If a user reuses a series and enters a name that already exists, the app would
+// jump back into the existing series (and its History Log), making it appear as if
+// progress was not reset. We auto-suffix " (2)", " (3)", etc.
+function doesSeriesNameExist(name) {
+  try {
+    const cleaned = normalizeSeriesName((name || "").toString().trim() || "");
+    if (!cleaned) return false;
+    const targetCanon = canonicalSeriesName(cleaned);
+
+    // Registry
+    // Defensive: registry may be missing/corrupted on some installs.
+    // Ensure we always have an object to read from so Past Workouts never breaks navigation.
+    const reg = normaliseSeriesRegistrySchema();
+    const regObj = (reg && typeof reg === "object") ? reg : {};
+    for (const k of Object.keys(reg || {})) {
+      if (canonicalSeriesName(k) === targetCanon) return true;
+    }
+
+    // History
+    const log = getHistoryLog();
+    if (Array.isArray(log)) {
+      for (const e of log) {
+        const s = (e?.series || DEFAULT_SERIES_NAME).toString().trim() || DEFAULT_SERIES_NAME;
+        if (canonicalSeriesName(s) === targetCanon) return true;
+      }
+    }
+
+    // Stored workout state
+    const key = workoutStateStorageKeyForSeries(cleaned);
+    if (localStorage.getItem(key)) return true;
+
+    return false;
+  } catch (_) {
+    return false;
+  }
+}
+
+function ensureUniqueSeriesName(name) {
+  const cleaned = normalizeSeriesName((name || "").toString().trim() || "");
+  if (!cleaned) return cleaned;
+  if (!doesSeriesNameExist(cleaned)) return cleaned;
+  let n = 2;
+  let candidate = `${cleaned} (${n})`;
+  while (doesSeriesNameExist(candidate) && n < 50) {
+    n += 1;
+    candidate = `${cleaned} (${n})`;
+  }
+  return candidate;
 }
 
 
@@ -2330,6 +2441,78 @@ const fightClubProgramWeek1 = [
 // -------------------------
 // Phase 1 (4 weeks). Weeks repeat unchanged.
 // Note: This series includes 5 primary training days plus 3 additional Ab Ripper X sessions (8 sessions total per week).
+
+// Rehab - GM (Weeks 1–4 are identical; 5 days/week)
+const gmProgramWeek1 = [
+  {
+    id: "gm_day1_legs",
+    theme: "LEGS",
+    goal: "Quad focus and knee stability",
+    exercises: [
+      { name: "Bike (Stationary)", prescription: "5 min", equipment: "CBL" },
+      { name: "Leg Press", prescription: "4 x 10", equipment: "CBL" },
+      { name: "Seated Hamstring Curl", prescription: "4 x 12", equipment: "CBL" },
+      { name: "Leg Extension", prescription: "3 x 12", equipment: "CBL" },
+      { name: "Hip Abduction Machine", prescription: "3 x 15", equipment: "CBL" },
+      { name: "Seated Calf Raise", prescription: "3 x 18-20", equipment: "CBL" }
+    ]
+  },
+  {
+    id: "gm_day2_push",
+    theme: "PUSH",
+    goal: "Upper push (finger friendly)",
+    exercises: [
+      { name: "Chest Press Machine", prescription: "4 x 10", equipment: "CBL" },
+      { name: "Machine Lateral Raise", prescription: "3 x 15", equipment: "CBL" },
+      { name: "Incline Machine or Smith Incline", prescription: "3 x 10", equipment: "CBL" },
+      { name: "Cable / Pec Fly", prescription: "3 x 12", equipment: "CBL" },
+      { name: "Triceps Rope Pushdown", prescription: "3 x 12", equipment: "CBL" },
+      { name: "Dead Bugs", prescription: "3 x 10 each side", equipment: "CBL" }
+    ]
+  },
+  {
+    id: "gm_day3_mobility",
+    theme: "MOBILITY",
+    goal: "Mobility and recovery",
+    exercises: [
+      { name: "Bike (Stationary)", prescription: "5 min", equipment: "CBL" },
+      { name: "Hip Flexor Stretch", prescription: "45 sec each", equipment: "CBL" },
+      { name: "Hamstring Stretch", prescription: "45 sec", equipment: "CBL" },
+      { name: "Calf Stretch", prescription: "45 sec", equipment: "CBL" },
+      { name: "Figure-4 Glute Stretch", prescription: "45 sec", equipment: "CBL" },
+      { name: "Thoracic Rotations", prescription: "12 reps", equipment: "CBL" },
+      { name: "Child’s Pose Breathing", prescription: "60 sec", equipment: "CBL" },
+      { name: "Band Lateral Walks", prescription: "2 x 15 steps", equipment: "CBL" },
+      { name: "Single-Leg Balance", prescription: "2 x 30 sec each", equipment: "CBL" }
+    ]
+  },
+  {
+    id: "gm_day4_lower",
+    theme: "LOWER",
+    goal: "Posterior chain and knee protection",
+    exercises: [
+      { name: "Smith Machine Squat or Hack Squat", prescription: "4 x 8-10", equipment: "CBL" },
+      { name: "Lying Hamstring Curl", prescription: "4 x 12", equipment: "CBL" },
+      { name: "Hip Thrust / Glute Bridge Machine", prescription: "3 x 12", equipment: "CBL" },
+      { name: "Step-ups", prescription: "3 x 10 each leg", equipment: "CBL" },
+      { name: "Standing Calf Raise", prescription: "3 x 15-20", equipment: "CBL" }
+    ]
+  },
+  {
+    id: "gm_day5_pull",
+    theme: "PULL",
+    goal: "Upper pull (low grip stress)",
+    exercises: [
+      { name: "Lat Pulldown", prescription: "4 x 10", equipment: "CBL" },
+      { name: "Rear Delt Machine", prescription: "3 x 15", equipment: "CBL" },
+      { name: "Seated Row Machine", prescription: "3 x 10", equipment: "CBL" },
+      { name: "Face Pulls", prescription: "3 x 15", equipment: "CBL" },
+      { name: "Biceps Machine or Cable Curl", prescription: "3 x 12", equipment: "CBL" },
+      { name: "Pallof Press", prescription: "3 x 12 each side", equipment: "CBL" }
+    ]
+  }
+];
+
 const p90xClassicPhase1Week1 = [
   {
     id: "p90x_d1_chest_back",
@@ -2908,6 +3091,7 @@ function getProgramWeekTemplateForSeries(seriesName) {
   if (name === DEFAULT_SERIES_NAME) return programWeek1;
   if (name === ROCK_SERIES_NAME) return rockProgramWeek1;
   if (name === FIGHTCLUB_SERIES_NAME) return fightClubProgramWeek1;
+  if (name === GM_SERIES_NAME) return gmProgramWeek1;
   if (name === SERIES_P90X_CLASSIC_PHASE1) return p90xClassicPhase1Week1;
   if (name === SERIES_P90X_CLASSIC_PHASE2) return p90xClassicPhase2Week1;
   // Phase 3 rotates weeks between Phase 1 and Phase 2 templates; Week 1 shape matches Phase 1.
@@ -3051,6 +3235,16 @@ function getProgrammePreviewModel(previewKey) {
       title: "Fight Club Training Program",
       meta: ["Overview (read-only)", "Duration: 6 weeks", "Weeks 1–6: same structure"],
       sections: [buildPreviewSection("Weeks 1–6", week)]
+    };
+  }
+
+
+  if (key === "gm") {
+    const week = getProgramWeekTemplateForSeries(GM_SERIES_NAME);
+    return {
+      title: "Rehab - GM",
+      meta: ["Overview (read-only)", "Duration: 4 weeks", "Weeks 1–4: same structure", "5 days/week"],
+      sections: [buildPreviewSection("Weeks 1–4", week)]
     };
   }
 
@@ -3321,6 +3515,12 @@ function getProgramForWeek(weekNumber, seriesName) {
     return deepClone(template);
   }
 
+  // Built-in Rehab - GM preset: always use the built-in template (weeks repeat unchanged).
+  // Do not treat this as a custom series with week overrides.
+  if (series === GM_SERIES_NAME) {
+    return deepClone(template);
+  }
+
   // Built-in Classic P90X Phase 1 preset: always use the built-in template (weeks repeat unchanged).
   // Do not treat this as a custom series with week overrides.
   if (series === SERIES_P90X_CLASSIC_PHASE1) {
@@ -3355,7 +3555,26 @@ function migrateLegacyWorkoutStateIfNeeded(seriesName) {
 
   const targetKey = workoutStateStorageKeyForSeries(series);
   const already = localStorage.getItem(targetKey);
-  if (already) return;
+  // Edit: 5.5.17 — Recovery guardrail
+  // If the series-scoped key exists but has been reset to an empty shell (weeks: {}),
+  // and we still have a non-empty legacy state, restore it.
+  // This prevents the situation where History Log remains but opening a completed day is blank.
+  if (already) {
+    // Only restore into the default series to avoid cross-series contamination.
+    if (series !== DEFAULT_SERIES_NAME) return;
+    try {
+      const targetObj = JSON.parse(already);
+      const legacyObj = JSON.parse(legacyRaw);
+      const targetWeeks = (targetObj && typeof targetObj === 'object' && targetObj.weeks && typeof targetObj.weeks === 'object') ? targetObj.weeks : null;
+      const legacyWeeks = (legacyObj && typeof legacyObj === 'object' && legacyObj.weeks && typeof legacyObj.weeks === 'object') ? legacyObj.weeks : null;
+      const targetEmpty = !!targetWeeks && Object.keys(targetWeeks).length === 0;
+      const legacyHasData = !!legacyWeeks && Object.keys(legacyWeeks).length > 0;
+      if (targetEmpty && legacyHasData) {
+        localStorage.setItem(targetKey, legacyRaw);
+      }
+    } catch (_) {}
+    return;
+  }
 
   // Only migrate legacy state into the default series to avoid accidental cross-series contamination.
   if (series !== DEFAULT_SERIES_NAME) return;
@@ -3455,10 +3674,27 @@ function getWorkoutState(seriesName) {
 return st;
 }
 
-function saveWorkoutState(state, seriesName) {
+function saveWorkoutState(state, seriesName, options) {
+  // Data-safety guard: never overwrite an existing non-empty workout state with an empty shell
+  // unless explicitly forced (e.g., user pressed Reset Day/Reset Programme).
   const series = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
   const key = workoutStateStorageKeyForSeries(series);
+  const force = !!(options && options.force);
+
+  try {
+    const existing = readJSON(key, null);
+    const existingHasWeeks = !!(existing && existing.weeks && typeof existing.weeks === "object" && Object.keys(existing.weeks).length);
+    const incomingHasWeeks = !!(state && state.weeks && typeof state.weeks === "object" && Object.keys(state.weeks).length);
+    if (!force && existingHasWeeks && !incomingHasWeeks) {
+      console.warn("Prevented overwrite of non-empty workout state with empty state", { series, key });
+      return false;
+    }
+  } catch (_) {
+    // fall through to write
+  }
+
   writeJSON(key, state);
+  return true;
 }
 
 // -------------------------
@@ -3682,7 +3918,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // -------------------------
   try {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js");
+      navigator.serviceWorker.register("service-worker.js?v=5.4.0");
     }
   } catch (e) {
     // Intentionally silent: SW registration failure should never block app usage.
@@ -4055,7 +4291,7 @@ function syncWorkoutDaySelectOptionsForSeries(seriesName) {
   const name = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
   const current = select.value;
 
-  // Sklar: keep underlying day indices, but show user-friendly Day 1-5 labels (no "missing" day).
+  // Sklar: 5 training days
   if (name === DEFAULT_SERIES_NAME) {
     const options = [
       { value: "0", label: "Day 1" },
@@ -4071,7 +4307,6 @@ function syncWorkoutDaySelectOptionsForSeries(seriesName) {
       opt.textContent = o.label;
       select.appendChild(opt);
     });
-    // Restore selection where possible
     if (options.some((o) => o.value === current)) select.value = current;
     else select.value = "0";
     return;
@@ -4121,79 +4356,98 @@ function syncWorkoutDaySelectOptionsForSeries(seriesName) {
     return;
   }
 
+  // Rehab - GM preset: 5 training days
+  if (name === GM_SERIES_NAME) {
+    const options = [
+      { value: "0", label: "Day 1" },
+      { value: "1", label: "Day 2" },
+      { value: "2", label: "Day 3" },
+      { value: "3", label: "Day 4" },
+      { value: "4", label: "Day 5" },
+    ];
+    select.innerHTML = "";
+    options.forEach((o) => {
+      const opt = document.createElement("option");
+      opt.value = o.value;
+      opt.textContent = o.label;
+      select.appendChild(opt);
+    });
+    if (options.some((o) => o.value === current)) select.value = current;
+    else select.value = "0";
+    return;
+  }
 
+  // Classic P90X Phase 1 preset: 8 sessions per week (5 primary days + 3 Ab Ripper X days)
+  if (name === SERIES_P90X_CLASSIC_PHASE1) {
+    const options = [
+      { value: "0", label: "Day 1a" },
+      { value: "1", label: "Day 1b" },
+      { value: "2", label: "Day 2" },
+      { value: "3", label: "Day 3a" },
+      { value: "4", label: "Day 3b" },
+      { value: "5", label: "Day 4" },
+      { value: "6", label: "Day 5a" },
+      { value: "7", label: "Day 5b" },
+    ];
+    select.innerHTML = "";
+    options.forEach((o) => {
+      const opt = document.createElement("option");
+      opt.value = o.value;
+      opt.textContent = o.label;
+      select.appendChild(opt);
+    });
+    if (options.some((o) => o.value === current)) select.value = current;
+    else select.value = "0";
+    return;
+  }
 
-// Classic P90X Phase 1 preset: 8 sessions per week (5 primary days + 3 Ab Ripper X days)
-if (name === SERIES_P90X_CLASSIC_PHASE1) {
-  const options = [
-    { value: "0", label: "Day 1a" },
-    { value: "1", label: "Day 1b" },
-    { value: "2", label: "Day 2" },
-    { value: "3", label: "Day 3a" },
-    { value: "4", label: "Day 3b" },
-    { value: "5", label: "Day 4" },
-    { value: "6", label: "Day 5a" },
-    { value: "7", label: "Day 5b" },
-  ];
-  select.innerHTML = "";
-  options.forEach((o) => {
-    const opt = document.createElement("option");
-    opt.value = o.value;
-    opt.textContent = o.label;
-    select.appendChild(opt);
-  });
-  if (options.some((o) => o.value === current)) select.value = current;
-  else select.value = "0";
-  return;
-}
+  // Classic P90X Phase 2 preset: 8 sessions per week (5 primary days + 3 Ab Ripper X days)
+  if (name === SERIES_P90X_CLASSIC_PHASE2) {
+    const options = [
+      { value: "0", label: "Day 1a" },
+      { value: "1", label: "Day 1b" },
+      { value: "2", label: "Day 2" },
+      { value: "3", label: "Day 3a" },
+      { value: "4", label: "Day 3b" },
+      { value: "5", label: "Day 4" },
+      { value: "6", label: "Day 5a" },
+      { value: "7", label: "Day 5b" },
+    ];
+    select.innerHTML = "";
+    options.forEach((o) => {
+      const opt = document.createElement("option");
+      opt.value = o.value;
+      opt.textContent = o.label;
+      select.appendChild(opt);
+    });
+    if (options.some((o) => o.value === current)) select.value = current;
+    else select.value = "0";
+    return;
+  }
 
-// Classic P90X Phase 2 preset: 8 sessions per week (5 primary days + 3 Ab Ripper X days)
-if (name === SERIES_P90X_CLASSIC_PHASE2) {
-  const options = [
-    { value: "0", label: "Day 1a" },
-    { value: "1", label: "Day 1b" },
-    { value: "2", label: "Day 2" },
-    { value: "3", label: "Day 3a" },
-    { value: "4", label: "Day 3b" },
-    { value: "5", label: "Day 4" },
-    { value: "6", label: "Day 5a" },
-    { value: "7", label: "Day 5b" },
-  ];
-  select.innerHTML = "";
-  options.forEach((o) => {
-    const opt = document.createElement("option");
-    opt.value = o.value;
-    opt.textContent = o.label;
-    select.appendChild(opt);
-  });
-  if (options.some((o) => o.value === current)) select.value = current;
-  else select.value = "0";
-  return;
-}
-
-// Classic P90X Phase 3 preset: 8 sessions per week (5 primary days + 3 Ab Ripper X days)
-if (name === SERIES_P90X_CLASSIC_PHASE3) {
-  const options = [
-    { value: "0", label: "Day 1a" },
-    { value: "1", label: "Day 1b" },
-    { value: "2", label: "Day 2" },
-    { value: "3", label: "Day 3a" },
-    { value: "4", label: "Day 3b" },
-    { value: "5", label: "Day 4" },
-    { value: "6", label: "Day 5a" },
-    { value: "7", label: "Day 5b" },
-  ];
-  select.innerHTML = "";
-  options.forEach((o) => {
-    const opt = document.createElement("option");
-    opt.value = o.value;
-    opt.textContent = o.label;
-    select.appendChild(opt);
-  });
-  if (options.some((o) => o.value === current)) select.value = current;
-  else select.value = "0";
-  return;
-}
+  // Classic P90X Phase 3 preset: 8 sessions per week (same Day labels as phases 1/2)
+  if (name === SERIES_P90X_CLASSIC_PHASE3) {
+    const options = [
+      { value: "0", label: "Day 1a" },
+      { value: "1", label: "Day 1b" },
+      { value: "2", label: "Day 2" },
+      { value: "3", label: "Day 3a" },
+      { value: "4", label: "Day 3b" },
+      { value: "5", label: "Day 4" },
+      { value: "6", label: "Day 5a" },
+      { value: "7", label: "Day 5b" },
+    ];
+    select.innerHTML = "";
+    options.forEach((o) => {
+      const opt = document.createElement("option");
+      opt.value = o.value;
+      opt.textContent = o.label;
+      select.appendChild(opt);
+    });
+    if (options.some((o) => o.value === current)) select.value = current;
+    else select.value = "0";
+    return;
+  }
 
   // Custom programmes: Days 1-7
   select.innerHTML = "";
@@ -4203,11 +4457,9 @@ if (name === SERIES_P90X_CLASSIC_PHASE3) {
     opt.textContent = `Day ${i + 1}`;
     select.appendChild(opt);
   }
-  // Restore selection where possible
   if (current && Number(current) >= 0 && Number(current) <= 6) select.value = current;
   else select.value = "0";
 }
-
 function syncWorkoutEditProgramButton() {
   const btn = document.getElementById("workout-edit-program");
   if (!btn) return;
@@ -5090,6 +5342,35 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
     renderWorkoutDay(0);
   });
 
+  // Rehab- GM preset programme
+  document.getElementById("btn-program-gm")?.addEventListener("click", (e) => {
+    try { e?.preventDefault?.(); } catch (_) {}
+
+    // Be defensive: if anything about the series name / prefs throws, still navigate.
+    try { setActiveSeriesName(GM_SERIES_NAME); } catch (_) {
+      try {
+        const prefs = getPrefsObject();
+        prefs.activeSeriesName = GM_SERIES_NAME;
+        setPrefsObject(prefs);
+      } catch (_) {}
+    }
+
+    try { syncWorkoutDaySelectOptionsForSeries(GM_SERIES_NAME); } catch (_) {}
+
+    try {
+      currentWeek = 1;
+      currentDayIndex = 0;
+      setActiveWeekTab(1);
+      const sel = document.getElementById("workout-day-select");
+      if (sel) sel.value = "0";
+      closeWorkoutMenu();
+      showScreen("screen-workout");
+      renderWorkoutDay(0);
+    } catch (_) {
+      try { showScreen("screen-workout"); } catch (_) {}
+    }
+  });
+
   // Classic P90X (UI stub: phases will be implemented in a future edit)
   function bindP90XPhaseButton(id, phaseLabel) {
     const el = document.getElementById(id);
@@ -5445,25 +5726,89 @@ function buildHistoryEntries() {
       .sort((a, b) => Number(b.completedAt || 0) - Number(a.completedAt || 0));
   }
 
-  // Fallback for legacy installs: derive entries from per-day completion flags.
-  const state = getWorkoutState();
-  const entries = [];
-  const weeks = state?.weeks || {};
-  Object.keys(weeks).forEach((wKey) => {
-    const days = weeks[wKey] || {};
-    Object.keys(days).forEach((dKey) => {
-      const dayState = days[dKey];
-      if (dayState && dayState.completed) {
-        const completedAt = Number(dayState.completedAt || 0);
-        entries.push({
-          week: parseInt(wKey, 10),
-          dayIndex: parseInt(dKey, 10),
-          completedAt: completedAt,
-          series: DEFAULT_SERIES_NAME});
+  // Fallback for legacy installs / missing history log:
+  // derive entries from per-day completion flags across ALL stored series.
+
+  const reg = normaliseSeriesRegistrySchema();
+
+  function resolveSeriesNameFromStateKey(key) {
+    const prefix = "trackmateWorkoutState::";
+    if (!key || typeof key !== "string" || !key.startsWith(prefix)) return DEFAULT_SERIES_NAME;
+    const suffix = key.slice(prefix.length);
+    // Prefer a registry name whose sanitised key part matches this suffix.
+    try {
+      const names = Object.keys(reg || {});
+      for (const n of names) {
+        if (sanitizeStorageKeyPart(n) === suffix) return n;
       }
-    });
-  });
-  // Most recent first
+    } catch (_) {}
+    // Best effort: if it matches the default, use the display name.
+    try {
+      if (suffix === sanitizeStorageKeyPart(DEFAULT_SERIES_NAME)) return DEFAULT_SERIES_NAME;
+    } catch (_) {}
+    // Otherwise fall back to the suffix (still uniquely identifies a series).
+    return suffix || DEFAULT_SERIES_NAME;
+  }
+
+  const entries = [];
+  const additions = [];
+
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith("trackmateWorkoutState::")) continue;
+      const seriesName = resolveSeriesNameFromStateKey(key);
+      const st = readJSON(key, null);
+      const weeks = (st && typeof st === "object" && st.weeks && typeof st.weeks === "object") ? st.weeks : {};
+
+      Object.keys(weeks).forEach((wKey) => {
+        const days = weeks[wKey] || {};
+        Object.keys(days).forEach((dKey) => {
+          const dayState = days[dKey];
+          if (!dayState || !dayState.completed) return;
+          const week = parseInt(wKey, 10);
+          const dayIndex = parseInt(dKey, 10);
+          if (!Number.isFinite(week) || !Number.isFinite(dayIndex)) return;
+          const completedAt = Number(dayState.completedAt || dayState.endedAt || dayState.startedAt || 0) || Date.now();
+
+          entries.push({ week, dayIndex, completedAt, series: seriesName });
+          additions.push({ week, dayIndex, completedAt, series: seriesName });
+        });
+      });
+    }
+
+    // Also scan the legacy unscoped workout state key (older installs).
+    // Some users can still have completed day flags stored here even if the
+    // series-scoped key is missing or a previous migration was interrupted.
+    try {
+      const legacyKey = STORAGE_KEYS.workoutState;
+      if (legacyKey && localStorage.getItem(legacyKey)) {
+        const st = readJSON(legacyKey, null);
+        const weeks = (st && typeof st === "object" && st.weeks && typeof st.weeks === "object") ? st.weeks : {};
+        Object.keys(weeks).forEach((wKey) => {
+          const days = weeks[wKey] || {};
+          Object.keys(days).forEach((dKey) => {
+            const dayState = days[dKey];
+            if (!dayState || !dayState.completed) return;
+            const week = parseInt(wKey, 10);
+            const dayIndex = parseInt(dKey, 10);
+            if (!Number.isFinite(week) || !Number.isFinite(dayIndex)) return;
+            const completedAt = Number(dayState.completedAt || dayState.endedAt || dayState.startedAt || 0) || Date.now();
+            entries.push({ week, dayIndex, completedAt, series: DEFAULT_SERIES_NAME });
+            additions.push({ week, dayIndex, completedAt, series: DEFAULT_SERIES_NAME });
+          });
+        });
+      }
+    } catch (_) {}
+  } catch (_) {
+    // no-op
+  }
+
+  // Persist a rebuilt history log for stability going forward.
+  if (additions.length) {
+    try { writeHistoryLog(additions); } catch (_) {}
+  }
+
   entries.sort((a, b) => Number(b.completedAt || 0) - Number(a.completedAt || 0));
   return entries;
 }
@@ -5804,7 +6149,344 @@ function renderProgramsScreen() {
   });
 
   block.hidden = false;
+
+
+  // Edit 5.3.10: persisted programme card reordering (Select a Program screen only)
+  try { initProgramCardReorder(); } catch (_) {}
 }
+
+// -------------------------
+// Edit 5.3.10: Programme card reordering (Select a Program screen only)
+// Persisted locally via prefs.programCardOrder (array of programme ids)
+// -------------------------
+function getReorderableProgramCards() {
+  const host = document.getElementById("screen-programs");
+  if (!host) return [];
+  // Edit 5.3.11: include Create Your Program card as reorderable (custom builder movable),
+  // and keep built-in programme cards (those with data-preview-series).
+  const cards = Array.from(host.querySelectorAll("section.choice-card"));
+  return cards.filter((card) => {
+    try {
+      const hasPreview = !!card.querySelector(".program-preview-btn[data-preview-series]");
+      const hasCreate = !!card.querySelector("#btn-program-create");
+      return hasPreview || hasCreate;
+    } catch (_) {
+      return false;
+    }
+  });
+}
+
+function getProgramIdFromCard(card) {
+  try {
+    const previewBtn = card.querySelector(".program-preview-btn[data-preview-series]");
+    const previewId = previewBtn ? (previewBtn.getAttribute("data-preview-series") || "") : "";
+    if (previewId) return (previewId || "").toString();
+
+    // Create Your Program card (movable) – stable id in prefs.
+    const createBtn = card.querySelector("#btn-program-create");
+    if (createBtn) return "create";
+
+    return "";
+  } catch (_) {
+    return "";
+  }
+}
+
+function ensureProgramCardOrderPrefPresent(cardIdsInDomOrder) {
+  const prefs = getPrefsObject();
+  const existing = prefs.programCardOrder;
+
+  // If missing/invalid, initialise from current DOM order.
+  let order = Array.isArray(existing) ? existing.slice() : null;
+  if (!order || order.length === 0) {
+    prefs.programCardOrder = cardIdsInDomOrder.slice();
+    setPrefsObject(prefs);
+    return prefs.programCardOrder.slice();
+  }
+
+  // Filter out ids that no longer exist.
+  const setDom = new Set(cardIdsInDomOrder);
+  const filtered = order.filter((id) => setDom.has(id));
+
+  // Append any new cards to the end.
+  const setFiltered = new Set(filtered);
+  const appended = filtered.concat(cardIdsInDomOrder.filter((id) => !setFiltered.has(id)));
+
+  // Persist if changed.
+  const changed = (appended.length !== order.length) || appended.some((v, i) => v !== order[i]);
+  if (changed) {
+    prefs.programCardOrder = appended;
+    setPrefsObject(prefs);
+  }
+  return appended.slice();
+}
+
+function applyProgramCardOrder(order) {
+  const host = document.getElementById("screen-programs");
+  if (!host) return;
+
+  const cards = getReorderableProgramCards();
+  if (!cards.length) return;
+
+  const map = new Map();
+  cards.forEach((card) => {
+    const id = getProgramIdFromCard(card);
+    if (id) map.set(id, card);
+  });
+
+  const firstCard = cards[0];
+  if (!firstCard || !firstCard.parentNode) return;
+
+  // Important: cards are inside a container within #screen-programs.
+  // Reorder within the cards' actual parent to avoid DOM hierarchy errors.
+  const container = firstCard.parentNode;
+
+  // Stable insertion point: placeholder immediately before the first reorderable card.
+  let placeholder = container.querySelector ? container.querySelector("#tm-program-reorder-placeholder") : null;
+  if (!placeholder) {
+    placeholder = document.createElement("div");
+    placeholder.id = "tm-program-reorder-placeholder";
+    placeholder.style.display = "none";
+    container.insertBefore(placeholder, firstCard);
+  }
+
+  let cursor = placeholder;
+  order.forEach((id) => {
+    const card = map.get(id);
+    if (!card) return;
+
+    // Move card after cursor
+    if (cursor.nextSibling) {
+      container.insertBefore(card, cursor.nextSibling);
+    } else {
+      container.appendChild(card);
+    }
+    cursor = card;
+  });
+}
+
+function syncProgramReorderButtons(order) {
+  try {
+    const cards = getReorderableProgramCards();
+    cards.forEach((card) => {
+      const id = getProgramIdFromCard(card);
+      if (!id) return;
+
+      const idx = order.indexOf(id);
+
+      // Find existing controls (static markup) OR any generated controls.
+      const controls = card.querySelector(".program-reorder-controls");
+      if (!controls) return;
+
+      // Resolve up/down buttons:
+      // Prefer explicit classes, else treat first two buttons as [up, down].
+      let up = controls.querySelector(".reorder-btn--up") || controls.querySelector(".reorder-btn.up") || controls.querySelector("[data-reorder='up']");
+      let down = controls.querySelector(".reorder-btn--down") || controls.querySelector(".reorder-btn.down") || controls.querySelector("[data-reorder='down']");
+
+      const btns = Array.from(controls.querySelectorAll("button"));
+      if ((!up || !down) && btns.length >= 2) {
+        up = btns[0];
+        down = btns[1];
+        try { up.classList.add("reorder-btn", "reorder-btn--up"); } catch (_) {}
+        try { down.classList.add("reorder-btn", "reorder-btn--down"); } catch (_) {}
+      }
+
+      if (!up || !down) return;
+
+      // Inject arrow icons (ensure correct chevrons are shown)
+      try {
+        const upHTML = (up.innerHTML || "").trim();
+        const downHTML = (down.innerHTML || "").trim();
+
+        // Only inject if there is no SVG already (some builds include placeholder content)
+        if (!upHTML.includes("<svg")) {
+          up.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 14l6-6 6 6" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>`;
+        }
+        if (!downHTML.includes("<svg")) {
+          down.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 10l6 6 6-6" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>`;
+        }
+      } catch (_) {}
+
+      // Ensure click handlers are present (bind once per button for reliability across WebViews)
+      try {
+        if (!up.dataset.tmReorderBound) {
+          up.dataset.tmReorderBound = "1";
+          up.addEventListener("click", (ev) => {
+            try { ev.preventDefault(); } catch (_) {}
+            try { ev.stopPropagation(); } catch (_) {}
+            try { moveProgramCardInOrder(id, -1); } catch (_) {}
+          });
+        }
+      } catch (_) {}
+      try {
+        if (!down.dataset.tmReorderBound) {
+          down.dataset.tmReorderBound = "1";
+          down.addEventListener("click", (ev) => {
+            try { ev.preventDefault(); } catch (_) {}
+            try { ev.stopPropagation(); } catch (_) {}
+            try { moveProgramCardInOrder(id, +1); } catch (_) {}
+          });
+        }
+      } catch (_) {}
+
+      // Disabled state drives light vs dark styling in CSS
+      try { up.disabled = (idx <= 0); } catch (_) {}
+      try { down.disabled = (idx < 0 || idx >= order.length - 1); } catch (_) {}
+    });
+  } catch (_) {}
+}
+
+
+
+function moveProgramCardInOrder(programId, delta) {
+  const prefs = getPrefsObject();
+  const order = Array.isArray(prefs.programCardOrder) ? prefs.programCardOrder.slice() : [];
+  if (!order.length) return;
+
+  const i = order.indexOf(programId);
+  if (i < 0) return;
+
+  const j = i + delta;
+  if (j < 0 || j >= order.length) return;
+
+  const tmp = order[i];
+  order[i] = order[j];
+  order[j] = tmp;
+
+  prefs.programCardOrder = order;
+  setPrefsObject(prefs);
+
+  applyProgramCardOrder(order);
+  syncProgramReorderButtons(order);
+}
+
+function initProgramCardReorder() {
+  const cards = getReorderableProgramCards();
+  if (!cards.length) return;
+
+  const ids = cards.map(getProgramIdFromCard).filter(Boolean);
+  const order = ensureProgramCardOrderPrefPresent(ids);
+
+  applyProgramCardOrder(order);
+  syncProgramReorderButtons(order);
+
+  // Edit 5.4.11: Robust click handling for reorder buttons (event delegation)
+  // Some WebViews/browsers can drop inline onclick assignments on dynamically moved nodes.
+  try {
+    if (!window.__tmProgramReorderBound) {
+      window.__tmProgramReorderBound = true;
+      document.addEventListener("click", (e) => {
+        try {
+          const t = e && e.target;
+          // Robustly find the button even when the click target is an SVG element (some WebViews lack SVGElement.closest).
+          let btn = null;
+          let node = t;
+          while (node && node !== document) {
+            try {
+              if (node.classList && node.classList.contains("reorder-btn") && node.closest && node.closest("#screen-programs")) {
+                btn = node;
+                break;
+              }
+            } catch (_) {}
+            node = node.parentNode;
+          }
+          if (!btn) return;
+
+          const controls = btn.closest(".program-reorder-controls");
+          const card = btn.closest(".choice-card");
+          if (!controls || !card) return;
+
+          // Determine direction
+          let delta = 0;
+          if (btn.classList.contains("reorder-btn--up")) delta = -1;
+          else if (btn.classList.contains("reorder-btn--down")) delta = +1;
+          else {
+            const btns = Array.from(controls.querySelectorAll("button"));
+            if (btns.length >= 2) {
+              delta = (btn === btns[0]) ? -1 : (btn === btns[1]) ? +1 : 0;
+            }
+          }
+          if (!delta) return;
+
+          const id = getProgramIdFromCard(card);
+          if (!id) return;
+
+          try { e.preventDefault(); } catch (_) {}
+          try { e.stopPropagation(); } catch (_) {}
+
+          moveProgramCardInOrder(id, delta);
+        } catch (_) {}
+      }, true);
+    }
+  } catch (_) {}
+}
+// -------------------------
+// Edit 5.4.14: Programme card reordering – global click binder (Select a Program)
+// Ensures reorder works even if initProgramCardReorder() fails in a WebView.
+// -------------------------
+function bindProgramCardReorderGlobal() {
+  try {
+    if (window.__tmProgramReorderGlobalBound) return;
+    window.__tmProgramReorderGlobalBound = true;
+
+    document.addEventListener("click", (e) => {
+      try {
+        // Find the reorder button by walking up (works for SVG targets in Android WebViews)
+        let node = e && e.target;
+        let btn = null;
+        while (node && node !== document) {
+          try {
+            if (node.classList && node.classList.contains("reorder-btn")) { btn = node; break; }
+          } catch (_) {}
+          node = node.parentNode;
+        }
+        if (!btn) return;
+
+        // Must be on the Select Program screen
+        try {
+          if (!btn.closest || !btn.closest("#screen-programs")) return;
+        } catch (_) { return; }
+
+        const controls = btn.closest ? btn.closest(".program-reorder-controls") : null;
+        const card = btn.closest ? btn.closest("section.choice-card") : null;
+        if (!controls || !card) return;
+
+        // Determine direction
+        let delta = 0;
+        try {
+          if (btn.classList.contains("reorder-btn--up")) delta = -1;
+          else if (btn.classList.contains("reorder-btn--down")) delta = +1;
+        } catch (_) {}
+        if (!delta) {
+          const btns = Array.from(controls.querySelectorAll("button"));
+          if (btns.length >= 2) delta = (btn === btns[0]) ? -1 : (btn === btns[1]) ? +1 : 0;
+        }
+        if (!delta) return;
+
+        // Derive programme id from the card
+        const id = getProgramIdFromCard(card);
+        if (!id) return;
+
+        // Ensure order exists in prefs (fallback)
+        const cards = getReorderableProgramCards();
+        const ids = cards.map(getProgramIdFromCard).filter(Boolean);
+        const order = ensureProgramCardOrderPrefPresent(ids);
+
+        try { e.preventDefault(); } catch (_) {}
+        try { e.stopPropagation(); } catch (_) {}
+
+        moveProgramCardInOrder(id, delta);
+      } catch (_) {}
+    }, true);
+  } catch (_) {}
+}
+
+
+
 
 function deriveSeriesBaseKey(seriesName) {
   const n = (seriesName || "").toString().trim();
@@ -5951,7 +6633,7 @@ function resetProgrammeProgress() {
   // but does not touch profile, 1RM, preferences, or history log.
   const state = getWorkoutState();
   state.weeks = {};
-  saveWorkoutState(state);
+  saveWorkoutState(state, undefined, { force: true });
 }
 
 // History (Past Workouts) series view state
@@ -5960,11 +6642,13 @@ let historyActiveSeries = null;
 function openHistoryLanding() {
   // Always open the landing list view (never inside an individual series).
   historyActiveSeries = null;
-  renderHistoryList();
+  // Navigate first, then render.
   showScreen("screen-history");
+  renderHistoryList();
 }
 
 function renderHistoryList() {
+  try {
   const list = document.getElementById("history-list");
   if (!list) return;
   list.innerHTML = "";
@@ -5988,15 +6672,26 @@ function renderHistoryList() {
     // not whatever happens to be active right now.
     const namesSet = new Set(entries.map((e) => (e.series || DEFAULT_SERIES_NAME)));
 
+    // Edit: 5.5.1 — Also include series that have saved workout state (started/reused)
+    // even if they currently have 0 completed workouts.
+    const reg = normaliseSeriesRegistrySchema();
+    const regObj = (reg && typeof reg === "object") ? reg : {};
+    try {
+      Object.keys(regObj || {}).forEach((n) => {
+        if (!n) return;
+        if (namesSet.has(n)) return;
+        if (seriesHasSavedWorkoutState(n)) namesSet.add(n);
+      });
+    } catch (_) {}
+
     const seriesNames = Array.from(namesSet).filter(Boolean);
 
 // Order series by most recent activity (latest completion OR creation), newest first
-const reg = normaliseSeriesRegistrySchema();
 const seriesSorted = seriesNames
   .map((name) => {
     const seriesEntries = entries.filter((e) => (e.series || DEFAULT_SERIES_NAME) === name);
     const completedMostRecent = seriesEntries.reduce((m, e) => Math.max(m, Number(e.completedAt || 0)), 0);
-    const createdAt = Number(reg[name]?.createdAt || 0);
+    const createdAt = Number(regObj[name]?.createdAt || 0);
     return { name, sortTs: Math.max(completedMostRecent, createdAt) };
   })
   .sort((a, b) => (b.sortTs || 0) - (a.sortTs || 0))
@@ -6006,14 +6701,14 @@ const seriesSorted = seriesNames
       const seriesEntries = entries.filter((e) => (e.series || DEFAULT_SERIES_NAME) === seriesName);
       const completedCount = seriesEntries.length;
       const mostRecent = seriesEntries.reduce((m, e) => Math.max(m, Number(e.completedAt || 0)), 0);
-      const registryCreatedAt = Number(reg[seriesName]?.createdAt || 0);
+      const registryCreatedAt = Number(regObj[seriesName]?.createdAt || 0);
       const firstCompletion = seriesEntries.reduce((m, e) => {
         const v = Number(e.completedAt || 0);
         if (!v) return m;
         return m ? Math.min(m, v) : v;
       }, 0);
       const createdAt = registryCreatedAt || firstCompletion || 0;
-      const version = Number(reg[seriesName]?.version) || 1;
+      const version = Number(regObj[seriesName]?.version) || 1;
       const isSeriesCompleted = completedCount >= getTotalPlannedWorkoutsForSeries(seriesName);
 
       const card = document.createElement("div");
@@ -6073,6 +6768,21 @@ const seriesSorted = seriesNames
       openBtn.className = "btn btn-teal-pill btn-small";
       openBtn.textContent = "Open";
       openBtn.addEventListener("click", () => {
+        // Edit: 5.5.14 — If a series has 0 completed workouts, Open should jump straight
+        // into Week 1 / Day 1 so the user can start the programme.
+        if (!completedCount) {
+          setActiveSeriesName(seriesName);
+          showScreen("screen-workout");
+          currentWeek = 1;
+          setActiveWeekTab(currentWeek);
+          try { syncReviewNavUI(); } catch (_) {}
+          currentDayIndex = 0;
+          const select = document.getElementById("workout-day-select");
+          if (select) select.value = String(currentDayIndex);
+          renderWorkoutDay(currentDayIndex);
+          return;
+        }
+
         historyActiveSeries = seriesName;
         renderHistoryList();
       });
@@ -6082,11 +6792,43 @@ const seriesSorted = seriesNames
       deleteBtn.className = "btn btn-danger-pill btn-small";
       deleteBtn.textContent = "Delete";
       deleteBtn.addEventListener("click", () => {
-        if (!confirm(`Delete "${seriesName}" history? This will remove all completed workouts for this series.`)) return;
+        if (!confirm(`Delete "${seriesName}"? This will remove the series and all saved data for it.`)) return;
+
+        // 1) Remove all completed history entries for this series
         purgeHistorySeries(seriesName);
-        if (seriesName === getActiveSeriesName()) {
-          resetProgrammeProgress();
-        }
+
+        // 2) Remove series from registry
+        try {
+          const reg = normaliseSeriesRegistrySchema();
+          if (reg && typeof reg === "object" && reg[seriesName]) {
+            delete reg[seriesName];
+            writeSeriesRegistry(reg);
+          }
+        } catch (_) {}
+
+        // 3) Remove any saved workout/programme state for this series (including legacy key variants)
+        try {
+          const stKey = workoutStateStorageKeyForSeries(seriesName);
+          if (stKey) localStorage.removeItem(stKey);
+
+          const cpKey = customProgramStorageKeyForSeries(seriesName);
+          if (cpKey) localStorage.removeItem(cpKey);
+
+          // Legacy spelling variant used in older builds
+          const safe = sanitizeStorageKeyPart(seriesName || DEFAULT_SERIES_NAME);
+          const legacyProgrammeKey = `trackmateCustomProgramme::${safe}`;
+          localStorage.removeItem(legacyProgrammeKey);
+        } catch (_) {}
+
+        // If user deleted the active series, revert to default safely
+        try {
+          if (seriesName === getActiveSeriesName()) {
+            setActiveSeriesName(DEFAULT_SERIES_NAME);
+            // Edit: 5.5.17 — Do NOT reset programme progress here.
+            // Deleting one series must not wipe the default series workout state.
+          }
+        } catch (_) {}
+
         historyActiveSeries = null;
         renderHistoryList();
       });
@@ -6096,26 +6838,73 @@ const seriesSorted = seriesNames
       reuseBtn.className = "btn btn-outline-teal-pill btn-small";
       reuseBtn.textContent = "Reuse";
       reuseBtn.addEventListener("click", () => {
-        const proposed = makeCopySeriesName(seriesName);
-        const nextName = prompt(`Reuse as a new series?\n\nEnter a name for the copied series:`, proposed);
-        if (nextName === null) return; // user cancelled
-        ensureSeriesRegistryEntry(nextName, Date.now());
-        setActiveSeriesName(nextName);
+        try {
+          let step = "start";
+          step = "prompt";
+          const proposed = makeCopySeriesName(seriesName);
+          const nextName = prompt(`Reuse as a new series?\n\nEnter a name for the copied series:`, proposed);
+          if (nextName === null) return; // user cancelled
+          const cleaned = (nextName || "").toString().trim();
+          if (!cleaned) return;
 
-        // Start the copied series from a fresh progress state (history remains with the source series)
-        resetProgrammeProgress();
+          step = "unique-name";
+          const uniqueName = ensureUniqueSeriesName(cleaned);
+          if (uniqueName !== normalizeSeriesName(cleaned)) {
+            alert(`That series name already exists.\n\nYour new series has been created as:\n${uniqueName}`);
+          }
 
-        // Route back into workouts (Week 1, Day 1)
-        showScreen("screen-workout");
-        currentWeek = 1;
-        setActiveWeekTab(1);
-        const sel = document.getElementById("workout-day-select");
-        if (sel) sel.value = "0";
-        renderWorkoutDay(0);
-        syncWorkoutCompletionUI();
+          step = "registry";
+          ensureSeriesRegistryEntry(uniqueName, Date.now());
 
-        historyActiveSeries = null;
-        renderHistoryList();
+          // Defensive: if this name has ever existed before, wipe any saved state/history for it
+          // so the copied series always starts clean.
+          step = "wipe-existing";
+          try { localStorage.removeItem(workoutStateStorageKeyForSeries(uniqueName)); } catch (_) {}
+          try {
+            const log = getHistoryLog();
+            const filtered = (log || []).filter((x) => {
+              const s = (x && (x.series || DEFAULT_SERIES_NAME) ? (x.series || DEFAULT_SERIES_NAME) : DEFAULT_SERIES_NAME).toString().trim() || DEFAULT_SERIES_NAME;
+              return s !== uniqueName;
+            });
+            if ((log || []).length !== filtered.length) writeHistoryLog(filtered);
+          } catch (_) {}
+
+          // Make the new series active
+          step = "activate";
+          setActiveSeriesName(uniqueName);
+
+          // Seed the new series with the same programme template as the source series,
+          // but with blank progress (no completed sets/days).
+          try {
+            step = "seed";
+            const seed = { weeks: {}, customWeekOverrides: {} };
+            for (let w = 1; w <= 6; w++) {
+              seed.customWeekOverrides[String(w)] = deepClone(getProgramForWeek(w, seriesName));
+            }
+            saveWorkoutState(seed, uniqueName);
+          } catch (_) {}
+
+          // Update the list view so the new series is visible immediately.
+          historyActiveSeries = null;
+          step = "render-history";
+          try { renderHistoryList(); } catch (_) {}
+
+          // Open the new series straight away at Week 1 / Day 1.
+          step = "open-workout";
+          showScreen("screen-workout");
+          currentWeek = 1;
+          setActiveWeekTab(currentWeek);
+          try { syncReviewNavUI(); } catch (_) {}
+          currentDayIndex = 0;
+          const select = document.getElementById("workout-day-select");
+          if (select) select.value = String(currentDayIndex);
+          step = "render-day";
+          renderWorkoutDay(currentDayIndex);
+        } catch (e) {
+          console.warn("Reuse series failed:", e);
+          const msg = (e && e.message) ? `\n\nDetails: ${e.message}` : "";
+          alert(`Sorry — that series could not be reused (step: ${typeof step === "string" ? step : "unknown"}). Please try again.${msg}`);
+        }
       });
 
       actions.appendChild(openBtn);
@@ -6201,7 +6990,8 @@ const seriesSorted = seriesNames
 
       const delBtn = document.createElement("button");
       delBtn.type = "button";
-      delBtn.className = "btn btn-danger";
+      // Match the pill styling used throughout the app for destructive actions.
+      delBtn.className = "btn btn-danger-pill btn-small";
       delBtn.textContent = "Delete";
       delBtn.addEventListener("click", () => {
         if (!confirm("Delete this workout record? This will clear logged sets and completion status for that day.")) return;
@@ -6221,6 +7011,18 @@ const seriesSorted = seriesNames
 
       list.appendChild(card);
     });
+
+  } catch (e) {
+    console.warn('renderHistoryList failed:', e);
+    const list = document.getElementById('history-list');
+    if (!list) return;
+    list.innerHTML = '';
+    const card = document.createElement('div');
+    card.className = 'form-card';
+    const msg = (e && e.message) ? ` Past workouts could not be loaded. ${e.message}` : 'Past workouts could not be loaded.';
+    card.textContent = msg;
+    list.appendChild(card);
+  }
 }
 
   // Week tabs
@@ -8544,7 +9346,7 @@ try {
         upBtn.setAttribute("aria-label", "Move exercise up");
         upBtn.innerHTML = `
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M6 14l6-6 6 6" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M6 14l6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         `;
 
@@ -9090,6 +9892,8 @@ window.setTimeout(() => {
       runMenuNav(() => showScreen("screen-programs"));
     } else if (action === "settings") {
       runMenuNav(() => showScreen("screen-settings"));
+    } else if (action === "1rm") {
+      runMenuNav(() => showScreen("screen-1rm"));
     } else if (action === "equipment-key") {
       runMenuNav(() => showScreen("screen-equipment-key"));
     } else if (action === "history") {
@@ -9228,7 +10032,8 @@ window.setTimeout(() => {
         showScreen("screen-programs");
       } else if (action === "reset-all") {
         if (confirm("Reset all TrackMate data? This cannot be undone.")) {
-          Object.values(STORAGE_KEYS).forEach((k) => localStorage.removeItem(k));
+          // Remove all TrackMate data, including series-scoped state keys.
+          clearAllTrackMateStorage();
           window.location.reload();
         }
       } else if (action === "units") {
@@ -9239,6 +10044,9 @@ window.setTimeout(() => {
     });
   });
 
+  try { bindProgramCardReorderGlobal(); } catch (_) {}
+
   // Initial render
   renderWorkoutDay(0);
 });
+
