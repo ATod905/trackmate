@@ -592,15 +592,28 @@ html[data-theme="invert"] .set-edit-overlay {
 
 /* Program selection: multi-phase programme buttons (e.g., P90X) */
 .program-phase-actions{
-  display: flex;
-  gap: 10px;
   margin-top: 14px;
 }
 
 .program-phase-actions .btn{
-  flex: 1;
   padding: 14px 10px;
   font-size: 14px;
+}
+
+/* Edit 5.5.16: Classic P90X card — align reorder chevrons to the right and widen phase buttons */
+.program-phase-actions .program-action-row{
+  align-items: stretch;
+}
+
+.program-phase-actions .program-phase-buttons{
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.program-phase-actions .program-phase-buttons .btn{
+  width: 100%;
 }
 
 /* Program selection: custom programme cards (Continue / Edit / Delete) */
@@ -2957,3 +2970,201 @@ button.settings-item.settings-item--danger[data-settings-action="reset-all"]{
   text-transform: uppercase;
   font-size: 12px;
 }
+
+
+/* Edit 5.3.10: programme card reorder controls (Select a Program screen) */
+.choice-card .choice-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.choice-card .choice-title-row .program-reorder-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-left: 6px;
+}
+
+.choice-card .choice-title-row .program-reorder-controls .reorder-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: var(--tm-bg, #fff);
+  border: 2px solid var(--tm-teal);
+  color: var(--tm-teal);
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 12px rgba(15, 23, 42, 0.10);
+}
+
+.choice-card .choice-title-row .program-reorder-controls .reorder-btn:disabled {
+  opacity: 0.35;
+  box-shadow: none;
+}
+
+
+/* Edit 5.3.11: Programme card reorder controls (Select a Program screen only) */
+.program-action-row{
+  display:flex;
+  align-items:stretch;
+  gap:12px;
+  margin-top: 14px;
+}
+.program-action-row .btn.btn-teal{
+  flex: 1 1 auto;
+}
+.program-reorder-controls{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.program-reorder-controls .reorder-btn{
+  width: 54px;
+  border-radius: 14px;
+  border: 2px solid var(--teal);
+  background: transparent;
+  color: var(--teal);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.program-reorder-controls .reorder-btn:disabled{
+  opacity: 0.35;
+}
+
+
+/* Edit 5.3.14: programme reorder controls layout (Select a Program) */
+.program-action-row{display:flex;align-items:center;gap:12px;}
+.program-action-row .btn{flex:1 1 auto;}
+.program-reorder-controls{display:flex;flex-direction:row;gap:10px;flex:0 0 auto;}
+.program-reorder-controls .reorder-btn{width:54px;height:54px;border-radius:14px;border:0;display:flex;align-items:center;justify-content:center;}
+.program-reorder-controls .reorder-btn--up{background:rgba(0,128,128,0.18);color:var(--teal,#1c8f93);}
+.program-reorder-controls .reorder-btn--down{background:var(--teal,#1c8f93);color:#fff;}
+.program-reorder-controls .reorder-btn:active{transform:scale(0.98);}
+
+
+/* Edit 5.3.15: programme reorder buttons (horizontal + enabled/disabled colour rules) */
+.program-reorder-controls{
+  display:flex;
+  flex-direction:row;
+  gap:12px;
+}
+.program-reorder-controls .reorder-btn{
+  width:54px;
+  height:54px;
+  border-radius:14px;
+  border:0;
+  background: var(--teal,#1c8f93);
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.program-reorder-controls .reorder-btn:disabled{
+  background: var(--teal,#1c8f93);
+  filter: brightness(1.35) saturate(0.55);
+  color:#fff;
+  opacity:1;
+}
+
+
+/* === Edit 5.4.1: Reduce secondary program action buttons (40% smaller) === */
+.program-card .btn-secondary,
+.program-card .icon-btn,
+.program-card .side-btn {
+  height: 60%;
+  width: 60%;
+  padding: 0.4rem 0.6rem;
+  min-height: 40px;
+}
+
+
+
+/* === Edit 5.4.2: Match Select Program side buttons to workout card buttons === */
+.program-card .icon-btn,
+.program-card .side-btn,
+.program-card .btn-secondary {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+}
+
+
+
+/* === Edit 5.4.3: Select Program reorder side buttons match workout card button sizing === */
+/* Note: these are the two square buttons to the right of "Use this Program" / "Start Building". */
+#screen-programs .program-reorder-controls .reorder-btn {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+}
+
+/* Tighten spacing inside the control group only (no impact elsewhere). */
+#screen-programs .program-reorder-controls {
+  gap: 10px;
+}
+
+
+
+/* === Edit 5.4.4: Reduce Select Program reorder buttons to workout size === */
+#screen-programs .program-reorder-controls .reorder-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 10px;
+}
+
+
+
+/* === Edit 5.4.5: Vertically center reorder buttons with primary button === */
+#screen-programs .program-card .button-row {
+  align-items: center;
+}
+
+
+
+/* === Edit 5.4.6: Force vertical centring of side buttons === */
+#screen-programs .program-card .program-actions,
+#screen-programs .program-card .button-row,
+#screen-programs .program-card .action-row {
+  display: flex;
+  align-items: center;
+}
+
+
+
+/* === Edit 5.4.7: Tight spacing between Select Program reorder buttons === */
+#screen-programs .program-reorder-controls {
+  gap: 4px; /* very tight but not touching */
+}
+
+#screen-programs .program-reorder-controls .reorder-btn {
+  margin: 0;
+}
+
+
+
+/* === Edit 5.4.9: Ensure Select Program reorder chevrons are visible === */
+#screen-programs .program-reorder-controls .reorder-btn {
+  color: #fff;
+}
+#screen-programs .program-reorder-controls .reorder-btn svg {
+  display: block;
+}
+
+
+
+/* Edit 5.5.27: ensure reorder chevrons inherit white */
+.exercise-card .card-reorder-controls .reorder-btn { color: #ffffff; }
+.exercise-card .reorder-controls .reorder-btn { color: #ffffff; }
