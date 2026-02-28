@@ -3168,3 +3168,67 @@ button.settings-item.settings-item--danger[data-settings-action="reset-all"]{
 /* Edit 5.5.27: ensure reorder chevrons inherit white */
 .exercise-card .card-reorder-controls .reorder-btn { color: #ffffff; }
 .exercise-card .reorder-controls .reorder-btn { color: #ffffff; }
+
+
+/* Edit 5.5.28: Android-safe programme card action row + reorder button styling */
+
+/* Force programme card action row to stay horizontal and keep chevrons on the right */
+.program-action-row{
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch !important;
+  gap: 12px !important;
+}
+
+/* Keep reorder controls stacked and visible */
+.program-reorder-controls{
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+}
+
+/* Ensure reorder buttons look consistent on Android (no grey native styling) */
+.program-reorder-controls .reorder-btn{
+  width: 54px !important;
+  height: 54px !important;
+  border-radius: 14px !important;
+  border: 2px solid var(--teal) !important;
+  background: transparent !important;
+  color: var(--teal) !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+.program-reorder-controls .reorder-btn svg{
+  width: 22px !important;
+  height: 22px !important;
+  display: block !important;
+}
+
+
+/* 5.5.29 program button height refinement */
+.program-card .program-action-row {
+    align-items: center;
+}
+
+.program-card .use-program-btn,
+.program-card .start-building-btn {
+    padding: 14px 18px;
+    min-height: 52px;
+}
+
+.program-card .reorder-controls {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+}
+
+.program-card .reorder-btn {
+    height: 44px;
+    width: 44px;
+}
