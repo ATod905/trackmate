@@ -3292,3 +3292,24 @@ button.settings-item.settings-item--danger[data-settings-action="reset-all"]{
 #screen-programs button:has(svg) + button:has(svg) {
   margin-top:-4px !important;
 }
+
+
+/* 5.6.6 - Chevron styling: 30px buttons + tiny gap + active teal / disabled grey (Select Program) */
+#screen-programs .program-reorder-controls {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+}
+#screen-programs .program-reorder-controls .reorder-btn {
+  padding: 0 !important;
+  margin: 0 !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  line-height: 0 !important;
+  color: #1f8f8a !important; /* active teal */
+}
+#screen-programs .program-reorder-controls .reorder-btn:disabled {
+  color: #7a8693 !important; /* medium grey */
+  opacity: 1 !important;
+}
+#screen-programs .program-reorder-controls .reorder-btn svg { display: block; }
