@@ -1876,6 +1876,75 @@ function getLearnedSuggestionForExercise(exName, targetReps, equipmentCode, seri
   }
 }
 
+/**
+ * 5.6.7 - Suggested Weights (history fallback)
+ * For Week 1 (or when progression has no prior week data), pull the most recent logged set weight
+ * for the same exercise from the user's completed history (same canonical series).
+ * Returns a DISPLAY weight string (respects current units + equipment rounding) or "" if none found.
+ */
+function getHistoryBasedSuggestedWeight(exName, setIndex, equipCode, activeSeriesName) {
+  try {
+    if (!exName) return "";
+    const activeCanon = canonicalSeriesName(activeSeriesName || getActiveSeriesName());
+    const log = getHistoryLog();
+    if (!Array.isArray(log) || !log.length) return "";
+
+    // Most-recent-first
+    const entries = log.slice().sort((a, b) => Number(b.completedAt || 0) - Number(a.completedAt || 0));
+
+    const norm = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const targetName = norm(exName);
+    if (!targetName) return "";
+
+    for (let i = 0; i < entries.length; i++) {
+      const e = entries[i];
+      const seriesName = (e?.series || DEFAULT_SERIES_NAME).toString();
+      if (canonicalSeriesName(seriesName) !== activeCanon) continue;
+
+      const week = Number(e.week);
+      const dayIndex = Number(e.dayIndex);
+      if (!Number.isFinite(week) || !Number.isFinite(dayIndex)) continue;
+
+      const state = readJSON(workoutStateStorageKeyForSeries(seriesName), null);
+      if (!state || typeof state !== "object") continue;
+
+      const dayState = ensureDayState(state, week, dayIndex);
+      if (!dayState || dayState.dncDay) continue;
+
+      const program = getProgramForWeek(week, seriesName);
+      const day = program?.[dayIndex];
+      if (!day) continue;
+
+      // Build rendered exercise list for that historical day (respect removals + extras)
+      const removed = Array.isArray(dayState.removedBaseIndices) ? dayState.removedBaseIndices : [];
+      const extras = Array.isArray(dayState.extraExercises) ? dayState.extraExercises : [];
+      const base = Array.isArray(day.exercises) ? day.exercises : [];
+      const render = base.map((exObj, idx) => (removed.includes(idx) ? null : exObj)).filter(Boolean).concat(extras);
+
+      let matchIndex = -1;
+      for (let j = 0; j < render.length; j++) {
+        const exObj = render[j];
+        if (!exObj) continue;
+        let name = exObj.name;
+        try {
+          const overrideName = getExerciseNameOverride(dayState, j);
+          if (overrideName) name = overrideName;
+        } catch (_) {}
+        if (norm(name) === targetName) { matchIndex = j; break; }
+      }
+      if (matchIndex < 0) continue;
+
+      const wKgStr = dayState?.exercises?.[String(matchIndex)]?.sets?.[String(setIndex)]?.w;
+      const kgNum = Number(wKgStr);
+      if (!Number.isFinite(kgNum) || kgNum <= 0) continue;
+
+      return formatSuggestedWeightFromKg(kgNum, equipCode);
+    }
+  } catch (_) {}
+  return "";
+}
+
+
 // Map common exercises to stored 1RM keys.
 // This is intentionally conservative and name-driven; learned anchors will
 // quickly take over for users who log regularly.
@@ -9041,7 +9110,7 @@ try {
         if (isCoreOrBW(ex.name)) return "00";
 
         const wNow = String(currentWeek);
-        if (currentWeek <= 1) return baseSuggestion;
+        if (currentWeek <= 1) return getHistoryBasedSuggestedWeight(ex.name, setIndex, equipCode, activeSeries) || baseSuggestion;
 
         const prevWeek = currentWeek - 1;
         const prevState = getWorkoutState();
