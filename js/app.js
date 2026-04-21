@@ -447,6 +447,7 @@ const DEFAULT_SERIES_NAME = "Sklar Series";
 const ROCK_SERIES_NAME = "The Rock Training Program";
 const FIGHTCLUB_SERIES_NAME = "Fight Club Training Program";
 const GM_SERIES_NAME = "Rehab - GM";
+const LIZZO_SUMMER_SERIES_NAME = "Lizzo - Summer Training";
 const SERIES_P90X_CLASSIC_PHASE1 = "Classic P90X - Phase 1";
 const SERIES_P90X_CLASSIC_PHASE2 = "Classic P90X - Phase 2";
 const SERIES_P90X_CLASSIC_PHASE3 = "Classic P90X - Phase 3";
@@ -484,7 +485,7 @@ function isP90XPlyometricsDay(dayObj) {
 
 function isBuiltInPresetSeries(seriesName) {
   const name = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
-  return (name === DEFAULT_SERIES_NAME) || (name === ROCK_SERIES_NAME) || (name === FIGHTCLUB_SERIES_NAME) || (name === GM_SERIES_NAME) || (name === SERIES_P90X_CLASSIC_PHASE1) || (name === SERIES_P90X_CLASSIC_PHASE2) || (name === SERIES_P90X_CLASSIC_PHASE3);
+  return (name === DEFAULT_SERIES_NAME) || (name === ROCK_SERIES_NAME) || (name === FIGHTCLUB_SERIES_NAME) || (name === GM_SERIES_NAME) || (name === LIZZO_SUMMER_SERIES_NAME) || (name === SERIES_P90X_CLASSIC_PHASE1) || (name === SERIES_P90X_CLASSIC_PHASE2) || (name === SERIES_P90X_CLASSIC_PHASE3);
 }
 
 function getPrefsObject() {
@@ -729,6 +730,16 @@ const exerciseLibrary = {
     category: "Core",
     equipment: "DB",
     alternatives: ["Side Plank Reach-Throughs", "Cable Woodchoppers or Weighted Decline Sit-Ups"]
+  },
+  "LP Core Circuit": {
+    category: "Core",
+    equipment: "BW",
+    alternatives: ["Reverse Crunches", "Side Plank Reach-Throughs"]
+  },
+  "Reverse Crunches": {
+    category: "Core",
+    equipment: "BW",
+    alternatives: ["LP Core Circuit", "Knee Raises + In-and-Out Crunches"]
   }
   ,
   // -------------------------
@@ -803,7 +814,7 @@ const exerciseCategories = {
   Shoulders: ["Rear Delt Cable Fly (Face Pull Style)", "Rear Delt Bent-Over Flys", "Side-Angle DB Lateral Raise", "Seated DB Shoulder Press or Military Press", "Front DB Raise or Barbell Raise"],
   Legs: ["Front Squats (BB or Goblet)", "Leg Press", "Romanian Deadlift (BB or DB)", "Walking Lunges (DB)", "Leg Extensions (Slow Tempo)"],
   Arms: ["DB Hammer Curl + EZ-Bar Curl (Superset)", "Bicep Spider Curls + Rope Hammer Curls (Superset)", "Triceps Rope Pushdowns + Dips (Superset)", "Overhead Triceps Extensions (Rope or DB)"],
-  Core: ["Side Plank Reach-Throughs", "Russian Twists (Weighted)", "Cable Woodchoppers or Weighted Decline Sit-Ups", "Knee Raises + In-and-Out Crunches"],
+  Core: ["Side Plank Reach-Throughs", "Russian Twists (Weighted)", "Cable Woodchoppers or Weighted Decline Sit-Ups", "Knee Raises + In-and-Out Crunches", "LP Core Circuit", "Reverse Crunches"],
   Cardio: ["Treadmill", "Bike (Stationary)", "Rowing Machine", "Stair Climber", "Ski Erg", "Incline Walk"]
 };
 
@@ -1283,6 +1294,7 @@ Swiss Ball Rollout
 Core - Rotation & Conditioning
 Russian Twist
 Bicycle Crunch
+Heel Touches
 Mountain Climbers
 Stability Ball Crunch
 Woodchopper - Cable
@@ -1561,7 +1573,31 @@ const TM_EXERCISE_CATALOG = tmBuildExerciseCatalog();
   });
 })();
 
+(function tmEnsureLizzoExercisesInLibraries(){
+  const add = (name, category, equipment, extra) => {
+    if (!Array.isArray(exerciseCategories[category])) exerciseCategories[category] = [];
+    if (!exerciseCategories[category].includes(name)) exerciseCategories[category].push(name);
+    if (!exerciseLibrary[name]) exerciseLibrary[name] = Object.assign({ category, equipment, alternatives: [] }, (extra || {}));
+  };
 
+  add("Leg Raise", "Core", "BW");
+  add("Extra Set of Leg Raise or Cable Crunch", "Core", "BW");
+  add("Wide-Grip and/or Close-Grip Lat Pulldown", "Back", "MC");
+  add("Single-Arm Machine Row", "Back", "MC");
+  add("Curtsy Lunge or Reverse Lunge", "Legs", "DB");
+  add("Cable Woodchop", "Core", "CBL");
+  add("Incline Dumbbell Chest Press", "Chest", "DB");
+  add("High-to-Low Cable Chest Press", "Chest", "CBL");
+  add("Low-to-High Cable Chest Press", "Chest", "CBL");
+  add("Rope Triceps Pushdown", "Arms", "CBL");
+  add("Barbell Cable Curl", "Arms", "CBL");
+  add("Bench Dip", "Arms", "BW");
+  add("Plank Twist", "Core", "BW");
+  add("Assisted Pull-Up - Overhand Grip", "Back", "MC");
+  add("Assisted Chin-Up - Underhand Grip", "Back", "MC");
+  add("45-Degree Back Extension", "Legs", "BW");
+  add("Rear Delt Fly", "Shoulders", "DB");
+})();
 
 // -------------------------
 // BMI / Units helpers
@@ -2505,6 +2541,92 @@ const fightClubProgramWeek1 = [
 ];
 
 
+
+// -------------------------
+// Program data (Lizzo - Summer Training)
+// -------------------------
+// 5-day summer training programme. Weeks currently repeat unchanged.
+const lizzoSummerProgramWeek1 = [
+  {
+    id: "lizzo_day1_glutes_legs_core",
+    theme: "GLUTES, LEGS & CORE",
+    goal: "Lower body and core",
+    exercises: [
+      { name: "Single-Leg Press", prescription: "3-4 x 8-12" },
+      { name: "Lying Leg Curl", prescription: "2-3 x 12-15" },
+      { name: "Hip Thrust", prescription: "3-4 x 8-12" },
+      { name: "Hip Abduction Machine", prescription: "2-3 x 12-15" },
+      { name: "Hip Adduction Machine", prescription: "2-3 x 12-15" },
+      { name: "Leg Raise", prescription: "2-3 sets" },
+      { name: "Heel Touches", prescription: "2-3 sets" },
+      { name: "Extra Set of Leg Raise or Cable Crunch", prescription: "2-3 sets" },
+      { name: "Treadmill Jog", prescription: "5-15 min" }
+    ]
+  },
+  {
+    id: "lizzo_day2_back_shoulders_core",
+    theme: "BACK, SHOULDERS & CORE",
+    goal: "Upper pull, shoulders, and core",
+    exercises: [
+      { name: "Wide-Grip and/or Close-Grip Lat Pulldown", prescription: "3 x 8-12" },
+      { name: "Single-Arm Machine Row", prescription: "3 x 8-12" },
+      { name: "Face Pull", prescription: "2-3 x 12-15" },
+      { name: "Straight-Arm Pulldown", prescription: "2-3 x 12-15" },
+      { name: "Lateral Raise", prescription: "2-3 x 12-15" },
+      { name: "Dumbbell Shoulder Press", prescription: "3 x 8-12" },
+      { name: "Dead Bug", prescription: "2-3 sets" },
+      { name: "Treadmill Jog", prescription: "5-15 min" }
+    ]
+  },
+  {
+    id: "lizzo_day3_glutes_legs_core",
+    theme: "GLUTES, LEGS & CORE",
+    goal: "Lower body and core",
+    exercises: [
+      { name: "Leg Press", prescription: "3-4 x 8-12" },
+      { name: "Romanian Deadlift", prescription: "3-4 x 8-12" },
+      { name: "Goblet Squat", prescription: "2-3 x 12-15" },
+      { name: "Curtsy Lunge or Reverse Lunge", prescription: "2-3 x 12-15" },
+      { name: "Cable Kickback", prescription: "2-3 x 12-15" },
+      { name: "Cable Woodchop", prescription: "2-3 sets" },
+      { name: "Cable Crunch", prescription: "2-3 sets" },
+      { name: "Treadmill Jog", prescription: "5-15 min" }
+    ]
+  },
+  {
+    id: "lizzo_day4_chest_arms_core",
+    theme: "CHEST, ARMS & CORE",
+    goal: "Upper push, arms, and core",
+    exercises: [
+      { name: "Incline Dumbbell Chest Press", prescription: "3 x 8-12" },
+      { name: "High-to-Low Cable Chest Press", prescription: "2-3 x 12-15" },
+      { name: "Low-to-High Cable Chest Press", prescription: "2-3 x 12-15" },
+      { name: "Rope Triceps Pushdown", prescription: "2-3 x 12-15" },
+      { name: "Barbell Cable Curl", prescription: "2-3 x 12-15" },
+      { name: "Bench Dip", prescription: "2-3 x 12-15" },
+      { name: "Hammer Curl", prescription: "2-3 x 12-15" },
+      { name: "Dead Bug", prescription: "2-3 sets" },
+      { name: "Plank Twist", prescription: "2-3 sets" },
+      { name: "Treadmill Jog", prescription: "5-15 min" }
+    ]
+  },
+  {
+    id: "lizzo_day5_upper_lower_mix",
+    theme: "UPPER & LOWER MIX",
+    goal: "Upper and lower mixed session",
+    exercises: [
+      { name: "Assisted Pull-Up - Overhand Grip", prescription: "3 x 8-12" },
+      { name: "Assisted Chin-Up - Underhand Grip", prescription: "3 x 8-12" },
+      { name: "Hip Thrust", prescription: "3-4 x 8-12" },
+      { name: "45-Degree Back Extension", prescription: "2-3 x 12-15" },
+      { name: "Rear Delt Fly", prescription: "2-3 x 12-15" },
+      { name: "Hanging Leg Raise", prescription: "2-3 sets" },
+      { name: "Cable Crunch", prescription: "2-3 sets" },
+      { name: "Treadmill Jog", prescription: "5-15 min" }
+    ]
+  }
+];
+
 // -------------------------
 // Program data (Classic P90X — Phase 1)
 // -------------------------
@@ -3161,6 +3283,7 @@ function getProgramWeekTemplateForSeries(seriesName) {
   if (name === ROCK_SERIES_NAME) return rockProgramWeek1;
   if (name === FIGHTCLUB_SERIES_NAME) return fightClubProgramWeek1;
   if (name === GM_SERIES_NAME) return gmProgramWeek1;
+  if (name === LIZZO_SUMMER_SERIES_NAME) return lizzoSummerProgramWeek1;
   if (name === SERIES_P90X_CLASSIC_PHASE1) return p90xClassicPhase1Week1;
   if (name === SERIES_P90X_CLASSIC_PHASE2) return p90xClassicPhase2Week1;
   // Phase 3 rotates weeks between Phase 1 and Phase 2 templates; Week 1 shape matches Phase 1.
@@ -3307,6 +3430,15 @@ function getProgrammePreviewModel(previewKey) {
     };
   }
 
+
+  if (key === "lizzo-summer") {
+    const week = getProgramWeekTemplateForSeries(LIZZO_SUMMER_SERIES_NAME);
+    return {
+      title: "Lizzo - Summer Training",
+      meta: ["Overview (read-only)", "5 days/week"],
+      sections: [buildPreviewSection("Programme", week)]
+    };
+  }
 
   if (key === "gm") {
     const week = getProgramWeekTemplateForSeries(GM_SERIES_NAME);
@@ -3587,6 +3719,12 @@ function getProgramForWeek(weekNumber, seriesName) {
   // Built-in Rehab - GM preset: always use the built-in template (weeks repeat unchanged).
   // Do not treat this as a custom series with week overrides.
   if (series === GM_SERIES_NAME) {
+    return deepClone(template);
+  }
+
+  // Built-in Lizzo - Summer Training preset: always use the built-in template (weeks repeat unchanged).
+  // Do not treat this as a custom series with week overrides.
+  if (series === LIZZO_SUMMER_SERIES_NAME) {
     return deepClone(template);
   }
 
@@ -4412,6 +4550,27 @@ function syncWorkoutDaySelectOptionsForSeries(seriesName) {
       { value: "3", label: "Day 4" },
       { value: "4", label: "Day 5" },
       { value: "5", label: "Day 6" },
+    ];
+    select.innerHTML = "";
+    options.forEach((o) => {
+      const opt = document.createElement("option");
+      opt.value = o.value;
+      opt.textContent = o.label;
+      select.appendChild(opt);
+    });
+    if (options.some((o) => o.value === current)) select.value = current;
+    else select.value = "0";
+    return;
+  }
+
+  // Lizzo - Summer Training preset: 5 training days
+  if (name === LIZZO_SUMMER_SERIES_NAME) {
+    const options = [
+      { value: "0", label: "Day 1" },
+      { value: "1", label: "Day 2" },
+      { value: "2", label: "Day 3" },
+      { value: "3", label: "Day 4" },
+      { value: "4", label: "Day 5" },
     ];
     select.innerHTML = "";
     options.forEach((o) => {
@@ -5401,6 +5560,21 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
     try { e?.preventDefault?.(); } catch (_) {}
     setActiveSeriesName(FIGHTCLUB_SERIES_NAME);
     try { syncWorkoutDaySelectOptionsForSeries(FIGHTCLUB_SERIES_NAME); } catch (_) {}
+    currentWeek = 1;
+    currentDayIndex = 0;
+    setActiveWeekTab(1);
+    const sel = document.getElementById("workout-day-select");
+    if (sel) sel.value = "0";
+    closeWorkoutMenu();
+    showScreen("screen-workout");
+    renderWorkoutDay(0);
+  });
+
+  // Lizzo - Summer Training preset programme
+  document.getElementById("btn-program-lizzo-summer")?.addEventListener("click", (e) => {
+    try { e?.preventDefault?.(); } catch (_) {}
+    setActiveSeriesName(LIZZO_SUMMER_SERIES_NAME);
+    try { syncWorkoutDaySelectOptionsForSeries(LIZZO_SUMMER_SERIES_NAME); } catch (_) {}
     currentWeek = 1;
     currentDayIndex = 0;
     setActiveWeekTab(1);
