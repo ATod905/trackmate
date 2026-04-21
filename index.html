@@ -17,7 +17,7 @@
   <style>html,body{background:#1f9aa0;}</style>
 <title>TrackMate</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="css/style.css?v=5.6.7" />
+  <link rel="stylesheet" href="css/style.css?v=5.7.1" />
   <link rel="icon" type="image/png" href="assets/TrackMate_logo_icon.png" />
   <link rel="apple-touch-icon" href="assets/TrackMate_logo_icon.png" />
   <link rel="manifest" href="manifest.json" />
@@ -67,7 +67,7 @@
                 </button>
             </div>
 
-			<p class="welcome-version">Version 5.6.7</p>
+			<p class="welcome-version">Version 5.7.8</p>
 			<p class="welcome-copyright">© 2026 TrackMate. All rights reserved.</p>
         </main>
 
@@ -361,6 +361,23 @@
                 </p>
                 <div class="program-action-row">
                 <button type="button" id="btn-program-fightclub" class="btn btn-teal btn-full">
+                    Use this Program
+                </button>
+                
+                <div class="program-reorder-controls" aria-label="Reorder programme">
+                    <button type="button" class="reorder-btn reorder-btn--up" aria-label="Move programme up"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 14l6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                    <button type="button" class="reorder-btn reorder-btn--down" aria-label="Move programme down"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 10l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                </div>
+            </div>
+            </section>
+
+            <section class="choice-card">
+                <div class="choice-title-row"><h2 class="choice-title">Lizzo - Summer Training</h2><button type="button" class="program-preview-btn" data-preview-series="lizzo-summer" aria-label="Preview Lizzo - Summer Training"><img class="program-preview-icon" src="assets/preview-icon.png" alt="" aria-hidden="true"></button></div>
+                <p class="choice-text">
+                    Glute-focused 5-day summer training split with lower body, upper body, core, and mixed sessions.
+                </p>
+                <div class="program-action-row">
+                <button type="button" id="btn-program-lizzo-summer" class="btn btn-teal btn-full">
                     Use this Program
                 </button>
                 
@@ -1071,7 +1088,7 @@
   })();
 </script>
 
-<script src="js/app.js?v=5.6.7"></script>
+<script src="js/app.js?v=5.7.1"></script>
 
   <!-- Bottom-sheet editor for sets -->
   <div id="set-edit-overlay" class="set-edit-overlay">
