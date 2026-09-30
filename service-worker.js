@@ -9,7 +9,7 @@
  For permitted use or licensing enquiries, contact the author.
 */
 
-/* TrackMate service worker (v5.7.1)
+/* TrackMate service worker (v5.7.10)
    - Caches the app shell for offline use
    - Cache-first for same-origin requests
 */
