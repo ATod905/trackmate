@@ -4429,7 +4429,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // -------------------------
   try {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js?v=5.7.23");
+      navigator.serviceWorker.register("service-worker.js?v=5.7.24");
     }
   } catch (e) {
     // Intentionally silent: SW registration failure should never block app usage.
@@ -9388,7 +9388,13 @@ updateWorkoutSummary(day);
 
         const note = document.createElement("p");
         note.className = "exercise-note locked-in-activity-guide-note";
-        note.textContent = `Note: ${ex.notes || "Day 5 is never compulsory."}`;
+        const noteText = ex.notes || "Day 5 is never compulsory. If recovery from Days 1–4 is poor, choose active recovery or complete rest.";
+        const noteParts = noteText.split(" If recovery from Days 1–4 is poor");
+        note.appendChild(document.createTextNode(`Note: ${noteParts[0]}`));
+        if (noteParts.length > 1) {
+          note.appendChild(document.createElement("br"));
+          note.appendChild(document.createTextNode(`If recovery from Days 1–4 is poor${noteParts.slice(1).join(" If recovery from Days 1–4 is poor")}`));
+        }
 
         const prompt = document.createElement("p");
         prompt.className = "locked-in-activity-guide-prompt";
