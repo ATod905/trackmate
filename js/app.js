@@ -1576,6 +1576,15 @@ const TM_EXERCISE_CATALOG = tmBuildExerciseCatalog();
   });
 })();
 
+(function tmEnsureLockedInExerciseOverrides(){
+  // Edit: 5.7.13 — Phase 1 requested equipment classification.
+  if (!exerciseLibrary["Medicine-Ball Chest Throw"]) {
+    exerciseLibrary["Medicine-Ball Chest Throw"] = { category: "Chest", equipment: "KB", alternatives: [] };
+  } else {
+    exerciseLibrary["Medicine-Ball Chest Throw"].equipment = "KB";
+  }
+})();
+
 (function tmEnsureLizzoExercisesInLibraries(){
   const add = (name, category, equipment, extra) => {
     if (!Array.isArray(exerciseCategories[category])) exerciseCategories[category] = [];
@@ -2564,14 +2573,14 @@ const lockedInPhase1Week1 = [
     theme: "UPPER A: STRENGTH + V-TAPER",
     goal: "Foundation — Upper A: Strength + V-Taper",
     exercises: [
-      { name: "Medicine-Ball Chest Throw", prescription: "3 x 5", notes: "Rest 60–90 sec. Alternative: Explosive Push-Up 3 x 3–5. Focus on maximal-quality explosive reps rather than fatigue." },
-      { name: "Incline Barbell Bench Press", prescription: "4 x 5–8", notes: "Rest 2–3 min. Alternative: Incline Dumbbell Press." },
-      { name: "Pull-Up", prescription: "4 x 5–8", notes: "Rest 2–3 min. Alternatives: Assisted Pull-Up or Neutral-Grip Lat Pulldown." },
-      { name: "Flat Dumbbell Press", prescription: "3 x 8–10", notes: "Rest 90–120 sec. Alternative: Chest-Press Machine." },
-      { name: "Chest-Supported Row", prescription: "3 x 8–10", notes: "Rest 90–120 sec. Alternatives: Horizontal Row or High-Row Machine." },
-      { name: "Cable Lateral Raise", prescription: "3 x 12–15", notes: "Rest 60–75 sec. Alternative: Dumbbell Lateral Raise. Optional superset with Rear-Delt Cable Fly." },
-      { name: "Rear-Delt Cable Fly", prescription: "3 x 12–15", notes: "Rest 60–75 sec. Alternatives: Reverse Pec Deck or Rope Face Pull. Optional superset with Cable Lateral Raise." },
-      { name: "Ab-Wheel Rollout", prescription: "3 x 8–12", notes: "Rest 60–90 sec. Alternatives: Barbell Rollout, Stability-Ball Rollout, or Body Saw." },
+      { name: "Medicine-Ball Chest Throw", prescription: "3 x 5", notes: "Rest 60–90 sec.\nAlternative: Explosive Push-Up 3 x 3–5." },
+      { name: "Incline Barbell Bench Press", prescription: "4 x 5–8", notes: "Rest 2–3 min.\nAlternative: Incline Dumbbell Press." },
+      { name: "Pull-Up", prescription: "4 x 5–8", notes: "Rest 2–3 min.\nAlternatives: Assisted Pull-Up or Neutral-Grip Lat Pulldown." },
+      { name: "Flat Dumbbell Press", prescription: "3 x 8–10", notes: "Rest 90–120 sec.\nAlternative: Chest-Press Machine." },
+      { name: "Chest-Supported Row", prescription: "3 x 8–10", notes: "Rest 90–120 sec.\nAlternatives: Horizontal Row or High-Row Machine." },
+      { name: "Cable Lateral Raise", prescription: "3 x 12–15", notes: "Rest 60–75 sec.\nAlternative: Dumbbell Lateral Raise.\nOptional superset with Rear-Delt Cable Fly." },
+      { name: "Rear-Delt Cable Fly", prescription: "3 x 12–15", notes: "Rest 60–75 sec.\nAlternatives: Reverse Pec Deck or Rope Face Pull.\nOptional superset with Cable Lateral Raise." },
+      { name: "Ab-Wheel Rollout", prescription: "3 x 8–12", notes: "Rest 60–90 sec.\nAlternatives: Barbell Rollout, Stability-Ball Rollout, or Body Saw." },
       { name: "Heavy Farmer Carry", prescription: "2 x 30–40 m", notes: "Rest 60–90 sec. Use heavy dumbbells or kettlebells." }
     ]
   },
@@ -4236,7 +4245,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // -------------------------
   try {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js?v=5.7.12");
+      navigator.serviceWorker.register("service-worker.js?v=5.7.13");
     }
   } catch (e) {
     // Intentionally silent: SW registration failure should never block app usage.
@@ -9057,8 +9066,9 @@ updateWorkoutSummary(day);
     // For custom programmes, hide the theme badge (avoid the extra green pill).
     if (workoutThemeBadge) {
       const isCustom = !isBuiltInPresetSeries(activeSeries);
-      workoutThemeBadge.hidden = isCustom;
-      workoutThemeBadge.textContent = isCustom ? "" : (day.theme || "");
+      const isLockedIn = activeSeries === SERIES_LOCKED_IN_PHASE1 || activeSeries === SERIES_LOCKED_IN_PHASE2 || activeSeries === SERIES_LOCKED_IN_PHASE3;
+      workoutThemeBadge.hidden = isCustom || isLockedIn;
+      workoutThemeBadge.textContent = (isCustom || isLockedIn) ? "" : (day.theme || "");
     }
 
     // Subheading text beneath the programme title
