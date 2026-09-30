@@ -3314,3 +3314,30 @@ button.settings-item.settings-item--danger[data-settings-action="reset-all"]{
   opacity: 1 !important;
 }
 #screen-programs .program-reorder-controls .reorder-btn svg { display: block; }
+
+/* Edit: 5.7.21 — Project Locked In Day 5 activity guidance + single-session cardio */
+.locked-in-activity-guide {
+  margin: 10px 0 12px;
+  padding: 2px 2px 4px;
+}
+.locked-in-activity-guide-title {
+  margin: 0 0 8px;
+  font-weight: 700;
+}
+.locked-in-activity-guide-note,
+.locked-in-activity-guide-prompt {
+  margin: 0 0 8px;
+}
+.locked-in-activity-guide ul {
+  margin: 4px 0 0 22px;
+  padding: 0;
+}
+.locked-in-activity-guide li { margin: 3px 0; }
+.sets-grid--single-cardio { grid-template-columns: 1fr; }
+.set-fields--single-cardio {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+.input-pill--single-cardio { width: 100%; }
