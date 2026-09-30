@@ -3328,6 +3328,10 @@ button.settings-item.settings-item--danger[data-settings-action="reset-all"]{
 .locked-in-activity-guide-prompt {
   margin: 0 0 8px;
 }
+.locked-in-activity-guide-prompt {
+  font-size: 13px;
+  line-height: 1.35;
+}
 .locked-in-activity-guide ul {
   margin: 4px 0 0 22px;
   padding: 0;
