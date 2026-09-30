@@ -2548,7 +2548,7 @@ const fightClubProgramWeek1 = [
 // -------------------------
 // Program data (Project Locked In)
 // -------------------------
-// Phase 1 populated in 5.7.11. Phases 2 and 3 remain shells for subsequent controlled edits.
+// Phase 1 populated in 5.7.12. Phases 2 and 3 remain shells for subsequent controlled edits.
 function buildLockedInPhaseShell(phaseName) {
   return [1, 2, 3, 4, 5].map((day) => ({
     id: `locked_in_${phaseName.toLowerCase().replace(/[^a-z0-9]+/g, "_")}_day${day}`,
@@ -3737,6 +3737,13 @@ function getProgramForWeek(weekNumber, seriesName) {
   const series = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
   const template = getProgramWeekTemplateForSeries(series);
 
+  // Edit: 5.7.12 — Project Locked In Phase 1: resolve directly to the populated Foundation template.
+  // Keep this preset out of any generic/custom programme fall-through so its prescribed
+  // exercise cards always render for Weeks 1–4.
+  if (series === SERIES_LOCKED_IN_PHASE1) {
+    return deepClone(lockedInPhase1Week1);
+  }
+
   // Classic P90X — Phase 3: rotate weeks between Phase 1 (odd weeks) and Phase 2 (even weeks).
   // This is an explicit preset-only branch to avoid any custom-program fall-through.
   if (series === SERIES_P90X_CLASSIC_PHASE3) {
@@ -4229,7 +4236,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // -------------------------
   try {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js?v=5.7.11");
+      navigator.serviceWorker.register("service-worker.js?v=5.7.12");
     }
   } catch (e) {
     // Intentionally silent: SW registration failure should never block app usage.
