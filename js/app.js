@@ -1783,7 +1783,7 @@ function getTargetRepsFromPrescription(prescription) {
   return null;
 }
 
-// Edit: 5.7.19 — Programme-specific target reps may override the generic range midpoint.
+// Edit: 5.7.20 — Programme-specific target reps may override the generic range midpoint.
 function getExerciseTargetReps(ex) {
   const explicit = parseInt(ex?.targetReps, 10);
   if (Number.isFinite(explicit) && explicit > 0) return explicit;
@@ -2564,7 +2564,7 @@ const fightClubProgramWeek1 = [
 // -------------------------
 // Program data (Project Locked In)
 // -------------------------
-// Phase 1 populated in 5.7.12. Phases 2 and 3 remain shells for subsequent controlled edits.
+// Project Locked In phase templates. Phase 3 populated in 5.7.20.
 function buildLockedInPhaseShell(phaseName) {
   return [1, 2, 3, 4, 5].map((day) => ({
     id: `locked_in_${phaseName.toLowerCase().replace(/[^a-z0-9]+/g, "_")}_day${day}`,
@@ -2724,7 +2724,81 @@ const lockedInPhase2Week1 = [
     ]
   }
 ];
-const lockedInPhase3Week1 = buildLockedInPhaseShell("Define & Perform");
+const lockedInPhase3Week1 = [
+  {
+    id: "locked_in_define_perform_day1",
+    theme: "UPPER A: STRENGTH + V-TAPER",
+    goal: "Define & Perform — Upper A: Strength + V-Taper",
+    exercises: [
+      { name: "Medicine-Ball Chest Throw", prescription: "3 x 4–5", targetReps: 5, setCount: 3 },
+      { name: "Incline Barbell Bench Press", prescription: "4 x 5–8", targetReps: 8, setCount: 4 },
+      { name: "Pull-Up / Weighted Pull-Up", prescription: "4 x 5–8", targetReps: 8, setCount: 4 },
+      { name: "Flat Dumbbell Press", prescription: "3 x 8–10", targetReps: 10, setCount: 3 },
+      { name: "Chest-Supported Row", prescription: "3 x 8–10", targetReps: 10, setCount: 3 },
+      { name: "Cable Lateral Raise", prescription: "3 x 12–20", targetReps: 20, setCount: 3 },
+      { name: "Rear-Delt Cable Fly", prescription: "3 x 12–20", targetReps: 20, setCount: 3 },
+      { name: "Ab-Wheel Rollout", prescription: "3 x 10–15", targetReps: 15, setCount: 3 },
+      { name: "Heavy Farmer Carry", prescription: "2 x 30–40 m", targetReps: 40, setCount: 2 }
+    ]
+  },
+  {
+    id: "locked_in_define_perform_day2",
+    theme: "LOWER A: STRENGTH + ATHLETICISM",
+    goal: "Define & Perform — Lower A: Strength + Athleticism",
+    exercises: [
+      { name: "Box Jump / Squat Jump", prescription: "3 x 3–5", targetReps: 5, setCount: 3 },
+      { name: "Trap-Bar Deadlift", prescription: "3 x 4–6", targetReps: 6, setCount: 3 },
+      { name: "Dumbbell Bulgarian Split Squat", prescription: "3 x 8/leg", targetReps: 8, setCount: 3 },
+      { name: "Barbell Romanian Deadlift", prescription: "3 x 8–10", targetReps: 10, setCount: 3 },
+      { name: "Leg Curl", prescription: "3 x 10–15", targetReps: 15, setCount: 3 },
+      { name: "Standing Calf Raise", prescription: "3 x 10–15", targetReps: 15, setCount: 3 },
+      { name: "Pallof Press", prescription: "3 x 12–15/side", targetReps: 15, setCount: 3 },
+      { name: "Suitcase Carry", prescription: "2 x 30 m/side", targetReps: 30, setCount: 2 }
+    ]
+  },
+  {
+    id: "locked_in_define_perform_day3",
+    theme: "UPPER B: HYPERTROPHY + AESTHETICS",
+    goal: "Define & Perform — Upper B: Hypertrophy + Aesthetics",
+    exercises: [
+      { name: "Rotational Medicine-Ball Throw", prescription: "3 x 5/side", targetReps: 5, setCount: 3 },
+      { name: "Incline Dumbbell Press", prescription: "3 x 8–12", targetReps: 12, setCount: 3 },
+      { name: "Neutral-Grip Lat Pulldown", prescription: "3 x 8–12", targetReps: 12, setCount: 3 },
+      { name: "Seated Dumbbell Shoulder Press", prescription: "3 x 8–10", targetReps: 10, setCount: 3 },
+      { name: "One-Arm Cable Row", prescription: "3 x 8–12/side", targetReps: 12, setCount: 3 },
+      { name: "Cable Lateral Raise", prescription: "3 x 12–20", targetReps: 20, setCount: 3 },
+      { name: "Rope Face Pull", prescription: "3 x 12–20", targetReps: 20, setCount: 3 },
+      { name: "Incline Dumbbell Curl", prescription: "3 x 10–12", targetReps: 12, setCount: 3 },
+      { name: "Rope Pressdown", prescription: "3 x 10–12", targetReps: 12, setCount: 3 },
+      { name: "Hanging Leg Raise", prescription: "3 x 8–15", targetReps: 15, setCount: 3 }
+    ]
+  },
+  {
+    id: "locked_in_define_perform_day4",
+    theme: "LOWER B: ATHLETIC + AESTHETIC",
+    goal: "Define & Perform — Lower B: Athletic + Aesthetic",
+    exercises: [
+      { name: "Kettlebell Swing", prescription: "3 x 8–10", targetReps: 10, setCount: 3 },
+      { name: "Back Squat", prescription: "3 x 6–8", targetReps: 8, setCount: 3 },
+      { name: "Barbell Hip Thrust", prescription: "3 x 8–12", targetReps: 10, setCount: 3 },
+      { name: "Walking Dumbbell Lunge", prescription: "2 x 10/leg", targetReps: 10, setCount: 2 },
+      { name: "Leg Curl", prescription: "2 x 10–15", targetReps: 15, setCount: 2 },
+      { name: "Cable Lateral Raise", prescription: "2 x 15–20", targetReps: 20, setCount: 2 },
+      { name: "Cable Curl", prescription: "2 x 10–15", targetReps: 15, setCount: 2 },
+      { name: "Overhead Rope Extension", prescription: "2 x 10–15", targetReps: 15, setCount: 2 },
+      { name: "Cable Crunch", prescription: "3 x 10–15", targetReps: 15, setCount: 3 },
+      { name: "Loaded Carry", prescription: "2 x 30 steps", targetReps: 30, setCount: 2, notes: "30 controlled steps per set. Farmer Carry or Suitcase Carry." }
+    ]
+  },
+  {
+    id: "locked_in_define_perform_day5",
+    theme: "OPTIONAL CONDITIONING / ACTIVITY",
+    goal: "Define & Perform — Optional Conditioning / Activity",
+    exercises: [
+      { name: "Select Activity", prescription: "Optional", setCount: 1, notes: "Select one activity according to recovery. Day 5 is never compulsory and should never compromise recovery for the four resistance sessions." }
+    ]
+  }
+];
 
 
 // -------------------------
@@ -3832,9 +3906,13 @@ function getProgramForWeek(weekNumber, seriesName) {
   if (series === SERIES_LOCKED_IN_PHASE1) {
     return deepClone(lockedInPhase1Week1);
   }
-  // Edit: 5.7.19 — Project Locked In Phase 2 resolves directly to the populated Build & Intensify template.
+  // Edit: 5.7.20 — Project Locked In Phase 2 resolves directly to the populated Build & Intensify template.
   if (series === SERIES_LOCKED_IN_PHASE2) {
     return deepClone(lockedInPhase2Week1);
+  }
+  // Edit: 5.7.20 — Project Locked In Phase 3 resolves directly to the populated Define & Perform template.
+  if (series === SERIES_LOCKED_IN_PHASE3) {
+    return deepClone(lockedInPhase3Week1);
   }
 
   // Classic P90X — Phase 3: rotate weeks between Phase 1 (odd weeks) and Phase 2 (even weeks).
@@ -4329,7 +4407,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // -------------------------
   try {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js?v=5.7.19");
+      navigator.serviceWorker.register("service-worker.js?v=5.7.20");
     }
   } catch (e) {
     // Intentionally silent: SW registration failure should never block app usage.
@@ -7531,6 +7609,7 @@ const seriesSorted = seriesNames
     const series = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
     if (series === SERIES_LOCKED_IN_PHASE1) return 4;
     if (series === SERIES_LOCKED_IN_PHASE2) return 4;
+    if (series === SERIES_LOCKED_IN_PHASE3) return 4;
     if (series === SERIES_P90X_CLASSIC_PHASE1) return 4;
     if (series === SERIES_P90X_CLASSIC_PHASE2) return 4;
     if (series === SERIES_P90X_CLASSIC_PHASE3) return 4;
