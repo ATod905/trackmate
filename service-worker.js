@@ -15,7 +15,7 @@
 */
 
 // TrackMate PWA cache version (bump this whenever you deploy changes)
-const CACHE_VERSION = "v5-7-8";
+const CACHE_VERSION = "v5-7-9";
 const CACHE_NAME = `trackmate-${CACHE_VERSION}`;
 
 const APP_SHELL = [
