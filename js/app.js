@@ -1577,7 +1577,7 @@ const TM_EXERCISE_CATALOG = tmBuildExerciseCatalog();
 })();
 
 (function tmEnsureLockedInExerciseOverrides(){
-  // Edit: 5.7.13 — Phase 1 requested equipment classification.
+  // Edit: 5.7.14 — Phase 1 requested equipment classification.
   if (!exerciseLibrary["Medicine-Ball Chest Throw"]) {
     exerciseLibrary["Medicine-Ball Chest Throw"] = { category: "Chest", equipment: "KB", alternatives: [] };
   } else {
@@ -4245,7 +4245,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // -------------------------
   try {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js?v=5.7.13");
+      navigator.serviceWorker.register("service-worker.js?v=5.7.14");
     }
   } catch (e) {
     // Intentionally silent: SW registration failure should never block app usage.
