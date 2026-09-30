@@ -790,11 +790,11 @@ const exerciseLibrary = {
   "Easy Run": { category: "Cardio", equipment: "BW", type: "cardio", alternatives: ["Brisk Walk", "Active Recovery", "Les Mills BodyPump", "HYROX"] },
   "Brisk Walk": { category: "Cardio", equipment: "BW", type: "cardio", alternatives: ["Active Recovery", "Easy Run"] },
   "Active Recovery": { category: "Cardio", equipment: "BW", type: "cardio", alternatives: ["Brisk Walk", "Easy Run"] },
-  "Les Mills BodyPump - Heavy": { category: "Cardio", equipment: "BW", type: "cardio", alternatives: ["Les Mills BodyPump", "HYROX", "HiiT"] },
+  "Les Mills BodyPump - Heavy": { category: "Cardio", equipment: "BW", type: "cardio", alternatives: ["Les Mills BodyPump", "HYROX", "HIIT"] },
   "Pilates": { category: "Cardio", equipment: "BW", type: "cardio", alternatives: ["Yoga", "Hot Yoga", "Active Recovery"] },
   "Yoga": { category: "Cardio", equipment: "BW", type: "cardio", alternatives: ["Hot Yoga", "Pilates", "Active Recovery"] },
   "Hot Yoga": { category: "Cardio", equipment: "BW", type: "cardio", alternatives: ["Yoga", "Pilates", "Active Recovery"] },
-  "HiiT": { category: "Cardio", equipment: "BW", type: "cardio", alternatives: ["HYROX", "Les Mills BodyPump - Heavy", "Les Mills BodyPump"] },
+  "HIIT": { category: "Cardio", equipment: "BW", type: "cardio", alternatives: ["HYROX", "Les Mills BodyPump - Heavy", "Les Mills BodyPump"] },
   // --- Added: Traps, Forearms, Kickbacks (v5.1.12)
   "Dumbbell Shrugs": { category: "Shoulders", equipment: "DB" },
   "Barbell Shrugs": { category: "Shoulders", equipment: "BB" },
@@ -829,7 +829,7 @@ const exerciseCategories = {
   Legs: ["Front Squats (BB or Goblet)", "Leg Press", "Romanian Deadlift (BB or DB)", "Walking Lunges (DB)", "Leg Extensions (Slow Tempo)"],
   Arms: ["DB Hammer Curl + EZ-Bar Curl (Superset)", "Bicep Spider Curls + Rope Hammer Curls (Superset)", "Triceps Rope Pushdowns + Dips (Superset)", "Overhead Triceps Extensions (Rope or DB)"],
   Core: ["Side Plank Reach-Throughs", "Russian Twists (Weighted)", "Cable Woodchoppers or Weighted Decline Sit-Ups", "Knee Raises + In-and-Out Crunches", "LP Core Circuit", "Reverse Crunches"],
-  Cardio: ["Treadmill", "Bike (Stationary)", "Rowing Machine", "Stair Climber", "Ski Erg", "Incline Walk", "Les Mills BodyPump", "Les Mills BodyPump - Heavy", "HYROX", "HiiT", "Easy Run", "Brisk Walk", "Active Recovery", "Pilates", "Yoga", "Hot Yoga"]
+  Cardio: ["Treadmill", "Bike (Stationary)", "Rowing Machine", "Stair Climber", "Ski Erg", "Incline Walk", "Les Mills BodyPump", "Les Mills BodyPump - Heavy", "HIIT", "HYROX", "Easy Run", "Brisk Walk", "Active Recovery", "Pilates", "Yoga", "Hot Yoga"]
 };
 
 function isCardioExercise(exerciseName) {
@@ -873,7 +873,7 @@ function isTreadmillStyleCardio(exerciseName) {
 // Day 5 conditioning/activity choices are single-session cardio: duration + intensity only.
 function isSingleSessionCardio(exerciseName) {
   const n = String(exerciseName || "").trim().toLowerCase();
-  return ["les mills bodypump", "hyrox", "easy run", "brisk walk", "active recovery"].includes(n);
+  return ["les mills bodypump", "les mills bodypump - heavy", "hiit", "hyrox", "easy run", "brisk walk", "active recovery", "pilates", "yoga", "hot yoga"].includes(n);
 }
 // -------------------------
 // Expanded exercise catalogue (auto-generated from your master list)
@@ -4429,7 +4429,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // -------------------------
   try {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js?v=5.7.22");
+      navigator.serviceWorker.register("service-worker.js?v=5.7.23");
     }
   } catch (e) {
     // Intentionally silent: SW registration failure should never block app usage.
@@ -8917,6 +8917,7 @@ updateWorkoutSummary(day);
   let currentCardioPills = null; // { timePill, inclinePill, intensityPill }
   let currentCardioContext = null; // { week, dayIndex, exIndex, setIndex }
   let currentCardioShowIncline = true;
+  let currentCardioIsSingleSession = false;
 
   function openCardioEditor(exerciseName, timePill, inclinePill, intensityPill, context) {
     if (!cardioEditOverlay) return;
@@ -8925,6 +8926,7 @@ updateWorkoutSummary(day);
 
     // Treadmill-style cardio supports incline; all other cardio is time + intensity only.
     currentCardioShowIncline = isTreadmillStyleCardio(exerciseName || "");
+    currentCardioIsSingleSession = isSingleSessionCardio(exerciseName || "");
 
     // Toggle incline row visibility.
     try {
@@ -8959,6 +8961,7 @@ updateWorkoutSummary(day);
     currentCardioPills = null;
     currentCardioContext = null;
     currentCardioShowIncline = true;
+    currentCardioIsSingleSession = false;
     cardioEditOverlay?.classList.remove("set-edit-overlay--active");
     cardioEditOverlay?.setAttribute("aria-hidden", "true");
   }
@@ -8979,7 +8982,7 @@ updateWorkoutSummary(day);
     if (inclinePill) inclinePill.dataset.value = incRaw;
     intensityPill.dataset.value = intenRaw;
 
-    timePill.textContent = tRaw ? `${tRaw} min` : "dur. (min)";
+    timePill.textContent = currentCardioIsSingleSession ? (tRaw ? `${tRaw} mins.` : "mins.") : (tRaw ? `${tRaw} min` : "dur. (min)");
     if (inclinePill) inclinePill.textContent = incRaw ? `incl. ${incRaw}` : "incl.";
     intensityPill.textContent = intenRaw ? `${intenRaw} ints` : "ints.";
 
@@ -9392,7 +9395,7 @@ updateWorkoutSummary(day);
         prompt.textContent = "Select from the following activities, or anything else you prefer:";
 
         const list = document.createElement("ul");
-        ["Les Mills BodyPump", "HYROX", "Easy Run", "Brisk Walk", "Active Recovery"].forEach((name) => {
+        ["Les Mills BodyPump", "Les Mills BodyPump - Heavy", "Pilates", "Yoga", "Hot Yoga", "HIIT", "HYROX", "Easy Run", "Brisk Walk"].forEach((name) => {
           const li = document.createElement("li");
           li.textContent = name;
           list.appendChild(li);
@@ -9817,7 +9820,7 @@ try {
           if (inclinePill) inclinePill.dataset.value = saved.inc || "";
           intensityPill.dataset.value = saved.inten || "";
 
-          timePill.textContent = saved.t ? `${saved.t} min` : "dur. (min)";
+          timePill.textContent = isSingleSession ? (saved.t ? `${saved.t} mins.` : "mins.") : (saved.t ? `${saved.t} min` : "dur. (min)");
           if (inclinePill) inclinePill.textContent = saved.inc ? `incl: ${saved.inc}` : "incl.";
           intensityPill.textContent = saved.inten ? `ints: ${saved.inten}` : "ints.";
 
