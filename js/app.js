@@ -2589,13 +2589,13 @@ const lockedInPhase1Week1 = [
     theme: "LOWER A: STRENGTH + ATHLETICISM",
     goal: "Foundation — Lower A: Strength + Athleticism",
     exercises: [
-      { name: "Box Jump", prescription: "3 x 3–5", notes: "Rest 60–90 sec. Alternative: Explosive Bodyweight Squat Jump. Every repetition should be explosive; this is not conditioning." },
-      { name: "Trap-Bar Deadlift", prescription: "4 x 4–6", notes: "Rest 2½–3 min. Alternative: Conventional Barbell Deadlift." },
-      { name: "Dumbbell Bulgarian Split Squat", prescription: "3 x 8/leg", notes: "Rest 90–120 sec. Alternative: Contralateral single-DB variation." },
-      { name: "Barbell Romanian Deadlift", prescription: "3 x 8–10", notes: "Rest 90–120 sec. Alternative: Dumbbell RDL." },
+      { name: "Box Jump", prescription: "3 x 3–5", notes: "Rest 60–90 sec.\nAlternative: Explosive Bodyweight Squat Jump." },
+      { name: "Trap-Bar Deadlift", prescription: "4 x 4–6", notes: "Rest 2½–3 min.\nAlternative: Conventional Barbell Deadlift." },
+      { name: "Dumbbell Bulgarian Split Squat", prescription: "3 x 8/leg", notes: "Rest 90–120 sec.\nAlternative: Contralateral single-DB variation." },
+      { name: "Barbell Romanian Deadlift", prescription: "3 x 8–10", notes: "Rest 90–120 sec.\nAlternative: Dumbbell RDL." },
       { name: "Leg Curl", prescription: "3 x 10–12", notes: "Rest 60–90 sec. Seated or lying." },
-      { name: "Standing Calf Raise", prescription: "3 x 10–15", notes: "Rest 60–75 sec. Alternative: Dumbbell Calf Raise." },
-      { name: "Pallof Press", prescription: "3 x 10–12/side", notes: "Rest 45–60 sec. Alternative: Band Pallof Press." },
+      { name: "Standing Calf Raise", prescription: "3 x 10–15", notes: "Rest 60–75 sec.\nAlternative: Dumbbell Calf Raise." },
+      { name: "Pallof Press", prescription: "3 x 10–12/side", notes: "Rest 45–60 sec.\nAlternative: Band Pallof Press." },
       { name: "Suitcase Carry", prescription: "2 x 30 m/side", notes: "Rest 60 sec. Use a dumbbell or kettlebell." }
     ]
   },
@@ -2604,16 +2604,16 @@ const lockedInPhase1Week1 = [
     theme: "UPPER B: HYPERTROPHY + AESTHETICS",
     goal: "Foundation — Upper B: Hypertrophy + Aesthetics",
     exercises: [
-      { name: "Rotational Medicine-Ball Throw", prescription: "3 x 5/side", notes: "Rest 60–90 sec. Alternative: Explosive Push-Up 3 x 3–5." },
-      { name: "Incline Dumbbell Press", prescription: "3 x 8–12", notes: "Rest 90–120 sec. Alternative: Incline Smith-Machine Press." },
-      { name: "Neutral-Grip Lat Pulldown", prescription: "3 x 8–12", notes: "Rest 90–120 sec. Alternatives: Pull-Up or Assisted Pull-Up." },
-      { name: "Seated Dumbbell Shoulder Press", prescription: "3 x 8–10", notes: "Rest 90–120 sec. Alternative: Machine Shoulder Press." },
-      { name: "One-Arm Cable Row", prescription: "3 x 8–12/side", notes: "Rest 75–90 sec. Alternative: Chest-Supported or Horizontal Row." },
+      { name: "Rotational Medicine-Ball Throw", prescription: "3 x 5/side", notes: "Rest 60–90 sec.\nAlternative: Explosive Push-Up 3 x 3–5." },
+      { name: "Incline Dumbbell Press", prescription: "3 x 8–12", notes: "Rest 90–120 sec.\nAlternative: Incline Smith-Machine Press." },
+      { name: "Neutral-Grip Lat Pulldown", prescription: "3 x 8–12", notes: "Rest 90–120 sec.\nAlternatives: Pull-Up or Assisted Pull-Up." },
+      { name: "Seated Dumbbell Shoulder Press", prescription: "3 x 8–10", notes: "Rest 90–120 sec.\nAlternative: Machine Shoulder Press." },
+      { name: "One-Arm Cable Row", prescription: "3 x 8–12/side", notes: "Rest 75–90 sec.\nAlternative: Chest-Supported or Horizontal Row." },
       { name: "Cable Lateral Raise", prescription: "3 x 12–20", notes: "Superset A with Rope Face Pull. Rest approximately 60 sec after both exercises." },
       { name: "Rope Face Pull", prescription: "3 x 12–20", notes: "Superset A with Cable Lateral Raise. Rest approximately 60 sec after both exercises." },
       { name: "Incline Dumbbell Curl", prescription: "3 x 10–12", notes: "Superset B with Rope Pressdown. Rest approximately 60–75 sec after both exercises." },
       { name: "Rope Pressdown", prescription: "3 x 10–12", notes: "Superset B with Incline Dumbbell Curl. Rest approximately 60–75 sec after both exercises." },
-      { name: "Hanging Knee Raise", prescription: "3 x 8–15", notes: "Rest 60–75 sec. Alternative: Captain's-Chair Knee Raise." }
+      { name: "Hanging Knee Raise", prescription: "3 x 8–15", notes: "Rest 60–75 sec.\nAlternative: Captain's-Chair Knee Raise." }
     ]
   },
   {
@@ -2621,15 +2621,15 @@ const lockedInPhase1Week1 = [
     theme: "LOWER B: ATHLETIC + AESTHETIC",
     goal: "Foundation — Lower B: Athletic + Aesthetic",
     exercises: [
-      { name: "Kettlebell Swing", prescription: "3 x 8–10", notes: "Rest 60–90 sec. Alternative: Dumbbell Swing." },
-      { name: "Back Squat", prescription: "3 x 6–8", notes: "Rest 2–3 min. Alternative: Goblet Squat 3 x 10–12." },
+      { name: "Kettlebell Swing", prescription: "3 x 8–10", notes: "Rest 60–90 sec.\nAlternative: Dumbbell Swing." },
+      { name: "Back Squat", prescription: "3 x 6–8", notes: "Rest 2–3 min.\nAlternative: Goblet Squat 3 x 10–12." },
       { name: "Barbell Hip Thrust", prescription: "3 x 8–12", notes: "Rest 90–120 sec." },
-      { name: "Walking Dumbbell Lunge", prescription: "2 x 10/leg", notes: "Rest 90 sec. Alternative: Reverse Dumbbell Lunge." },
+      { name: "Walking Dumbbell Lunge", prescription: "2 x 10/leg", notes: "Rest 90 sec.\nAlternative: Reverse Dumbbell Lunge." },
       { name: "Leg Curl", prescription: "2 x 10–15", notes: "Rest 60–75 sec." },
-      { name: "Cable Lateral Raise", prescription: "2 x 15–20", notes: "Rest 60 sec. Alternative: Dumbbell Lateral Raise." },
+      { name: "Cable Lateral Raise", prescription: "2 x 15–20", notes: "Rest 60 sec.\nAlternative: Dumbbell Lateral Raise." },
       { name: "Cable Curl", prescription: "2 x 10–15", notes: "Superset with Overhead Rope Extension. Rest approximately 60 sec after both exercises." },
       { name: "Overhead Rope Extension", prescription: "2 x 10–15", notes: "Superset with Cable Curl. Rest approximately 60 sec after both exercises." },
-      { name: "Cable Crunch", prescription: "3 x 10–15", notes: "Rest 60 sec. Alternative: Weighted Crunch." },
+      { name: "Cable Crunch", prescription: "3 x 10–15", notes: "Rest 60 sec.\nAlternative: Weighted Crunch." },
       { name: "Loaded Carry", prescription: "2 rounds", notes: "Farmer Carry or Suitcase Carry." }
     ]
   },
@@ -4245,7 +4245,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // -------------------------
   try {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js?v=5.7.14");
+      navigator.serviceWorker.register("service-worker.js?v=5.7.15");
     }
   } catch (e) {
     // Intentionally silent: SW registration failure should never block app usage.
@@ -7445,6 +7445,7 @@ const seriesSorted = seriesNames
 
   function getPlannedWeeksCountForSeries(seriesName) {
     const series = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
+    if (series === SERIES_LOCKED_IN_PHASE1) return 4;
     if (series === SERIES_P90X_CLASSIC_PHASE1) return 4;
     if (series === SERIES_P90X_CLASSIC_PHASE2) return 4;
     if (series === SERIES_P90X_CLASSIC_PHASE3) return 4;
