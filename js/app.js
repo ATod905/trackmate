@@ -448,6 +448,9 @@ const ROCK_SERIES_NAME = "The Rock Training Program";
 const FIGHTCLUB_SERIES_NAME = "Fight Club Training Program";
 const GM_SERIES_NAME = "Rehab - GM";
 const LIZZO_SUMMER_SERIES_NAME = "Lizzo - Summer Training";
+const SERIES_LOCKED_IN_PHASE1 = "Project Locked In - Phase 1";
+const SERIES_LOCKED_IN_PHASE2 = "Project Locked In - Phase 2";
+const SERIES_LOCKED_IN_PHASE3 = "Project Locked In - Phase 3";
 const SERIES_P90X_CLASSIC_PHASE1 = "Classic P90X - Phase 1";
 const SERIES_P90X_CLASSIC_PHASE2 = "Classic P90X - Phase 2";
 const SERIES_P90X_CLASSIC_PHASE3 = "Classic P90X - Phase 3";
@@ -485,7 +488,7 @@ function isP90XPlyometricsDay(dayObj) {
 
 function isBuiltInPresetSeries(seriesName) {
   const name = (seriesName || getActiveSeriesName()).toString().trim() || DEFAULT_SERIES_NAME;
-  return (name === DEFAULT_SERIES_NAME) || (name === ROCK_SERIES_NAME) || (name === FIGHTCLUB_SERIES_NAME) || (name === GM_SERIES_NAME) || (name === LIZZO_SUMMER_SERIES_NAME) || (name === SERIES_P90X_CLASSIC_PHASE1) || (name === SERIES_P90X_CLASSIC_PHASE2) || (name === SERIES_P90X_CLASSIC_PHASE3);
+  return (name === DEFAULT_SERIES_NAME) || (name === ROCK_SERIES_NAME) || (name === FIGHTCLUB_SERIES_NAME) || (name === GM_SERIES_NAME) || (name === LIZZO_SUMMER_SERIES_NAME) || (name === SERIES_LOCKED_IN_PHASE1) || (name === SERIES_LOCKED_IN_PHASE2) || (name === SERIES_LOCKED_IN_PHASE3) || (name === SERIES_P90X_CLASSIC_PHASE1) || (name === SERIES_P90X_CLASSIC_PHASE2) || (name === SERIES_P90X_CLASSIC_PHASE3);
 }
 
 function getPrefsObject() {
@@ -2543,6 +2546,23 @@ const fightClubProgramWeek1 = [
 
 
 // -------------------------
+// Program data (Project Locked In)
+// -------------------------
+// Phase shells only in 5.7.10. Workout exercises are added in subsequent controlled edits.
+function buildLockedInPhaseShell(phaseName) {
+  return [1, 2, 3, 4, 5].map((day) => ({
+    id: `locked_in_${phaseName.toLowerCase().replace(/[^a-z0-9]+/g, "_")}_day${day}`,
+    theme: `DAY ${day}`,
+    goal: phaseName,
+    exercises: []
+  }));
+}
+const lockedInPhase1Week1 = buildLockedInPhaseShell("Foundation");
+const lockedInPhase2Week1 = buildLockedInPhaseShell("Build & Intensify");
+const lockedInPhase3Week1 = buildLockedInPhaseShell("Define & Perform");
+
+
+// -------------------------
 // Program data (Lizzo - Summer Training)
 // -------------------------
 // 5-day summer training programme. Weeks currently repeat unchanged.
@@ -3284,6 +3304,9 @@ function getProgramWeekTemplateForSeries(seriesName) {
   if (name === FIGHTCLUB_SERIES_NAME) return fightClubProgramWeek1;
   if (name === GM_SERIES_NAME) return gmProgramWeek1;
   if (name === LIZZO_SUMMER_SERIES_NAME) return lizzoSummerProgramWeek1;
+  if (name === SERIES_LOCKED_IN_PHASE1) return lockedInPhase1Week1;
+  if (name === SERIES_LOCKED_IN_PHASE2) return lockedInPhase2Week1;
+  if (name === SERIES_LOCKED_IN_PHASE3) return lockedInPhase3Week1;
   if (name === SERIES_P90X_CLASSIC_PHASE1) return p90xClassicPhase1Week1;
   if (name === SERIES_P90X_CLASSIC_PHASE2) return p90xClassicPhase2Week1;
   // Phase 3 rotates weeks between Phase 1 and Phase 2 templates; Week 1 shape matches Phase 1.
@@ -3725,6 +3748,11 @@ function getProgramForWeek(weekNumber, seriesName) {
   // Built-in Lizzo - Summer Training preset: always use the built-in template (weeks repeat unchanged).
   // Do not treat this as a custom series with week overrides.
   if (series === LIZZO_SUMMER_SERIES_NAME) {
+    return deepClone(template);
+  }
+
+  // Built-in Project Locked In phase presets: always use their built-in phase templates.
+  if (series === SERIES_LOCKED_IN_PHASE1 || series === SERIES_LOCKED_IN_PHASE2 || series === SERIES_LOCKED_IN_PHASE3) {
     return deepClone(template);
   }
 
@@ -4550,6 +4578,27 @@ function syncWorkoutDaySelectOptionsForSeries(seriesName) {
       { value: "3", label: "Day 4" },
       { value: "4", label: "Day 5" },
       { value: "5", label: "Day 6" },
+    ];
+    select.innerHTML = "";
+    options.forEach((o) => {
+      const opt = document.createElement("option");
+      opt.value = o.value;
+      opt.textContent = o.label;
+      select.appendChild(opt);
+    });
+    if (options.some((o) => o.value === current)) select.value = current;
+    else select.value = "0";
+    return;
+  }
+
+  // Project Locked In presets: 5 selectable days per phase
+  if (name === SERIES_LOCKED_IN_PHASE1 || name === SERIES_LOCKED_IN_PHASE2 || name === SERIES_LOCKED_IN_PHASE3) {
+    const options = [
+      { value: "0", label: "Day 1" },
+      { value: "1", label: "Day 2" },
+      { value: "2", label: "Day 3" },
+      { value: "3", label: "Day 4" },
+      { value: "4", label: "Day 5" },
     ];
     select.innerHTML = "";
     options.forEach((o) => {
@@ -5614,18 +5663,28 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
     }
   });
 
-  // Project Locked In (UI stub: phase workouts will be implemented in subsequent edits)
-  function bindLockedInPhaseButton(id, phaseLabel) {
+  // Project Locked In — phase navigation. Workout content is populated in subsequent controlled edits.
+  function bindLockedInPhaseButton(id, seriesName) {
     const el = document.getElementById(id);
     if (!el) return;
     el.addEventListener("click", (e) => {
       try { e?.preventDefault?.(); } catch (_) {}
-      window.alert(`Project Locked In — ${phaseLabel} workouts will be added in the next programme edits.`);
+      setActiveSeriesName(seriesName);
+      try { syncWorkoutDaySelectOptionsForSeries(seriesName); } catch (_) {}
+      currentWeek = 1;
+      currentDayIndex = 0;
+      setActiveWeekTab(1);
+      const sel = document.getElementById("workout-day-select");
+      if (sel) sel.value = "0";
+      closeWorkoutMenu();
+      showScreen("screen-workout");
+      try { window.scrollTo({ top: 0, left: 0, behavior: "auto" }); } catch (_) {}
+      renderWorkoutDay(0);
     });
   }
-  bindLockedInPhaseButton("btn-program-locked-in-phase1", "Phase 1");
-  bindLockedInPhaseButton("btn-program-locked-in-phase2", "Phase 2");
-  bindLockedInPhaseButton("btn-program-locked-in-phase3", "Phase 3");
+  bindLockedInPhaseButton("btn-program-locked-in-phase1", SERIES_LOCKED_IN_PHASE1);
+  bindLockedInPhaseButton("btn-program-locked-in-phase2", SERIES_LOCKED_IN_PHASE2);
+  bindLockedInPhaseButton("btn-program-locked-in-phase3", SERIES_LOCKED_IN_PHASE3);
 
   // Classic P90X (UI stub: phases will be implemented in a future edit)
   function bindP90XPhaseButton(id, phaseLabel) {
