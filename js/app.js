@@ -784,6 +784,17 @@ const exerciseLibrary = {
     type: "cardio",
     alternatives: ["Treadmill", "Stair Climber"]
   },
+  // Project Locked In Day 5 activity options (single-session cardio tracking).
+  "Les Mills BodyPump": { category: "Cardio", equipment: "BW", type: "cardio", alternatives: ["HYROX", "Easy Run", "Brisk Walk", "Active Recovery"] },
+  "HYROX": { category: "Cardio", equipment: "BW", type: "cardio", alternatives: ["Les Mills BodyPump", "Easy Run", "Brisk Walk", "Active Recovery"] },
+  "Easy Run": { category: "Cardio", equipment: "BW", type: "cardio", alternatives: ["Brisk Walk", "Active Recovery", "Les Mills BodyPump", "HYROX"] },
+  "Brisk Walk": { category: "Cardio", equipment: "BW", type: "cardio", alternatives: ["Active Recovery", "Easy Run"] },
+  "Active Recovery": { category: "Cardio", equipment: "BW", type: "cardio", alternatives: ["Brisk Walk", "Easy Run"] },
+  "Les Mills BodyPump - Heavy": { category: "Cardio", equipment: "BW", type: "cardio", alternatives: ["Les Mills BodyPump", "HYROX", "HiiT"] },
+  "Pilates": { category: "Cardio", equipment: "BW", type: "cardio", alternatives: ["Yoga", "Hot Yoga", "Active Recovery"] },
+  "Yoga": { category: "Cardio", equipment: "BW", type: "cardio", alternatives: ["Hot Yoga", "Pilates", "Active Recovery"] },
+  "Hot Yoga": { category: "Cardio", equipment: "BW", type: "cardio", alternatives: ["Yoga", "Pilates", "Active Recovery"] },
+  "HiiT": { category: "Cardio", equipment: "BW", type: "cardio", alternatives: ["HYROX", "Les Mills BodyPump - Heavy", "Les Mills BodyPump"] },
   // --- Added: Traps, Forearms, Kickbacks (v5.1.12)
   "Dumbbell Shrugs": { category: "Shoulders", equipment: "DB" },
   "Barbell Shrugs": { category: "Shoulders", equipment: "BB" },
@@ -818,7 +829,7 @@ const exerciseCategories = {
   Legs: ["Front Squats (BB or Goblet)", "Leg Press", "Romanian Deadlift (BB or DB)", "Walking Lunges (DB)", "Leg Extensions (Slow Tempo)"],
   Arms: ["DB Hammer Curl + EZ-Bar Curl (Superset)", "Bicep Spider Curls + Rope Hammer Curls (Superset)", "Triceps Rope Pushdowns + Dips (Superset)", "Overhead Triceps Extensions (Rope or DB)"],
   Core: ["Side Plank Reach-Throughs", "Russian Twists (Weighted)", "Cable Woodchoppers or Weighted Decline Sit-Ups", "Knee Raises + In-and-Out Crunches", "LP Core Circuit", "Reverse Crunches"],
-  Cardio: ["Treadmill", "Bike (Stationary)", "Rowing Machine", "Stair Climber", "Ski Erg", "Incline Walk"]
+  Cardio: ["Treadmill", "Bike (Stationary)", "Rowing Machine", "Stair Climber", "Ski Erg", "Incline Walk", "Les Mills BodyPump", "Les Mills BodyPump - Heavy", "HYROX", "HiiT", "Easy Run", "Brisk Walk", "Active Recovery", "Pilates", "Yoga", "Hot Yoga"]
 };
 
 function isCardioExercise(exerciseName) {
@@ -858,6 +869,12 @@ function isTreadmillStyleCardio(exerciseName) {
   if (/^incline walk$/i.test(n)) return true;
   return false;
 }
+
+// Day 5 conditioning/activity choices are single-session cardio: duration + intensity only.
+function isSingleSessionCardio(exerciseName) {
+  const n = String(exerciseName || "").trim().toLowerCase();
+  return ["les mills bodypump", "hyrox", "easy run", "brisk walk", "active recovery"].includes(n);
+}
 // -------------------------
 // Expanded exercise catalogue (auto-generated from your master list)
 // -------------------------
@@ -879,6 +896,11 @@ Rowing Machine
 Ski Erg
 Arm Erg / Upper Body Erg
 Cardio - Conditioning & Functional
+Les Mills BodyPump
+HYROX
+Easy Run
+Brisk Walk
+Active Recovery
 Sled Push
 Sled Pull
 Prowler Push
@@ -1783,7 +1805,7 @@ function getTargetRepsFromPrescription(prescription) {
   return null;
 }
 
-// Edit: 5.7.20 — Programme-specific target reps may override the generic range midpoint.
+// Edit: 5.7.17 — Programme-specific target reps may override the generic range midpoint.
 function getExerciseTargetReps(ex) {
   const explicit = parseInt(ex?.targetReps, 10);
   if (Number.isFinite(explicit) && explicit > 0) return explicit;
@@ -2645,7 +2667,7 @@ const lockedInPhase1Week1 = [
     theme: "OPTIONAL CONDITIONING / ACTIVITY",
     goal: "Foundation — Optional Conditioning / Activity",
     exercises: [
-      { name: "Select Activity", prescription: "Optional", setCount: 1, notes: "Select one activity according to recovery. Day 5 is never compulsory; if recovery from Days 1–4 is poor, choose active recovery or complete rest." }
+      { name: "Select Activity", instructionOnly: true, prescription: "Optional", notes: "Day 5 is never compulsory. If recovery from Days 1–4 is poor, choose active recovery or complete rest." }
     ]
   }
 ];
@@ -2720,7 +2742,7 @@ const lockedInPhase2Week1 = [
     theme: "OPTIONAL CONDITIONING / ACTIVITY",
     goal: "Build & Intensify — Optional Conditioning / Activity",
     exercises: [
-      { name: "Select Activity", prescription: "Optional", setCount: 1, notes: "Select one activity according to recovery. Day 5 is never compulsory; choose one conditioning/activity option or complete rest." }
+      { name: "Select Activity", instructionOnly: true, prescription: "Optional", notes: "Day 5 is never compulsory. If recovery from Days 1–4 is poor, choose active recovery or complete rest." }
     ]
   }
 ];
@@ -2795,7 +2817,7 @@ const lockedInPhase3Week1 = [
     theme: "OPTIONAL CONDITIONING / ACTIVITY",
     goal: "Define & Perform — Optional Conditioning / Activity",
     exercises: [
-      { name: "Select Activity", prescription: "Optional", setCount: 1, notes: "Select one activity according to recovery. Day 5 is never compulsory and should never compromise recovery for the four resistance sessions." }
+      { name: "Select Activity", instructionOnly: true, prescription: "Optional", notes: "Day 5 is never compulsory. If recovery from Days 1–4 is poor, choose active recovery or complete rest." }
     ]
   }
 ];
@@ -3906,7 +3928,7 @@ function getProgramForWeek(weekNumber, seriesName) {
   if (series === SERIES_LOCKED_IN_PHASE1) {
     return deepClone(lockedInPhase1Week1);
   }
-  // Edit: 5.7.20 — Project Locked In Phase 2 resolves directly to the populated Build & Intensify template.
+  // Edit: 5.7.19 — Project Locked In Phase 2 resolves directly to the populated Build & Intensify template.
   if (series === SERIES_LOCKED_IN_PHASE2) {
     return deepClone(lockedInPhase2Week1);
   }
@@ -4407,7 +4429,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // -------------------------
   try {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js?v=5.7.20");
+      navigator.serviceWorker.register("service-worker.js?v=5.7.22");
     }
   } catch (e) {
     // Intentionally silent: SW registration failure should never block app usage.
@@ -8174,6 +8196,7 @@ let editContext = null; // { dayRef, exRef, titleEl, exIndex }
     // Edit 4.5.1: Treadmill-style cardio uses a single 3-field row (duration + incline + intensity).
     // Default these to 1 set so the Sets selector is intuitive and Progress isn't accidentally inflated.
     const isTreadmillCardioSwap = isTreadmillStyleCardio(newName || "");
+    const isSingleSessionCardioSwap = isSingleSessionCardio(newName || "");
 
     // Critical UX safeguard: changing an exercise must never silently delete user-entered data.
     // Behaviour:
@@ -8239,7 +8262,7 @@ let editContext = null; // { dayRef, exRef, titleEl, exIndex }
         const weekTpl = ensureCustomWeekOverride(activeSeries, week);
         if (weekTpl?.[dayIdx]?.exercises?.[exIdx]) {
           weekTpl[dayIdx].exercises[exIdx].name = newName;
-          if (isTreadmillCardioSwap) weekTpl[dayIdx].exercises[exIdx].setCount = 1;
+          if (isTreadmillCardioSwap || isSingleSessionCardioSwap) weekTpl[dayIdx].exercises[exIdx].setCount = 1;
           // Keep local reference consistent so the overlay and re-render match.
           editContext.exRef.name = newName;
           const st = getWorkoutState(activeSeries);
@@ -8275,7 +8298,7 @@ let editContext = null; // { dayRef, exRef, titleEl, exIndex }
         exState.equipment = (exerciseLibrary?.[newName]?.equipment || tmInferEquipmentCode(newName) || "MC");
 
         // Edit 4.5.1: Default treadmill-style cardio to 1 set in workout state.
-        if (isTreadmillCardioSwap) exState.setCount = 1;
+        if (isTreadmillCardioSwap || isSingleSessionCardioSwap) exState.setCount = 1;
 
         saveWorkoutState(st, series);
       } catch (_) {}
@@ -8505,7 +8528,7 @@ function findCategoryForExercise(exerciseName) {
           : 4;
 
         // Edit 4.5.1: Ensure treadmill-style cardio defaults to 1 set (including legacy state).
-        if (isTreadmillStyleCardio(exRef.name || "") && currentSets !== 1) {
+        if ((isTreadmillStyleCardio(exRef.name || "") || isSingleSessionCardio(exRef.name || "")) && currentSets !== 1) {
           exState.setCount = 1;
           currentSets = 1;
           saveWorkoutState(state);
@@ -9351,6 +9374,38 @@ updateWorkoutSummary(day);
 
     renderItems.forEach(({ ex, exIndex }, uiIndex) => {
 
+      // Project Locked In Day 5: render Select Activity as guidance, not as an exercise card.
+      if (ex?.instructionOnly && ex?.name === "Select Activity") {
+        const guide = document.createElement("div");
+        guide.className = "locked-in-activity-guide";
+
+        const heading = document.createElement("p");
+        heading.className = "locked-in-activity-guide-title";
+        heading.textContent = "Select Activity";
+
+        const note = document.createElement("p");
+        note.className = "exercise-note locked-in-activity-guide-note";
+        note.textContent = `Note: ${ex.notes || "Day 5 is never compulsory."}`;
+
+        const prompt = document.createElement("p");
+        prompt.className = "locked-in-activity-guide-prompt";
+        prompt.textContent = "Select from the following activities, or anything else you prefer:";
+
+        const list = document.createElement("ul");
+        ["Les Mills BodyPump", "HYROX", "Easy Run", "Brisk Walk", "Active Recovery"].forEach((name) => {
+          const li = document.createElement("li");
+          li.textContent = name;
+          list.appendChild(li);
+        });
+
+        guide.appendChild(heading);
+        guide.appendChild(note);
+        guide.appendChild(prompt);
+        guide.appendChild(list);
+        workoutExerciseList.appendChild(guide);
+        return;
+      }
+
 // Classic P90X divider labels (e.g., "Bonus Round") — render as a simple section label, not a workout card.
 try {
   const exName = (ex?.name || "").toString().trim().toLowerCase();
@@ -9689,9 +9744,10 @@ try {
 
       const isCardio = isYoga || isCardioExercise(ex.name);
       const isTreadmillCardio = isCardio && (!isYoga) && isTreadmillStyleCardio(ex.name || "");
+      const isSingleSession = isCardio && (!isYoga) && isSingleSessionCardio(ex.name || "");
 
-      // Yoga sessions always track as a single duration/intensity row.
-      const effectiveSetCount = isYoga ? 1 : setCount;
+      // Yoga and Day 5 single-session activities track as one duration/intensity row.
+      const effectiveSetCount = (isYoga || isSingleSession) ? 1 : setCount;
 
       // Treadmill cards should use the full card width for the single 3-field row.
       // The default .sets-grid is a 2-column grid (meant for multiple set cells),
@@ -9703,6 +9759,9 @@ try {
       if (isYoga) {
         setsGrid.classList.add("sets-grid--yoga");
       }
+      if (isSingleSession) {
+        setsGrid.classList.add("sets-grid--single-cardio");
+      }
 
       for (let setIndex = 0; setIndex < effectiveSetCount; setIndex++) {
         // Treadmill activities use a single 3-field row (no per-set rows).
@@ -9711,7 +9770,7 @@ try {
         cell.className = "set-cell";
 
         let label = null;
-        if (!isTreadmillCardio && !isYoga) {
+        if (!isTreadmillCardio && !isYoga && !isSingleSession) {
           label = document.createElement("div");
           label.className = "set-label";
           // Set label row (with optional per-set Superset indicator)
@@ -9732,9 +9791,10 @@ try {
           const isTreadmill = (!isYoga) && isTreadmillStyleCardio(ex.name || "");
           if (isTreadmill) fields.classList.add("set-fields--treadmill");
           if (isYoga) fields.classList.add("set-fields--yoga");
+          if (isSingleSession) fields.classList.add("set-fields--single-cardio");
           const pillBaseClass = isTreadmill
             ? "input-pill input-pill--treadmill"
-            : (isYoga ? "input-pill input-pill--yoga" : "input-pill input-pill--small");
+            : (isYoga ? "input-pill input-pill--yoga" : (isSingleSession ? "input-pill input-pill--single-cardio" : "input-pill input-pill--small"));
 
           const timePill = document.createElement("button");
           timePill.type = "button";
@@ -10034,7 +10094,7 @@ try {
 
       // UI-only: visually distinguish completed exercises (all sets logged).
       try {
-        const uiSetCount = (isTreadmillCardio ? 1 : setCount);
+        const uiSetCount = ((isTreadmillCardio || isSingleSession) ? 1 : setCount);
         updateExerciseCardCompletion(card, state, currentWeek, dayIndex, exIndex, uiSetCount, isCardio);
       } catch (_) {}
 
