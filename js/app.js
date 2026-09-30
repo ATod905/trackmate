@@ -5614,6 +5614,19 @@ document.getElementById("btn-welcome-setup")?.addEventListener("click", () => sh
     }
   });
 
+  // Project Locked In (UI stub: phase workouts will be implemented in subsequent edits)
+  function bindLockedInPhaseButton(id, phaseLabel) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("click", (e) => {
+      try { e?.preventDefault?.(); } catch (_) {}
+      window.alert(`Project Locked In — ${phaseLabel} workouts will be added in the next programme edits.`);
+    });
+  }
+  bindLockedInPhaseButton("btn-program-locked-in-phase1", "Phase 1");
+  bindLockedInPhaseButton("btn-program-locked-in-phase2", "Phase 2");
+  bindLockedInPhaseButton("btn-program-locked-in-phase3", "Phase 3");
+
   // Classic P90X (UI stub: phases will be implemented in a future edit)
   function bindP90XPhaseButton(id, phaseLabel) {
     const el = document.getElementById(id);
