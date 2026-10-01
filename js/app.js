@@ -4429,7 +4429,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // -------------------------
   try {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js?v=5.7.24");
+      navigator.serviceWorker.register("service-worker.js?v=5.7.25");
     }
   } catch (e) {
     // Intentionally silent: SW registration failure should never block app usage.
